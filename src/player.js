@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import { FLOOR_STEP, WALL_THICK } from "./roomGen.js";
+import { FLOOR_STEP } from "./roomGen.js";
 
-const PLAYER_RADIUS = 0.35;
+const PLAYER_RADIUS = 0.32;
 const EYE_HEIGHT = 1.62;
-const WALK_SPEED = 3.4;
+const WALK_SPEED = 3.5;
 const RUN_SPEED = 6;
 
 export class Player {
   constructor(camera, domElement) {
     this.camera = camera;
     this.domElement = domElement;
-    this.position = new THREE.Vector3(0, EYE_HEIGHT, 3);
+    this.position = new THREE.Vector3(0, EYE_HEIGHT, 0);
     this.floor = 0;
     this.stairT = 0;
     this.yaw = 0;
@@ -22,6 +22,7 @@ export class Player {
 
     this._onKeyDown = (e) => {
       this.keys[e.code] = true;
+      if (e.code === "KeyR") this._unstuck();
     };
     this._onKeyUp = (e) => {
       this.keys[e.code] = false;
@@ -56,42 +57,29 @@ export class Player {
     this.stairs = stairs;
   }
 
-  _pushOutOfWalls(px, pz) {
+  _unstuck() {
+    this.position.set(0, this.floor * FLOOR_STEP + EYE_HEIGHT, 0);
+    this.stairT = 0;
+  }
+
+  _resolveAxis(pos, axis, delta) {
+    if (delta === 0) return 0;
+    const next = pos[axis] + delta;
     const r = PLAYER_RADIUS;
-    const limit = WALL_THICK / 2 + r;
 
-    for (const w of this.walls) {
-      if (this.position.y < w.minY - 0.1 || this.position.y > w.maxY + 0.1) continue;
+    for (const c of this.walls) {
+      const minA = axis === "x" ? c.minX : c.minZ;
+      const maxA = axis === "x" ? c.maxX : c.maxZ;
+      const minB = axis === "x" ? c.minZ : c.minX;
+      const maxB = axis === "x" ? c.maxZ : c.maxX;
+      const posA = next;
+      const posB = axis === "x" ? pos.z : pos.x;
 
-      const sdx = w.bx - w.ax;
-      const sdz = w.bz - w.az;
-      const slen2 = sdx * sdx + sdz * sdz;
-      if (slen2 < 1e-6) continue;
-
-      let t = ((px - w.ax) * sdx + (pz - w.az) * sdz) / slen2;
-      t = Math.max(0, Math.min(1, t));
-
-      const cx = w.ax + sdx * t;
-      const cz = w.az + sdz * t;
-      const qx = px - cx;
-      const qz = pz - cz;
-      const alongN = qx * w.nx + qz * w.nz;
-
-      if (alongN > -limit) {
-        const tx = -w.nz;
-        const tz = w.nx;
-        const alongT = Math.abs(qx * tx + qz * tz);
-        if (alongT <= w.halfLen + r) {
-          const push = alongN + limit;
-          if (push > 0) {
-            px -= w.nx * push;
-            pz -= w.nz * push;
-          }
-        }
+      if (posB + r > minB && posB - r < maxB && posA + r > minA && posA - r < maxA) {
+        return delta > 0 ? minA - r - pos[axis] : maxA + r - pos[axis];
       }
     }
-
-    return { px, pz };
+    return delta;
   }
 
   _tryStairs(dt) {
@@ -106,16 +94,16 @@ export class Player {
       const along = lx * s.dirX + lz * s.dirZ;
       const across = Math.abs(lx * s.dirZ - lz * s.dirX);
 
-      if (across < s.width * 0.55 && along > -0.5 && along < s.depth) {
+      if (across < s.width * 0.5 && along > -0.3 && along < s.depth) {
         const dot = forward.x * s.dirX + forward.z * s.dirZ;
-        if (moving && dot > 0.2) {
-          this.stairT += dt * 0.7;
+        if (moving && dot > 0.15) {
+          this.stairT += dt * 0.65;
           this.position.y = s.fromY + EYE_HEIGHT + this.stairT * FLOOR_STEP;
           if (this.stairT >= 1) {
             this.floor = s.targetFloor;
             this.stairT = 0;
-            this.position.x += s.dirX * 1.2;
-            this.position.z += s.dirZ * 1.2;
+            this.position.x = s.cx;
+            this.position.z = s.cz + s.dirZ * 1.5;
           }
           return true;
         }
@@ -140,11 +128,8 @@ export class Player {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
-      this.position.x += move.x;
-      this.position.z += move.z;
-      const pushed = this._pushOutOfWalls(this.position.x, this.position.z);
-      this.position.x = pushed.px;
-      this.position.z = pushed.pz;
+      this.position.x += this._resolveAxis(this.position, "x", move.x);
+      this.position.z += this._resolveAxis(this.position, "z", move.z);
     }
 
     if (!this._tryStairs(dt)) {

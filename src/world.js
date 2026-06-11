@@ -1,4 +1,4 @@
-import { CELL, FLOOR_STEP, generateRoom, buildColliders, buildStairVolume } from "./roomGen.js";
+import { CELL, FLOOR_STEP, cellOf, generateRoom, buildColliders, buildStairVolume } from "./roomGen.js";
 import { buildRoomMesh } from "./roomMesh.js";
 
 const GRID_RADIUS = 2;
@@ -47,8 +47,7 @@ export class InfiniteWorld {
   }
 
   update(playerPos, playerFloor) {
-    const pcx = Math.floor(playerPos.x / CELL);
-    const pcz = Math.floor(playerPos.z / CELL);
+    const { x: pcx, z: pcz } = cellOf(playerPos);
 
     const moved =
       pcx !== this.playerCell.x ||

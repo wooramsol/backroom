@@ -1,111 +1,94 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CELL, WALL_THICK, FLOOR_STEP } from "./roomGen.js";
+import { CELL, DOOR_W, DOOR_H, FLOOR_STEP, WALL_THICK } from "./roomGen.js";
 
-function wallBoxes(edge, roomH, door) {
-  const geos = [];
-  const dx = edge.v1[0] - edge.v0[0];
-  const dz = edge.v1[1] - edge.v0[1];
-  const len = edge.len;
-  const ux = dx / len;
-  const uz = dz / len;
-  const angle = Math.atan2(dx, dz);
-  const nx = edge.normal[0];
-  const nz = edge.normal[1];
+const HW = CELL / 2;
+const DW = DOOR_W / 2;
 
-  const addBox = (t0, tLen, h, y) => {
-    if (tLen < 0.12) return;
-    const mx = edge.v0[0] + ux * (t0 + tLen / 2) + nx * (WALL_THICK / 2);
-    const mz = edge.v0[1] + uz * (t0 + tLen / 2) + nz * (WALL_THICK / 2);
-    const g = new THREE.BoxGeometry(tLen, h, WALL_THICK);
-    g.rotateY(angle);
-    g.translate(mx, y + h / 2, mz);
-    geos.push(g);
-  };
-
-  if (door) {
-    const mid = Math.max(0, (len - door.width) / 2 + door.offset);
-    const doorEnd = Math.min(len, mid + door.width);
-    addBox(0, mid, door.height, 0);
-    addBox(doorEnd, len - doorEnd, door.height, 0);
-    addBox(0, len, roomH - door.height, door.height);
-  } else if (!edge.feature) {
-    addBox(0, len, roomH, 0);
-  } else {
-    addBox(0, len * 0.2, roomH, 0);
-    addBox(len * 0.8, len * 0.2, roomH, 0);
-    addBox(0, len, roomH * 0.5, 0);
-  }
-
-  return geos;
+function wallBox(w, h, d, x, y, z, mat, group) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  group.add(m);
 }
 
-function buildStairMesh(room, materials) {
-  if (!room.feature) return null;
-  const edge = room.edges[room.feature.edgeIndex];
-  const mx = (edge.v0[0] + edge.v1[0]) / 2;
-  const mz = (edge.v0[1] + edge.v1[1]) / 2;
-  const angle = Math.atan2(edge.v1[0] - edge.v0[0], edge.v1[1] - edge.v0[1]);
-  const dirX = -edge.normal[0];
-  const dirZ = -edge.normal[1];
+function wallAlongZ(z, x0, x1, y0, h, mat, group) {
+  const w = x1 - x0;
+  if (w < 0.1) return;
+  wallBox(w, h, WALL_THICK, (x0 + x1) / 2, y0 + h / 2, z, mat, group);
+}
+
+function wallAlongX(x, z0, z1, y0, h, mat, group) {
+  const d = z1 - z0;
+  if (d < 0.1) return;
+  wallBox(WALL_THICK, h, d, x, y0 + h / 2, (z0 + z1) / 2, mat, group);
+}
+
+function buildWallSide(mat, group, y0, roomH, axis, fixed, range0, range1, skipDoor) {
+  if (skipDoor) return;
+  wallAlong(axis, range0, -DW, y0, DOOR_H, mat, group, fixed);
+  wallAlong(axis, DW, range1, y0, DOOR_H, mat, group, fixed);
+  wallAlong(axis, range0, range1, y0 + DOOR_H, roomH - DOOR_H, mat, group, fixed);
+}
+
+function wallAlong(axis, a0, a1, y0, h, mat, group, fixed) {
+  if (axis === "z") wallAlongZ(fixed, a0, a1, y0, h, mat, group);
+  else wallAlongX(fixed, a0, a1, y0, h, mat, group);
+}
+
+function buildStairs(room, materials, group, y0) {
   const steps = 5;
-  const group = new THREE.Group();
   const rise = FLOOR_STEP / steps;
-  const run = 2.4 / steps;
-  const y0 = room.floorLevel * FLOOR_STEP;
+  const run = 2.6 / steps;
+  const zStart = room.feature === "stairs_down" ? HW - 2.8 : -HW + 0.4;
 
   for (let i = 0; i < steps; i++) {
-    const step = new THREE.Mesh(new THREE.BoxGeometry(1.4, rise, run), materials.stair);
-    const along = 1.0 + i * run + run / 2;
-    step.position.set(mx + dirX * along, y0 + rise * (i + 0.5), mz + dirZ * along);
-    step.rotation.y = angle;
-    group.add(step);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W - 0.2, rise, run), materials.stair);
+    m.position.set(0, y0 + rise * (i + 0.5), zStart + i * run);
+    group.add(m);
   }
-
-  return group;
 }
 
 export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const y0 = room.floorLevel * FLOOR_STEP;
-  const wallMat = room.isBasement ? materials.basementWall : materials.wall;
+  const h = room.height;
+  const mat = room.isBasement ? materials.basementWall : materials.wall;
+  const openSouth = room.feature === "stairs_down";
+  const openNorth = room.feature === "stairs_up";
 
-  // Full cell floor/ceiling — prevents gaps between varied room shapes
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(CELL, CELL),
+    new THREE.PlaneGeometry(CELL + 0.02, CELL + 0.02),
     room.isBasement ? materials.basementFloor : materials.floor
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = y0;
   group.add(floor);
 
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CELL, CELL), materials.ceiling);
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(CELL + 0.02, CELL + 0.02),
+    materials.ceiling
+  );
   ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = y0 + room.height;
+  ceiling.position.y = y0 + h;
   group.add(ceiling);
 
   const light = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.2, 0.3),
+    new THREE.PlaneGeometry(1.4, 0.35),
     materials.lightPanel
   );
   light.rotation.x = -Math.PI / 2;
-  light.position.set(0, y0 + room.height - 0.05, 0);
+  light.position.set(0, y0 + h - 0.04, 0);
   group.add(light);
 
-  const wallGeos = [];
-  for (const edge of room.edges) {
-    wallGeos.push(...wallBoxes(edge, room.height, edge.door));
-  }
+  // North
+  buildWallSide(mat, group, y0, h, "z", -HW, -HW, HW, openNorth);
+  // South
+  buildWallSide(mat, group, y0, h, "z", HW, -HW, HW, openSouth);
+  // West
+  buildWallSide(mat, group, y0, h, "x", -HW, -HW, HW, false);
+  // East
+  buildWallSide(mat, group, y0, h, "x", HW, -HW, HW, false);
 
-  if (wallGeos.length) {
-    const merged = mergeGeometries(wallGeos, false);
-    wallGeos.forEach((g) => g.dispose());
-    merged.translate(0, y0, 0);
-    group.add(new THREE.Mesh(merged, wallMat));
-  }
-
-  const stairs = buildStairMesh(room, materials);
-  if (stairs) group.add(stairs);
+  if (room.feature) buildStairs(room, materials, group, y0);
 
   group.position.set(room.cx * CELL, 0, room.cz * CELL);
   group.userData.room = room;
