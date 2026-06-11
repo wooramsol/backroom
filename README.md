@@ -2,7 +2,14 @@
 
 웹에서 가볍게 돌아다닐 수 있는 무한 백룸(Level 0) 탐험 데모입니다. Three.js로 구현했습니다.
 
-## 실행
+## 플레이 (배포 버전)
+
+**https://wooramsol.github.io/backroom/**
+
+`main` 브랜치에 push되면 GitHub Actions가 자동으로 배포합니다.  
+`cursor/*` 브랜치 PR은 빌드 성공 시 자동 머지됩니다.
+
+## 로컬 실행
 
 ```bash
 npm install
