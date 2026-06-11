@@ -46,14 +46,15 @@ async function init() {
   ceilingTex.repeat.set(2, 2);
 
   const materials = {
-    wall: new THREE.MeshLambertMaterial({ map: wallpaperTex }),
+    wall: new THREE.MeshLambertMaterial({ map: wallpaperTex, side: THREE.DoubleSide }),
     basementWall: new THREE.MeshLambertMaterial({
       map: wallpaperTex,
       color: 0x9a9078,
+      side: THREE.DoubleSide,
     }),
-    floor: new THREE.MeshLambertMaterial({ map: carpetTex }),
-    basementFloor: new THREE.MeshLambertMaterial({ map: basementFloorTex }),
-    ceiling: new THREE.MeshLambertMaterial({ map: ceilingTex }),
+    floor: new THREE.MeshLambertMaterial({ map: carpetTex, side: THREE.DoubleSide }),
+    basementFloor: new THREE.MeshLambertMaterial({ map: basementFloorTex, side: THREE.DoubleSide }),
+    ceiling: new THREE.MeshLambertMaterial({ map: ceilingTex, side: THREE.DoubleSide }),
     stair: new THREE.MeshLambertMaterial({ color: 0x7a6a50 }),
     lightPanel: new THREE.MeshBasicMaterial({ color: 0xfff6d0 }),
   };
@@ -85,7 +86,7 @@ async function init() {
 
     if (started) {
       world.update(player.position, player.floor);
-      player.setColliders(world.getCollidersForFloor(player.floor));
+      player.setWalls(world.getWallsForFloor(player.floor));
       player.setStairs(world.getStairs());
       player.update(dt);
 

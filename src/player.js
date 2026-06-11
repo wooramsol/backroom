@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { FLOOR_STEP } from "./roomGen.js";
+import { FLOOR_STEP, WALL_THICK } from "./roomGen.js";
 
 const PLAYER_RADIUS = 0.35;
 const EYE_HEIGHT = 1.62;
@@ -17,7 +17,7 @@ export class Player {
     this.pitch = 0;
     this.keys = {};
     this.locked = false;
-    this.colliders = [];
+    this.walls = [];
     this.stairs = [];
 
     this._onKeyDown = (e) => {
@@ -48,32 +48,50 @@ export class Player {
     this.domElement.requestPointerLock();
   }
 
-  setColliders(colliders) {
-    this.colliders = colliders;
+  setWalls(walls) {
+    this.walls = walls;
   }
 
   setStairs(stairs) {
     this.stairs = stairs;
   }
 
-  _resolveAxis(pos, axis, delta) {
-    if (delta === 0) return 0;
-    const next = pos[axis] + delta;
+  _pushOutOfWalls(px, pz) {
     const r = PLAYER_RADIUS;
+    const limit = WALL_THICK / 2 + r;
 
-    for (const c of this.colliders) {
-      const minA = axis === "x" ? c.minX : c.minZ;
-      const maxA = axis === "x" ? c.maxX : c.maxZ;
-      const minB = axis === "x" ? c.minZ : c.minX;
-      const maxB = axis === "x" ? c.maxZ : c.maxX;
-      const posA = next;
-      const posB = axis === "x" ? pos.z : pos.x;
+    for (const w of this.walls) {
+      if (this.position.y < w.minY - 0.1 || this.position.y > w.maxY + 0.1) continue;
 
-      if (posB + r > minB && posB - r < maxB && posA + r > minA && posA - r < maxA) {
-        return delta > 0 ? minA - r - pos[axis] : maxA + r - pos[axis];
+      const sdx = w.bx - w.ax;
+      const sdz = w.bz - w.az;
+      const slen2 = sdx * sdx + sdz * sdz;
+      if (slen2 < 1e-6) continue;
+
+      let t = ((px - w.ax) * sdx + (pz - w.az) * sdz) / slen2;
+      t = Math.max(0, Math.min(1, t));
+
+      const cx = w.ax + sdx * t;
+      const cz = w.az + sdz * t;
+      const qx = px - cx;
+      const qz = pz - cz;
+      const alongN = qx * w.nx + qz * w.nz;
+
+      if (alongN > -limit) {
+        const tx = -w.nz;
+        const tz = w.nx;
+        const alongT = Math.abs(qx * tx + qz * tz);
+        if (alongT <= w.halfLen + r) {
+          const push = alongN + limit;
+          if (push > 0) {
+            px -= w.nx * push;
+            pz -= w.nz * push;
+          }
+        }
       }
     }
-    return delta;
+
+    return { px, pz };
   }
 
   _tryStairs(dt) {
@@ -122,8 +140,11 @@ export class Player {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
-      this.position.x += this._resolveAxis(this.position, "x", move.x);
-      this.position.z += this._resolveAxis(this.position, "z", move.z);
+      this.position.x += move.x;
+      this.position.z += move.z;
+      const pushed = this._pushOutOfWalls(this.position.x, this.position.z);
+      this.position.x = pushed.px;
+      this.position.z = pushed.pz;
     }
 
     if (!this._tryStairs(dt)) {

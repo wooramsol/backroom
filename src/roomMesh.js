@@ -1,16 +1,8 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { WALL_THICK, FLOOR_STEP } from "./roomGen.js";
+import { CELL, WALL_THICK, FLOOR_STEP } from "./roomGen.js";
 
-function shapeFromVerts(verts) {
-  const shape = new THREE.Shape();
-  shape.moveTo(verts[0][0], verts[0][1]);
-  for (let i = 1; i < verts.length; i++) shape.lineTo(verts[i][0], verts[i][1]);
-  shape.closePath();
-  return shape;
-}
-
-function wallBoxes(edge, roomH, door, material) {
+function wallBoxes(edge, roomH, door) {
   const geos = [];
   const dx = edge.v1[0] - edge.v0[0];
   const dz = edge.v1[1] - edge.v0[1];
@@ -22,7 +14,7 @@ function wallBoxes(edge, roomH, door, material) {
   const nz = edge.normal[1];
 
   const addBox = (t0, tLen, h, y) => {
-    if (tLen < 0.15) return;
+    if (tLen < 0.12) return;
     const mx = edge.v0[0] + ux * (t0 + tLen / 2) + nx * (WALL_THICK / 2);
     const mz = edge.v0[1] + uz * (t0 + tLen / 2) + nz * (WALL_THICK / 2);
     const g = new THREE.BoxGeometry(tLen, h, WALL_THICK);
@@ -32,15 +24,17 @@ function wallBoxes(edge, roomH, door, material) {
   };
 
   if (door) {
-    const mid = (len - door.width) / 2 + door.offset;
+    const mid = Math.max(0, (len - door.width) / 2 + door.offset);
+    const doorEnd = Math.min(len, mid + door.width);
     addBox(0, mid, door.height, 0);
-    addBox(mid + door.width, len - mid - door.width, door.height, 0);
+    addBox(doorEnd, len - doorEnd, door.height, 0);
     addBox(0, len, roomH - door.height, door.height);
-    if (door.style === "low") addBox(mid, door.width, roomH - door.height, door.height);
   } else if (!edge.feature) {
     addBox(0, len, roomH, 0);
   } else {
-    addBox(0, len, roomH * 0.55, 0);
+    addBox(0, len * 0.2, roomH, 0);
+    addBox(len * 0.8, len * 0.2, roomH, 0);
+    addBox(0, len, roomH * 0.5, 0);
   }
 
   return geos;
@@ -49,15 +43,11 @@ function wallBoxes(edge, roomH, door, material) {
 function buildStairMesh(room, materials) {
   if (!room.feature) return null;
   const edge = room.edges[room.feature.edgeIndex];
-  const dx = edge.v1[0] - edge.v0[0];
-  const dz = edge.v1[1] - edge.v0[1];
   const mx = (edge.v0[0] + edge.v1[0]) / 2;
   const mz = (edge.v0[1] + edge.v1[1]) / 2;
-  const angle = Math.atan2(dx, dz);
-  const nx = edge.normal[0];
-  const nz = edge.normal[1];
-  const dirX = -nx;
-  const dirZ = -nz;
+  const angle = Math.atan2(edge.v1[0] - edge.v0[0], edge.v1[1] - edge.v0[1]);
+  const dirX = -edge.normal[0];
+  const dirZ = -edge.normal[1];
   const steps = 5;
   const group = new THREE.Group();
   const rise = FLOOR_STEP / steps;
@@ -78,33 +68,33 @@ function buildStairMesh(room, materials) {
 export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const y0 = room.floorLevel * FLOOR_STEP;
-  const shape = shapeFromVerts(room.vertices);
+  const wallMat = room.isBasement ? materials.basementWall : materials.wall;
 
-  const floorGeo = new THREE.ShapeGeometry(shape);
-  floorGeo.rotateX(-Math.PI / 2);
-  const floor = new THREE.Mesh(floorGeo, room.isBasement ? materials.basementFloor : materials.floor);
+  // Full cell floor/ceiling — prevents gaps between varied room shapes
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(CELL, CELL),
+    room.isBasement ? materials.basementFloor : materials.floor
+  );
+  floor.rotation.x = -Math.PI / 2;
   floor.position.y = y0;
   group.add(floor);
 
-  const ceilGeo = new THREE.ShapeGeometry(shape);
-  ceilGeo.rotateX(Math.PI / 2);
-  const ceiling = new THREE.Mesh(ceilGeo, materials.ceiling);
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CELL, CELL), materials.ceiling);
+  ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = y0 + room.height;
   group.add(ceiling);
 
-  const lightGeo = new THREE.PlaneGeometry(1.2, 0.3);
-  const light = new THREE.Mesh(lightGeo, materials.lightPanel);
+  const light = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.2, 0.3),
+    materials.lightPanel
+  );
   light.rotation.x = -Math.PI / 2;
-  const cx = room.vertices.reduce((s, v) => s + v[0], 0) / room.vertices.length;
-  const cz = room.vertices.reduce((s, v) => s + v[1], 0) / room.vertices.length;
-  light.position.set(cx, y0 + room.height - 0.05, cz);
+  light.position.set(0, y0 + room.height - 0.05, 0);
   group.add(light);
 
   const wallGeos = [];
-  const wallMat = room.isBasement ? materials.basementWall : materials.wall;
   for (const edge of room.edges) {
-    const boxes = wallBoxes(edge, room.height, edge.door, wallMat);
-    wallGeos.push(...boxes);
+    wallGeos.push(...wallBoxes(edge, room.height, edge.door));
   }
 
   if (wallGeos.length) {
@@ -117,7 +107,7 @@ export function buildRoomMesh(room, materials) {
   const stairs = buildStairMesh(room, materials);
   if (stairs) group.add(stairs);
 
-  group.position.set(room.cx * 12, 0, room.cz * 12);
+  group.position.set(room.cx * CELL, 0, room.cz * CELL);
   group.userData.room = room;
   return group;
 }

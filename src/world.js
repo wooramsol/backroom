@@ -10,7 +10,7 @@ export class InfiniteWorld {
     this.chunks = new Map();
     this.playerCell = { x: 0, z: 0 };
     this.playerFloor = 0;
-    this.colliders = [];
+    this.walls = [];
     this.stairs = [];
     this.dirty = true;
   }
@@ -27,21 +27,10 @@ export class InfiniteWorld {
   }
 
   rebuildPhysics() {
-    this.colliders = [];
+    this.walls = [];
     this.stairs = [];
     for (const { room } of this.chunks.values()) {
-      const ox = room.cx * CELL;
-      const oz = room.cz * CELL;
-      for (const c of buildColliders(room)) {
-        this.colliders.push({
-          minX: c.minX + ox,
-          maxX: c.maxX + ox,
-          minZ: c.minZ + oz,
-          maxZ: c.maxZ + oz,
-          minY: c.minY,
-          maxY: c.maxY,
-        });
-      }
+      this.walls.push(...buildColliders(room));
       const stair = buildStairVolume(room);
       if (stair) this.stairs.push(stair);
     }
@@ -103,10 +92,10 @@ export class InfiniteWorld {
     if (this.dirty) this.rebuildPhysics();
   }
 
-  getCollidersForFloor(floor) {
+  getWallsForFloor(floor) {
     const yMin = floor * FLOOR_STEP - 0.5;
     const yMax = floor * FLOOR_STEP + 3.5;
-    return this.colliders.filter((c) => c.maxY > yMin && c.minY < yMax);
+    return this.walls.filter((w) => w.maxY > yMin && w.minY < yMax);
   }
 
   getStairs() {

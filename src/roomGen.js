@@ -114,7 +114,7 @@ function makeDoor(rng, edgeLen) {
   width = Math.min(width, edgeLen * 0.65);
 
   let offset = 0;
-  if (style === "offset") offset = rng.range(-edgeLen * 0.2, edgeLen * 0.2);
+  if (style === "offset") offset = rng.range(-edgeLen * 0.15, edgeLen * 0.15);
 
   let height = rng.range(2.0, 2.35);
   if (style === "low") height = rng.range(1.7, 2.0);
@@ -211,75 +211,87 @@ export function generateRoom(cx, cz, floorLevel) {
   };
 }
 
-export function buildColliders(room) {
-  const colliders = [];
-  const yBase = room.floorLevel * FLOOR_STEP;
-
-  for (const edge of room.edges) {
-    if (edge.door && !edge.feature) {
-      const segs = wallSegments(edge, edge.door);
-      for (const s of segs) colliders.push(aabbFromSegment(s, yBase, room.height));
-    } else if (!edge.feature) {
-      colliders.push(aabbFromSegment(edge, yBase, room.height));
-    } else {
-      const partial = wallSegments(edge, { width: 1.4, offset: 0, height: room.height * 0.5 });
-      for (const s of partial) colliders.push(aabbFromSegment(s, yBase, room.height));
-    }
-  }
-  return colliders;
-}
-
 function wallSegments(edge, door) {
   const dx = edge.v1[0] - edge.v0[0];
   const dz = edge.v1[1] - edge.v0[1];
   const len = edge.len;
   const ux = dx / len;
   const uz = dz / len;
-  const mid = (len - door.width) / 2 + door.offset;
-  const d0 = mid;
-  const d1 = mid + door.width;
+  const mid = Math.max(0, (len - door.width) / 2 + door.offset);
+  const d1 = Math.min(len, mid + door.width);
 
   const segs = [];
-  if (d0 > 0.2) {
-    segs.push({
-      v0: edge.v0,
-      v1: [edge.v0[0] + ux * d0, edge.v0[1] + uz * d0],
-      len: d0,
-      normal: edge.normal,
-    });
+  if (mid > 0.15) {
+    segs.push({ t0: 0, tLen: mid });
   }
-  if (len - d1 > 0.2) {
-    segs.push({
-      v0: [edge.v0[0] + ux * d1, edge.v0[1] + uz * d1],
-      v1: edge.v1,
-      len: len - d1,
-      normal: edge.normal,
-    });
+  if (len - d1 > 0.15) {
+    segs.push({ t0: d1, tLen: len - d1 });
   }
   return segs;
 }
 
-function aabbFromSegment(edge, yBase, roomH) {
-  const pad = WALL_THICK;
-  const nx = edge.normal[0] * pad;
-  const nz = edge.normal[1] * pad;
-  const xs = [edge.v0[0] + nx, edge.v1[0] + nx];
-  const zs = [edge.v0[1] + nz, edge.v1[1] + nz];
+function segmentCollider(edge, t0, tLen, yBase, roomH, ox, oz) {
+  const dx = edge.v1[0] - edge.v0[0];
+  const dz = edge.v1[1] - edge.v0[1];
+  const len = edge.len;
+  const ux = dx / len;
+  const uz = dz / len;
+  const nx = edge.normal[0];
+  const nz = edge.normal[1];
+  const off = WALL_THICK / 2;
+
+  const ax = edge.v0[0] + ux * t0 + nx * off + ox;
+  const az = edge.v0[1] + uz * t0 + nz * off + oz;
+  const bx = edge.v0[0] + ux * (t0 + tLen) + nx * off + ox;
+  const bz = edge.v0[1] + uz * (t0 + tLen) + nz * off + oz;
+
   return {
-    minX: Math.min(...xs) - pad,
-    maxX: Math.max(...xs) + pad,
-    minZ: Math.min(...zs) - pad,
-    maxZ: Math.max(...zs) + pad,
+    ax,
+    az,
+    bx,
+    bz,
+    nx,
+    nz,
+    halfLen: tLen / 2,
     minY: yBase,
     maxY: yBase + roomH,
   };
 }
 
+export function buildColliders(room) {
+  const colliders = [];
+  const yBase = room.floorLevel * FLOOR_STEP;
+  const ox = room.cx * CELL;
+  const oz = room.cz * CELL;
+
+  for (const edge of room.edges) {
+    if (edge.door && !edge.feature) {
+      for (const s of wallSegments(edge, edge.door)) {
+        colliders.push(segmentCollider(edge, s.t0, s.tLen, yBase, room.height, ox, oz));
+      }
+      const mid = Math.max(0, (edge.len - edge.door.width) / 2 + edge.door.offset);
+      const d1 = Math.min(edge.len, mid + edge.door.width);
+      colliders.push(
+        segmentCollider(edge, mid, d1 - mid, yBase + edge.door.height, room.height - edge.door.height, ox, oz)
+      );
+    } else if (!edge.feature) {
+      colliders.push(segmentCollider(edge, 0, edge.len, yBase, room.height, ox, oz));
+    } else {
+      colliders.push(segmentCollider(edge, 0, edge.len * 0.2, yBase, room.height, ox, oz));
+      colliders.push(
+        segmentCollider(edge, edge.len * 0.8, edge.len * 0.2, yBase, room.height, ox, oz)
+      );
+      colliders.push(
+        segmentCollider(edge, 0, edge.len, yBase + room.height * 0.5, room.height * 0.5, ox, oz)
+      );
+    }
+  }
+  return colliders;
+}
+
 export function buildStairVolume(room) {
   if (!room.feature) return null;
   const edge = room.edges[room.feature.edgeIndex];
-  const dx = edge.v1[0] - edge.v0[0];
-  const dz = edge.v1[1] - edge.v0[1];
   const mx = (edge.v0[0] + edge.v1[0]) / 2;
   const mz = (edge.v0[1] + edge.v1[1]) / 2;
   const nx = edge.normal[0];
