@@ -6,8 +6,10 @@
 
 **https://wooramsol.github.io/backroom/**
 
-`main` 브랜치에 push되면 GitHub Actions가 자동으로 배포합니다.  
-`cursor/*` 브랜치 PR은 빌드 성공 시 자동 머지됩니다.
+- `cursor/*` 브랜치 PR → 빌드 성공 시 **자동 머지**
+- `main` push → `gh-pages` 브랜치에 **자동 배포**
+
+> 최초 1회: GitHub 저장소 **Settings → Pages → Build from branch → `gh-pages` / `/(root)`** 선택
 
 ## 로컬 실행
 
