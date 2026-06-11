@@ -1,64 +1,61 @@
 import * as THREE from "three";
 import {
   createCarpetTexture,
+  createBasementFloorTexture,
   createCeilingTexture,
   loadWallpaperTexture,
 } from "./textures.js";
 import { InfiniteWorld } from "./world.js";
 import { Player } from "./player.js";
-import { ROOM_W, ROOM_D } from "./chunk.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  antialias: false,
+  powerPreference: "high-performance",
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc4b47a);
-scene.fog = new THREE.Fog(0xc4b47a, 6, 28);
+scene.fog = new THREE.Fog(0xc4b47a, 8, 32);
 
-const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 50);
-camera.position.set(0, 1.65, 2);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 45);
+camera.position.set(0, 1.62, 3);
 
-scene.add(new THREE.AmbientLight(0x9a9a78, 0.45));
-const hemi = new THREE.HemisphereLight(0xfff8d8, 0x6a5a3a, 0.25);
-scene.add(hemi);
+scene.add(new THREE.AmbientLight(0xb0a880, 0.85));
+scene.add(new THREE.HemisphereLight(0xfff4d0, 0x5a4a30, 0.35));
 
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaperTex = await loadWallpaperTexture(loader);
+  wallpaperTex.repeat.set(2, 2);
 
   const carpetTex = createCarpetTexture();
-  carpetTex.repeat.set(ROOM_W * 2, ROOM_D * 2);
+  carpetTex.repeat.set(3, 3);
+
+  const basementFloorTex = createBasementFloorTexture();
+  basementFloorTex.repeat.set(3, 3);
 
   const ceilingTex = createCeilingTexture();
-  ceilingTex.repeat.set(ROOM_W / 2, ROOM_D / 2);
-
-  wallpaperTex.repeat.set(ROOM_W / 1.2, ROOM_D / 1.2);
+  ceilingTex.repeat.set(2, 2);
 
   const materials = {
-    wall: new THREE.MeshStandardMaterial({
+    wall: new THREE.MeshLambertMaterial({ map: wallpaperTex }),
+    basementWall: new THREE.MeshLambertMaterial({
       map: wallpaperTex,
-      roughness: 0.92,
-      metalness: 0,
+      color: 0x9a9078,
     }),
-    floor: new THREE.MeshStandardMaterial({
-      map: carpetTex,
-      roughness: 1,
-      metalness: 0,
-    }),
-    ceiling: new THREE.MeshStandardMaterial({
-      map: ceilingTex,
-      roughness: 0.85,
-      metalness: 0,
-    }),
+    floor: new THREE.MeshLambertMaterial({ map: carpetTex }),
+    basementFloor: new THREE.MeshLambertMaterial({ map: basementFloorTex }),
+    ceiling: new THREE.MeshLambertMaterial({ map: ceilingTex }),
+    stair: new THREE.MeshLambertMaterial({ color: 0x7a6a50 }),
+    lightPanel: new THREE.MeshBasicMaterial({ color: 0xfff6d0 }),
   };
 
   const world = new InfiniteWorld(scene, materials);
@@ -68,7 +65,6 @@ async function init() {
   player.connect();
 
   let started = false;
-  let time = 0;
 
   overlay.addEventListener("click", () => {
     player.requestLock();
@@ -81,21 +77,34 @@ async function init() {
   });
 
   const clock = new THREE.Clock();
+  let lastFloor = 0;
 
   function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
-    time += dt;
 
     if (started) {
-      world.update(player.position);
-      player.setColliders(world.getColliders());
+      world.update(player.position, player.floor);
+      player.setColliders(world.getCollidersForFloor(player.floor));
+      player.setStairs(world.getStairs());
       player.update(dt);
-      world.updateLights(time);
-    }
 
-    const breathe = 0.84 + Math.sin(time * 0.4) * 0.02;
-    renderer.toneMappingExposure = breathe;
+      if (player.floor !== lastFloor) {
+        lastFloor = player.floor;
+        hud.textContent = world.getFloorLabel(player.floor);
+        if (player.floor < 0) {
+          scene.fog.color.setHex(0x6a6450);
+          scene.background.setHex(0x6a6450);
+          scene.fog.near = 6;
+          scene.fog.far = 24;
+        } else {
+          scene.fog.color.setHex(0xc4b47a);
+          scene.background.setHex(0xc4b47a);
+          scene.fog.near = 8;
+          scene.fog.far = 32;
+        }
+      }
+    }
 
     renderer.render(scene, camera);
   }
