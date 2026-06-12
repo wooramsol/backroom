@@ -84,17 +84,15 @@ async function init() {
 
       if (player.floor !== lastFloor) {
         lastFloor = player.floor;
-        if (player.floor < 0) {
-          scene.fog.color.setHex(0x6a6450);
-          scene.background.setHex(0x6a6450);
-          scene.fog.near = 6;
-          scene.fog.far = 24;
-        } else {
-          scene.fog.color.setHex(0xc4b47a);
-          scene.background.setHex(0xc4b47a);
-          scene.fog.near = 8;
-          scene.fog.far = 32;
-        }
+        const t = Math.max(0, Math.min(1, (player.floor + 1) / 6));
+        const r = Math.floor(106 + (196 - 106) * t);
+        const g = Math.floor(100 + (180 - 100) * t);
+        const b = Math.floor(80 + (122 - 80) * t);
+        const col = (r << 16) | (g << 8) | b;
+        scene.fog.color.setHex(col);
+        scene.background.setHex(col);
+        scene.fog.near = player.floor < 0 ? 6 : 8;
+        scene.fog.far = player.floor < 0 ? 22 : 30 + player.floor * 2;
       }
     }
 
