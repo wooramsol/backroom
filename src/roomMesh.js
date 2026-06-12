@@ -25,8 +25,7 @@ function wallAlongX(group, x, z0, z1, y0, h, mat) {
   wallBox(0.12, h, d, x, y0 + h / 2, (z0 + z1) / 2, mat, group);
 }
 
-function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
-  if (open) return;
+function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door) {
   const x0 = v0[0];
   const z0 = v0[1];
   const x1 = v1[0];
@@ -63,13 +62,13 @@ function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
 }
 
 function buildWalls(group, room, wallTex, matOpts, y0, h) {
-  const m = HW - 0.1;
+  const m = HW;
   const { north, south, east, west } = room.doors;
 
-  wallSegment(group, wallTex, matOpts, y0, h, [-m, -m], [m, -m], north, north?.open);
-  wallSegment(group, wallTex, matOpts, y0, h, [m, -m], [m, m], east, east?.open);
-  wallSegment(group, wallTex, matOpts, y0, h, [m, m], [-m, m], south, south?.open);
-  wallSegment(group, wallTex, matOpts, y0, h, [-m, m], [-m, -m], west, west?.open);
+  wallSegment(group, wallTex, matOpts, y0, h, [-m, -m], [m, -m], north);
+  wallSegment(group, wallTex, matOpts, y0, h, [m, -m], [m, m], east);
+  wallSegment(group, wallTex, matOpts, y0, h, [m, m], [-m, m], south);
+  wallSegment(group, wallTex, matOpts, y0, h, [-m, m], [-m, -m], west);
 }
 
 function buildDecor(group, room, wallTex, matOpts, y0, h) {

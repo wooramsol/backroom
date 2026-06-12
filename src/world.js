@@ -3,6 +3,7 @@ import {
   cellOf,
   generateRoom,
   registerRoomEdges,
+  registerDecorColliders,
   buildCollidersFromEdges,
   buildStairVolume,
   getFloorLabel,
@@ -38,13 +39,15 @@ export class InfiniteWorld {
     const edgeMap = new Map();
     this.stairs = [];
 
+    const decorBoxes = [];
     for (const { room } of this.chunks.values()) {
       registerRoomEdges(edgeMap, room);
+      registerDecorColliders(decorBoxes, room);
       const stair = buildStairVolume(room);
       if (stair) this.stairs.push(stair);
     }
 
-    this.walls = buildCollidersFromEdges(edgeMap);
+    this.walls = [...buildCollidersFromEdges(edgeMap), ...decorBoxes];
     this.dirty = false;
   }
 

@@ -28,23 +28,10 @@ export function getEdgeDoor(x0, z0, x1, z1, floor) {
   const bz = Math.max(z0, z1);
   const rng = createRng(ax, az, bx, bz, floor, 41);
 
-  const isHorizontal = az === bz;
-  const isVertical = ax === bx;
-  const hash = Math.abs((ax * 73856093) ^ (az * 19349663) ^ (floor * 83492791)) % 7;
-
-  // Backbone passages + random extras — doors on N/S/E/W, not one axis only
-  const guaranteed =
-    (isHorizontal && hash % 3 === 0) ||
-    (isVertical && hash % 3 === 1) ||
-    (hash === 6);
-  const hasDoor = guaranteed || rng.chance(0.48);
-  if (!hasDoor) return null;
-
   return {
     width: rng.pick([2.0, 2.4, 2.8]),
-    offset: rng.range(-2.8, 2.8),
+    offset: rng.range(-2.0, 2.0),
     height: DOOR_H,
-    open: false,
   };
 }
 
@@ -113,13 +100,7 @@ export function generateChunk(cx, cz, floor) {
 
   if (stair) {
     const d = DIR_VEC[stair.dir];
-    doors[d.wall] = { width: 3.2, offset: 0, height: DOOR_H, open: true };
-  }
-
-  if (cx === 0 && cz === 0) {
-    for (const dir of DIRS) {
-      if (!doors[dir]) doors[dir] = { width: 2.6, offset: 0, height: DOOR_H, open: false };
-    }
+    doors[d.wall] = { width: 3.4, offset: 0, height: DOOR_H };
   }
 
   return {
