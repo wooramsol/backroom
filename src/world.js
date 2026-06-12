@@ -5,6 +5,7 @@ import {
   registerRoomEdges,
   buildCollidersFromEdges,
   buildStairVolume,
+  getFloorLabel,
 } from "./roomGen.js";
 import { buildRoomMesh } from "./roomMesh.js";
 
@@ -58,12 +59,7 @@ export class InfiniteWorld {
 
   update(playerPos, playerFloor) {
     const { x: pcx, z: pcz } = cellOf(playerPos);
-
-    const moved =
-      pcx !== this.playerCell.x ||
-      pcz !== this.playerCell.z ||
-      playerFloor !== this.playerFloor;
-
+    const moved = pcx !== this.playerCell.x || pcz !== this.playerCell.z || playerFloor !== this.playerFloor;
     if (!moved) return;
 
     this.playerCell = { x: pcx, z: pcz };
@@ -115,19 +111,19 @@ export class InfiniteWorld {
     return this.stairs;
   }
 
-  getStairHint(stairs, playerPos, floor) {
+  getStairHint(stairs, pos, floor) {
     for (const s of stairs) {
-      if (s.sourceFloor !== floor) continue;
-      const dx = Math.abs(playerPos.x - s.cx);
-      const dz = Math.abs(playerPos.z - s.cz);
-      if (dx < s.width / 2 + 0.5 && dz < s.depth / 2 + 0.5) return s.label;
+      if (floor !== s.lowerFloor && floor !== s.upperFloor) continue;
+      const dx = Math.abs(pos.x - s.cx);
+      const dz = Math.abs(pos.z - s.cz);
+      if (dx > s.width / 2 + 1 || dz > s.depth / 2 + 1) continue;
+      if (floor === s.lowerFloor) return `▲ 위층으로 (W) — ${getFloorLabel(s.upperFloor)}`;
+      return `▼ 아래층으로 (W) — ${getFloorLabel(s.lowerFloor)}`;
     }
     return null;
   }
 
   getFloorLabel(floor) {
-    if (floor < 0) return "BASEMENT";
-    if (floor === 0) return "LEVEL 0 — THE LOBBY";
-    return `LEVEL ${floor}`;
+    return getFloorLabel(floor);
   }
 }

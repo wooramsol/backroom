@@ -31,12 +31,13 @@ function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
   const z0 = v0[1];
   const x1 = v1[0];
   const z1 = v1[1];
+  const off = door?.offset || 0;
 
   if (Math.abs(z1 - z0) < 0.05) {
     const z = z0;
     const xa = Math.min(x0, x1);
     const xb = Math.max(x0, x1);
-    const mid = (xa + xb) / 2;
+    const mid = (xa + xb) / 2 + off;
     const dw = door ? door.width / 2 : 0;
     if (door) {
       wallAlongZ(group, z, xa, mid - dw, y0, DOOR_H, createTiledMaterial(wallTex, mid - dw - xa, DOOR_H, matOpts));
@@ -49,7 +50,7 @@ function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
     const x = x0;
     const za = Math.min(z0, z1);
     const zb = Math.max(z0, z1);
-    const mid = (za + zb) / 2;
+    const mid = (za + zb) / 2 + off;
     const dw = door ? door.width / 2 : 0;
     if (door) {
       wallAlongX(group, x, za, mid - dw, y0, DOOR_H, createTiledMaterial(wallTex, mid - dw - za, DOOR_H, matOpts));
@@ -61,15 +62,11 @@ function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
   }
 }
 
-function buildPolygonWalls(group, room, wallTex, matOpts, y0, h) {
+function buildWalls(group, room, wallTex, matOpts, y0, h) {
   const doorFor = (b) =>
     b === "n" ? room.doors.north : b === "s" ? room.doors.south : b === "e" ? room.doors.east : room.doors.west;
 
-  const openFor = (b) => {
-    if (b === "s" && room.feature === "stairs_south") return true;
-    if (b === "n" && room.feature === "stairs_north") return true;
-    return false;
-  };
+  const openFor = (b) => doorFor(b)?.open || false;
 
   for (const edge of room.edges) {
     const door = edge.boundary ? doorFor(edge.boundary) : null;
@@ -86,7 +83,6 @@ function buildDecor(group, room, wallTex, matOpts, y0, h) {
       wallBox(0.45, h, 0.45, p.x, y0 + h / 2, p.z, createTiledMaterial(wallTex, 0.45, h, matOpts), group);
     }
   }
-
   if (d.type === "mat") {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(d.size, d.size),
@@ -96,51 +92,58 @@ function buildDecor(group, room, wallTex, matOpts, y0, h) {
     m.position.set(0, y0 + 0.02, 0);
     group.add(m);
   }
-
   if (d.type === "corner") {
     const hw = d.w / 2;
     const hd = d.d / 2;
-    wallAlongZ(group, d.z - hd, d.x - hw, d.x + hw, y0, h * 0.55, createTiledMaterial(wallTex, d.w, h * 0.55, matOpts));
-    wallAlongX(group, d.x - hw, d.z - hd, d.z + hd, y0, h * 0.55, createTiledMaterial(wallTex, d.d, h * 0.55, matOpts));
+    wallAlongZ(group, d.z - hd, d.x - hw, d.x + hw, y0, h * 0.5, createTiledMaterial(wallTex, d.w, h * 0.5, matOpts));
+    wallAlongX(group, d.x - hw, d.z - hd, d.z + hd, y0, h * 0.5, createTiledMaterial(wallTex, d.d, h * 0.5, matOpts));
   }
-
   if (d.type === "cross") {
-    wallAlongZ(group, 0, -d.len, d.len, y0, h * 0.4, createTiledMaterial(wallTex, d.len * 2, h * 0.4, matOpts));
-    wallAlongX(group, 0, -d.len, d.len, y0, h * 0.4, createTiledMaterial(wallTex, d.len * 2, h * 0.4, matOpts));
+    wallAlongZ(group, 0, -d.len, d.len, y0, h * 0.35, createTiledMaterial(wallTex, d.len * 2, h * 0.35, matOpts));
+    wallAlongX(group, 0, -d.len, d.len, y0, h * 0.35, createTiledMaterial(wallTex, d.len * 2, h * 0.35, matOpts));
   }
-
   if (d.type === "island") {
-    wallAlongZ(group, d.z, d.x - d.w / 2, d.x + d.w / 2, y0, h * 0.9, createTiledMaterial(wallTex, d.w, h * 0.9, matOpts));
-    wallAlongZ(group, d.z + d.d, d.x - d.w / 2, d.x + d.w / 2, y0, h * 0.9, createTiledMaterial(wallTex, d.w, h * 0.9, matOpts));
-    wallAlongX(group, d.x - d.w / 2, d.z, d.z + d.d, y0, h * 0.9, createTiledMaterial(wallTex, d.d, h * 0.9, matOpts));
-    wallAlongX(group, d.x + d.w / 2, d.z, d.z + d.d, y0, h * 0.9, createTiledMaterial(wallTex, d.d, h * 0.9, matOpts));
+    wallAlongZ(group, d.z, d.x - d.w / 2, d.x + d.w / 2, y0, h * 0.85, createTiledMaterial(wallTex, d.w, h * 0.85, matOpts));
+    wallAlongZ(group, d.z + d.d, d.x - d.w / 2, d.x + d.w / 2, y0, h * 0.85, createTiledMaterial(wallTex, d.w, h * 0.85, matOpts));
+    wallAlongX(group, d.x - d.w / 2, d.z, d.z + d.d, y0, h * 0.85, createTiledMaterial(wallTex, d.d, h * 0.85, matOpts));
+    wallAlongX(group, d.x + d.w / 2, d.z, d.z + d.d, y0, h * 0.85, createTiledMaterial(wallTex, d.d, h * 0.85, matOpts));
   }
 }
 
 function buildStairs(room, materials, group, y0) {
-  const steps = 6;
+  if (!room.stair) return;
+  const steps = 7;
   const rise = FLOOR_STEP / steps;
-  const run = 2.6 / steps;
-  const south = room.feature === "stairs_south";
-  const z0 = south ? 1.2 : -1.2;
+  const run = 2.8 / steps;
+  const dir = room.stair.dir;
 
   for (let i = 0; i < steps; i++) {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(2.8, rise, run + 0.02),
-      materials.stair
-    );
-    const z = south ? z0 + i * run : z0 - i * run;
-    m.position.set(0, y0 + rise * (i + 0.5), z);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(3, rise, run + 0.02), materials.stair);
+    let x = 0;
+    let z = 0;
+    if (dir === "south") z = 1.2 + i * run;
+    else if (dir === "north") z = -(1.2 + i * run);
+    else if (dir === "east") x = 1.2 + i * run;
+    else if (dir === "west") x = -(1.2 + i * run);
+    m.position.set(x, y0 + rise * (i + 0.5), z);
     group.add(m);
   }
 
-  const sign = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.2, 0.35),
-    materials.stairSign
-  );
-  sign.position.set(0, y0 + 1.4, south ? 2.8 : -2.8);
-  sign.rotation.y = south ? 0 : Math.PI;
-  group.add(sign);
+  const arrow = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.25), materials.stairSign);
+  arrow.position.set(0, y0 + 1.5, 0);
+  if (dir === "south") {
+    arrow.position.z = 2.6;
+  } else if (dir === "north") {
+    arrow.position.z = -2.6;
+    arrow.rotation.y = Math.PI;
+  } else if (dir === "east") {
+    arrow.position.set(2.6, y0 + 1.5, 0);
+    arrow.rotation.y = -Math.PI / 2;
+  } else {
+    arrow.position.set(-2.6, y0 + 1.5, 0);
+    arrow.rotation.y = Math.PI / 2;
+  }
+  group.add(arrow);
 }
 
 export function buildRoomMesh(room, materials) {
@@ -169,18 +172,14 @@ export function buildRoomMesh(room, materials) {
   ceiling.position.y = y0 + h;
   group.add(ceiling);
 
-  const light = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.4, 0.35),
-    materials.lightPanel
-  );
+  const light = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), materials.lightPanel);
   light.rotation.x = -Math.PI / 2;
   light.position.set(0, y0 + h - 0.04, 0);
   group.add(light);
 
-  buildPolygonWalls(group, room, wallTex, matOpts, y0, h);
+  buildWalls(group, room, wallTex, matOpts, y0, h);
   buildDecor(group, room, wallTex, matOpts, y0, h);
-
-  if (room.feature) buildStairs(room, materials, group, y0);
+  buildStairs(room, materials, group, y0);
 
   group.position.set(room.cx * CELL, 0, room.cz * CELL);
   return group;
