@@ -31,9 +31,17 @@ camera.position.set(0, 1.62, 0);
 scene.add(new THREE.AmbientLight(0xb0a880, 0.85));
 scene.add(new THREE.HemisphereLight(0xfff4d0, 0x5a4a30, 0.35));
 
+async function loadWallpaperOrFallback(loader) {
+  try {
+    return await loadWallpaperTexture(loader);
+  } catch {
+    return createCarpetTexture();
+  }
+}
+
 async function init() {
   const loader = new THREE.TextureLoader();
-  const wallpaperTex = await loadWallpaperTexture(loader);
+  const wallpaperTex = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
   const basementFloorTex = createBasementFloorTexture();
   const ceilingTex = createCeilingTexture();
@@ -108,4 +116,8 @@ async function init() {
   });
 }
 
-init();
+init().catch((err) => {
+  console.error(err);
+  const hint = document.querySelector("#overlay .hint");
+  if (hint) hint.textContent = "로딩 오류가 발생했습니다. 페이지를 새로고침해 주세요.";
+});

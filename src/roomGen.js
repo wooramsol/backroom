@@ -1,4 +1,14 @@
-import { generateChunk, buildStairShaft, cellOf, getFloorLabel } from "./generator.js";
+import {
+  generateChunk,
+  buildStairShaft,
+  cellOf,
+  getFloorLabel,
+  CELL,
+  HW,
+  FLOOR_STEP,
+  WALL_THICK,
+  DOOR_CLEARANCE,
+} from "./generator.js";
 import { getEdges } from "./shapes.js";
 
 export {
