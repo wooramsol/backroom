@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { FLOOR_STEP } from "./roomGen.js";
 
-const PLAYER_RADIUS = 0.32;
+const PLAYER_RADIUS = 0.28;
 const EYE_HEIGHT = 1.62;
 const WALK_SPEED = 3.5;
 const RUN_SPEED = 6;
@@ -62,24 +62,36 @@ export class Player {
     this.stairT = 0;
   }
 
-  _resolveAxis(pos, axis, delta) {
-    if (delta === 0) return 0;
-    const next = pos[axis] + delta;
+  _insideWall(px, pz, c) {
     const r = PLAYER_RADIUS;
+    return (
+      px + r > c.minX &&
+      px - r < c.maxX &&
+      pz + r > c.minZ &&
+      pz - r < c.maxZ
+    );
+  }
 
-    for (const c of this.walls) {
-      const minA = axis === "x" ? c.minX : c.minZ;
-      const maxA = axis === "x" ? c.maxX : c.maxZ;
-      const minB = axis === "x" ? c.minZ : c.minX;
-      const maxB = axis === "x" ? c.maxZ : c.maxX;
-      const posA = next;
-      const posB = axis === "x" ? pos.z : pos.x;
+  _pushOut(px, pz) {
+    const r = PLAYER_RADIUS;
+    for (let iter = 0; iter < 4; iter++) {
+      for (const c of this.walls) {
+        if (this.position.y < c.minY - 0.2 || this.position.y > c.maxY + 0.2) continue;
+        if (!this._insideWall(px, pz, c)) continue;
 
-      if (posB + r > minB && posB - r < maxB && posA + r > minA && posA - r < maxA) {
-        return delta > 0 ? minA - r - pos[axis] : maxA + r - pos[axis];
+        const overlapL = px + r - c.minX;
+        const overlapR = c.maxX - (px - r);
+        const overlapF = pz + r - c.minZ;
+        const overlapB = c.maxZ - (pz - r);
+        const min = Math.min(overlapL, overlapR, overlapF, overlapB);
+
+        if (min === overlapL) px -= overlapL;
+        else if (min === overlapR) px += overlapR;
+        else if (min === overlapF) pz -= overlapF;
+        else pz += overlapB;
       }
     }
-    return delta;
+    return { px, pz };
   }
 
   _tryStairs(dt) {
@@ -88,28 +100,25 @@ export class Player {
 
     for (const s of this.stairs) {
       if (s.sourceFloor !== this.floor) continue;
-
       const lx = this.position.x - s.cx;
       const lz = this.position.z - s.cz;
       const along = lx * s.dirX + lz * s.dirZ;
       const across = Math.abs(lx * s.dirZ - lz * s.dirX);
 
-      if (across < s.width * 0.5 && along > -0.3 && along < s.depth) {
+      if (across < s.width * 0.5 && along > -0.5 && along < s.depth) {
         const dot = forward.x * s.dirX + forward.z * s.dirZ;
-        if (moving && dot > 0.15) {
+        if (moving && dot > 0.1) {
           this.stairT += dt * 0.65;
           this.position.y = s.fromY + EYE_HEIGHT + this.stairT * FLOOR_STEP;
           if (this.stairT >= 1) {
             this.floor = s.targetFloor;
             this.stairT = 0;
-            this.position.x = s.cx;
-            this.position.z = s.cz + s.dirZ * 1.5;
+            this.position.set(s.cx, this.floor * FLOOR_STEP + EYE_HEIGHT, s.cz + s.dirZ * 2);
           }
           return true;
         }
       }
     }
-
     this.stairT = 0;
     return false;
   }
@@ -128,8 +137,11 @@ export class Player {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
-      this.position.x += this._resolveAxis(this.position, "x", move.x);
-      this.position.z += this._resolveAxis(this.position, "z", move.z);
+      let px = this.position.x + move.x;
+      let pz = this.position.z + move.z;
+      const pushed = this._pushOut(px, pz);
+      this.position.x = pushed.px;
+      this.position.z = pushed.pz;
     }
 
     if (!this._tryStairs(dt)) {
