@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-/** Real-world size of one wallpaper repeat (30 cm). */
-export const WALL_TILE_M = 0.3;
+/** Real-world size of one wallpaper repeat (60 cm — 2× the 30 cm source tile). */
+export const WALL_TILE_M = 0.6;
 /** Ceiling tile ~60 cm. */
 export const CEILING_TILE_M = 0.6;
 /** Carpet repeat ~50 cm. */

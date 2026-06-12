@@ -25,70 +25,62 @@ function wallAlongX(group, x, z0, z1, y0, h, mat) {
   wallBox(WALL_THICK, h, d, x, y0 + h / 2, (z0 + z1) / 2, mat, group);
 }
 
-function buildOuterWall(group, wallTex, isBasement, y0, roomH, axis, fixed, center, span, door, open) {
+function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
   if (open) return;
-  const opts = isBasement ? { color: 0x9a9078 } : {};
-  const dw = door.width / 2;
-  const g0 = center - dw;
-  const g1 = center + dw;
+  const x0 = v0[0];
+  const z0 = v0[1];
+  const x1 = v1[0];
+  const z1 = v1[1];
 
-  if (axis === "z") {
-    wallAlongZ(group, fixed, center - span, g0, y0, DOOR_H, createTiledMaterial(wallTex, center - span - g0, DOOR_H, opts));
-    wallAlongZ(group, fixed, g1, center + span, y0, DOOR_H, createTiledMaterial(wallTex, center + span - g1, DOOR_H, opts));
-    wallAlongZ(group, fixed, center - span, center + span, y0 + DOOR_H, roomH - DOOR_H, createTiledMaterial(wallTex, span * 2, roomH - DOOR_H, opts));
-  } else {
-    wallAlongX(group, fixed, center - span, g0, y0, DOOR_H, createTiledMaterial(wallTex, center - span - g0, DOOR_H, opts));
-    wallAlongX(group, fixed, g1, center + span, y0, DOOR_H, createTiledMaterial(wallTex, center + span - g1, DOOR_H, opts));
-    wallAlongX(group, fixed, center - span, center + span, y0 + DOOR_H, roomH - DOOR_H, createTiledMaterial(wallTex, span * 2, roomH - DOOR_H, opts));
+  if (Math.abs(z1 - z0) < 0.05) {
+    const z = z0;
+    const xa = Math.min(x0, x1);
+    const xb = Math.max(x0, x1);
+    const mid = (xa + xb) / 2;
+    const dw = door ? door.width / 2 : 0;
+    if (door) {
+      wallAlongZ(group, z, xa, mid - dw, y0, DOOR_H, createTiledMaterial(wallTex, mid - dw - xa, DOOR_H, matOpts));
+      wallAlongZ(group, z, mid + dw, xb, y0, DOOR_H, createTiledMaterial(wallTex, xb - mid - dw, DOOR_H, matOpts));
+      wallAlongZ(group, z, xa, xb, y0 + DOOR_H, roomH - DOOR_H, createTiledMaterial(wallTex, xb - xa, roomH - DOOR_H, matOpts));
+    } else {
+      wallAlongZ(group, z, xa, xb, y0, roomH, createTiledMaterial(wallTex, xb - xa, roomH, matOpts));
+    }
+  } else if (Math.abs(x1 - x0) < 0.05) {
+    const x = x0;
+    const za = Math.min(z0, z1);
+    const zb = Math.max(z0, z1);
+    const mid = (za + zb) / 2;
+    const dw = door ? door.width / 2 : 0;
+    if (door) {
+      wallAlongX(group, x, za, mid - dw, y0, DOOR_H, createTiledMaterial(wallTex, mid - dw - za, DOOR_H, matOpts));
+      wallAlongX(group, x, mid + dw, zb, y0, DOOR_H, createTiledMaterial(wallTex, zb - mid - dw, DOOR_H, matOpts));
+      wallAlongX(group, x, za, zb, y0 + DOOR_H, roomH - DOOR_H, createTiledMaterial(wallTex, zb - za, roomH - DOOR_H, matOpts));
+    } else {
+      wallAlongX(group, x, za, zb, y0, roomH, createTiledMaterial(wallTex, zb - za, roomH, matOpts));
+    }
   }
 }
 
-function buildInterior(group, room, wallTex, matOpts, y0, h) {
-  const interior = room.interior;
-  if (!interior) return;
+function buildPolygonWalls(group, room, wallTex, matOpts, y0, h) {
+  const doorFor = (boundary) => {
+    if (!boundary) return null;
+    if (boundary === "n") return room.doors.north;
+    if (boundary === "s") return room.doors.south;
+    if (boundary === "e") return room.doors.east;
+    return room.doors.west;
+  };
 
-  if (interior.type === "columns" && interior.posts) {
-    for (const p of interior.posts) {
-      wallBox(0.5, h, 0.5, p.x, y0 + h / 2, p.z, createTiledMaterial(wallTex, 0.5, h, matOpts), group);
-    }
-  }
+  const openFor = (boundary) => {
+    if (boundary === "s" && room.feature === "stairs_south") return true;
+    if (boundary === "n" && room.feature === "stairs_north") return true;
+    const d = doorFor(boundary);
+    return d?.open || false;
+  };
 
-  if (interior.type === "mat") {
-    const matMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(interior.size, interior.size),
-      new THREE.MeshLambertMaterial({ color: 0x6a5a42 })
-    );
-    matMesh.rotation.x = -Math.PI / 2;
-    matMesh.position.set(0, y0 + 0.02, 0);
-    group.add(matMesh);
-  }
-
-  for (const p of interior.walls || []) {
-    if (p.axis === "z") {
-      const z = p.z;
-      const x0 = p.x0;
-      const x1 = p.x1;
-      if (p.door) {
-        const mid = (x0 + x1) / 2;
-        wallAlongZ(group, z, x0, mid - 0.9, y0, DOOR_H, createTiledMaterial(wallTex, mid - 0.9 - x0, DOOR_H, matOpts));
-        wallAlongZ(group, z, mid + 0.9, x1, y0, DOOR_H, createTiledMaterial(wallTex, x1 - mid - 0.9, DOOR_H, matOpts));
-        wallAlongZ(group, z, x0, x1, y0 + DOOR_H, h - DOOR_H, createTiledMaterial(wallTex, x1 - x0, h - DOOR_H, matOpts));
-      } else {
-        wallAlongZ(group, z, x0, x1, y0, h, createTiledMaterial(wallTex, x1 - x0, h, matOpts));
-      }
-    } else {
-      const x = p.x;
-      const z0 = p.z0;
-      const z1 = p.z1;
-      if (p.door) {
-        const mid = (z0 + z1) / 2;
-        wallAlongX(group, x, z0, mid - 0.9, y0, DOOR_H, createTiledMaterial(wallTex, mid - 0.9 - z0, DOOR_H, matOpts));
-        wallAlongX(group, x, mid + 0.9, z1, y0, DOOR_H, createTiledMaterial(wallTex, z1 - mid - 0.9, DOOR_H, matOpts));
-        wallAlongX(group, x, z0, z1, y0 + DOOR_H, h - DOOR_H, createTiledMaterial(wallTex, z1 - z0, h - DOOR_H, matOpts));
-      } else {
-        wallAlongX(group, x, z0, z1, y0, h, createTiledMaterial(wallTex, z1 - z0, h, matOpts));
-      }
-    }
+  for (const edge of room.edges) {
+    const door = edge.boundary ? doorFor(edge.boundary) : null;
+    const open = edge.boundary ? openFor(edge.boundary) : false;
+    wallSegment(group, wallTex, matOpts, y0, h, edge.v0, edge.v1, door, open);
   }
 }
 
@@ -143,12 +135,7 @@ export function buildRoomMesh(room, materials) {
   light.position.set(0, y0 + h - 0.04, 0);
   group.add(light);
 
-  buildOuterWall(group, wallTex, room.isBasement, y0, h, "z", -HW, 0, HW, room.doors.north, room.doors.north.open);
-  buildOuterWall(group, wallTex, room.isBasement, y0, h, "z", HW, 0, HW, room.doors.south, room.doors.south.open);
-  buildOuterWall(group, wallTex, room.isBasement, y0, h, "x", -HW, 0, HW, room.doors.west, room.doors.west.open);
-  buildOuterWall(group, wallTex, room.isBasement, y0, h, "x", HW, 0, HW, room.doors.east, room.doors.east.open);
-
-  buildInterior(group, room, wallTex, matOpts, y0, h);
+  buildPolygonWalls(group, room, wallTex, matOpts, y0, h);
 
   if (room.feature) buildStairs(room, materials, group, y0);
 
