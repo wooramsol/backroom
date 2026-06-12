@@ -20,17 +20,26 @@ const DIR_VEC = {
   west: { dx: -1, dz: 0, wall: "w" },
 };
 
-function edgeKey(x0, z0, x1, z1, floor) {
+/** Shared door on an edge between two cells — same on both sides. */
+export function getEdgeDoor(x0, z0, x1, z1, floor) {
   const ax = Math.min(x0, x1);
   const az = Math.min(z0, z1);
   const bx = Math.max(x0, x1);
   const bz = Math.max(z0, z1);
-  return `${ax},${az},${bx},${bz},${floor}`;
-}
+  const rng = createRng(ax, az, bx, bz, floor, 41);
 
-/** Shared door on an edge between two cells — same on both sides. */
-export function getEdgeDoor(x0, z0, x1, z1, floor) {
-  const rng = createRng(...edgeKey(x0, z0, x1, z1, floor).split(",").map(Number));
+  const isHorizontal = az === bz;
+  const isVertical = ax === bx;
+  const hash = Math.abs((ax * 73856093) ^ (az * 19349663) ^ (floor * 83492791)) % 7;
+
+  // Backbone passages + random extras — doors on N/S/E/W, not one axis only
+  const guaranteed =
+    (isHorizontal && hash % 3 === 0) ||
+    (isVertical && hash % 3 === 1) ||
+    (hash === 6);
+  const hasDoor = guaranteed || rng.chance(0.48);
+  if (!hasDoor) return null;
+
   return {
     width: rng.pick([2.0, 2.4, 2.8]),
     offset: rng.range(-2.8, 2.8),
@@ -105,6 +114,12 @@ export function generateChunk(cx, cz, floor) {
   if (stair) {
     const d = DIR_VEC[stair.dir];
     doors[d.wall] = { width: 3.2, offset: 0, height: DOOR_H, open: true };
+  }
+
+  if (cx === 0 && cz === 0) {
+    for (const dir of DIRS) {
+      if (!doors[dir]) doors[dir] = { width: 2.6, offset: 0, height: DOOR_H, open: false };
+    }
   }
 
   return {

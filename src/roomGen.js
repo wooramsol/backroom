@@ -45,6 +45,10 @@ function doorGap(center, door, span) {
 function wallAlongZ(boxes, z, xCenter, span, door, y0, yTop, open) {
   if (open) return;
   const t = WALL_THICK;
+  if (!door) {
+    addBox(boxes, xCenter - span, xCenter + span, z - t, z + t, y0, yTop);
+    return;
+  }
   const dc = xCenter + (door.offset || 0);
   const gap = doorGap(dc, door, span);
   const lo = Math.max(gap.clampLo, gap.lo);
@@ -57,6 +61,10 @@ function wallAlongZ(boxes, z, xCenter, span, door, y0, yTop, open) {
 function wallAlongX(boxes, x, zCenter, span, door, y0, yTop, open) {
   if (open) return;
   const t = WALL_THICK;
+  if (!door) {
+    addBox(boxes, x - t, x + t, zCenter - span, zCenter + span, y0, yTop);
+    return;
+  }
   const dc = zCenter + (door.offset || 0);
   const gap = doorGap(dc, door, span);
   const lo = Math.max(gap.clampLo, gap.lo);
@@ -78,22 +86,22 @@ export function registerRoomEdges(edgeMap, room) {
 
   put(`h,${room.cx},${room.cz}`, () => {
     const b = [];
-    wallAlongZ(b, oz + HW, ox, HW, room.doors.south, y0, yTop, room.doors.south.open);
+    wallAlongZ(b, oz + HW, ox, HW, room.doors.south, y0, yTop, room.doors.south?.open);
     return b;
   });
   put(`h,${room.cx},${room.cz - 1}`, () => {
     const b = [];
-    wallAlongZ(b, oz - HW, ox, HW, room.doors.north, y0, yTop, room.doors.north.open);
+    wallAlongZ(b, oz - HW, ox, HW, room.doors.north, y0, yTop, room.doors.north?.open);
     return b;
   });
   put(`v,${room.cx},${room.cz}`, () => {
     const b = [];
-    wallAlongX(b, ox + HW, oz, HW, room.doors.east, y0, yTop, room.doors.east.open);
+    wallAlongX(b, ox + HW, oz, HW, room.doors.east, y0, yTop, room.doors.east?.open);
     return b;
   });
   put(`v,${room.cx - 1},${room.cz}`, () => {
     const b = [];
-    wallAlongX(b, ox - HW, oz, HW, room.doors.west, y0, yTop, room.doors.west.open);
+    wallAlongX(b, ox - HW, oz, HW, room.doors.west, y0, yTop, room.doors.west?.open);
     return b;
   });
 }

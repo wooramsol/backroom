@@ -63,15 +63,13 @@ function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
 }
 
 function buildWalls(group, room, wallTex, matOpts, y0, h) {
-  const doorFor = (b) =>
-    b === "n" ? room.doors.north : b === "s" ? room.doors.south : b === "e" ? room.doors.east : room.doors.west;
+  const m = HW - 0.1;
+  const { north, south, east, west } = room.doors;
 
-  const openFor = (b) => doorFor(b)?.open || false;
-
-  for (const edge of room.edges) {
-    const door = edge.boundary ? doorFor(edge.boundary) : null;
-    wallSegment(group, wallTex, matOpts, y0, h, edge.v0, edge.v1, door, openFor(edge.boundary));
-  }
+  wallSegment(group, wallTex, matOpts, y0, h, [-m, -m], [m, -m], north, north?.open);
+  wallSegment(group, wallTex, matOpts, y0, h, [m, -m], [m, m], east, east?.open);
+  wallSegment(group, wallTex, matOpts, y0, h, [m, m], [-m, m], south, south?.open);
+  wallSegment(group, wallTex, matOpts, y0, h, [-m, m], [-m, -m], west, west?.open);
 }
 
 function buildDecor(group, room, wallTex, matOpts, y0, h) {
