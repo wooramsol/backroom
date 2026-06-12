@@ -20,22 +20,18 @@ const DIR_VEC = {
   west: { dx: -1, dz: 0, wall: "w" },
 };
 
-function edgeKey(x0, z0, x1, z1, floor) {
+/** Shared door on an edge between two cells — same on both sides. */
+export function getEdgeDoor(x0, z0, x1, z1, floor) {
   const ax = Math.min(x0, x1);
   const az = Math.min(z0, z1);
   const bx = Math.max(x0, x1);
   const bz = Math.max(z0, z1);
-  return `${ax},${az},${bx},${bz},${floor}`;
-}
+  const rng = createRng(ax, az, bx, bz, floor, 41);
 
-/** Shared door on an edge between two cells — same on both sides. */
-export function getEdgeDoor(x0, z0, x1, z1, floor) {
-  const rng = createRng(...edgeKey(x0, z0, x1, z1, floor).split(",").map(Number));
   return {
     width: rng.pick([2.0, 2.4, 2.8]),
-    offset: rng.range(-2.8, 2.8),
+    offset: rng.range(-2.0, 2.0),
     height: DOOR_H,
-    open: false,
   };
 }
 
@@ -104,7 +100,7 @@ export function generateChunk(cx, cz, floor) {
 
   if (stair) {
     const d = DIR_VEC[stair.dir];
-    doors[d.wall] = { width: 3.2, offset: 0, height: DOOR_H, open: true };
+    doors[d.wall] = { width: 3.4, offset: 0, height: DOOR_H };
   }
 
   return {
