@@ -7,14 +7,13 @@ export const ROOM_H = 2.8;
 export const BASEMENT_H = 2.6;
 export const FLOOR_STEP = 3.0;
 export const DOOR_H = 2.25;
+export const DOOR_W = 2.6;
 export const WALL_THICK = 0.15;
-export const DOOR_CLEARANCE = 0.35;
+export const DOOR_CLEARANCE = 0.4;
 
 export function getEdgeDoor(x0, z0, x1, z1, floor) {
-  const key = `${Math.min(x0, x1)},${Math.min(z0, z1)},${Math.max(x0, x1)},${Math.max(z0, z1)},${floor}`;
-  const rng = createRng(...key.split(",").map(Number));
   return {
-    width: rng.pick([2.2, 2.4, 2.6]),
+    width: DOOR_W,
     height: DOOR_H,
     open: false,
   };
@@ -42,8 +41,8 @@ export function generateRoom(cx, cz, floorLevel) {
     west: getEdgeDoor(cx, cz, cx - 1, cz, floorLevel),
   };
 
-  if (feature === "stairs_south") doors.south = { width: 2.8, height: DOOR_H, open: true };
-  if (feature === "stairs_north") doors.north = { width: 2.8, height: DOOR_H, open: true };
+  if (feature === "stairs_south") doors.south = { width: 3.2, height: DOOR_H, open: true };
+  if (feature === "stairs_north") doors.north = { width: 3.2, height: DOOR_H, open: true };
 
   return {
     cx,
@@ -90,20 +89,6 @@ function wallAlongX(boxes, x, zCenter, span, door, y0, yTop, open) {
   addBox(boxes, x - t, x + t, zCenter - span, zCenter + span, y0 + door.height, yTop);
 }
 
-function interiorEdgeBox(boxes, ox, oz, v0, v1, y0, yTop) {
-  const x0 = ox + v0[0];
-  const z0 = oz + v0[1];
-  const x1 = ox + v1[0];
-  const z1 = oz + v1[1];
-  const t = WALL_THICK;
-
-  if (Math.abs(z1 - z0) < 0.05) {
-    addBox(boxes, Math.min(x0, x1), Math.max(x0, x1), z0 - t, z0 + t, y0, yTop);
-  } else if (Math.abs(x1 - x0) < 0.05) {
-    addBox(boxes, x0 - t, x0 + t, Math.min(z0, z1), Math.max(z0, z1), y0, yTop);
-  }
-}
-
 export function registerRoomEdges(edgeMap, room) {
   const ox = room.cx * CELL;
   const oz = room.cz * CELL;
@@ -139,24 +124,9 @@ export function registerRoomEdges(edgeMap, room) {
   });
 }
 
-export function buildInteriorColliders(room) {
-  const ox = room.cx * CELL;
-  const oz = room.cz * CELL;
-  const y0 = room.floorLevel * FLOOR_STEP;
-  const yTop = y0 + room.height;
-  const boxes = [];
-
-  for (const edge of room.edges) {
-    if (edge.boundary) continue;
-    interiorEdgeBox(boxes, ox, oz, edge.v0, edge.v1, y0, yTop);
-  }
-  return boxes;
-}
-
-export function buildCollidersFromEdges(edgeMap, rooms) {
+export function buildCollidersFromEdges(edgeMap) {
   const boxes = [];
   for (const segs of edgeMap.values()) boxes.push(...segs);
-  for (const room of rooms) boxes.push(...buildInteriorColliders(room));
   return boxes;
 }
 
@@ -168,16 +138,16 @@ export function buildStairVolume(room) {
   const down = room.feature === "stairs_south";
 
   return {
-    type: down ? "down" : "up",
     cx: ox,
-    cz: down ? oz + HW - 2 : oz - HW + 2,
+    cz: down ? oz + 2.5 : oz - 2.5,
     dirX: 0,
     dirZ: down ? 1 : -1,
-    width: 2.6,
-    depth: 3.5,
+    width: 3,
+    depth: 3,
     fromY: y0,
     toY: (room.floorLevel + (down ? -1 : 1)) * FLOOR_STEP,
     targetFloor: room.floorLevel + (down ? -1 : 1),
     sourceFloor: room.floorLevel,
+    label: down ? "지하로 내려가기 (W)" : "위로 올라가기 (W)",
   };
 }

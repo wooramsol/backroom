@@ -44,6 +44,7 @@ async function init() {
     basementFloorTex,
     ceilingTex,
     stair: new THREE.MeshLambertMaterial({ color: 0x7a6a50 }),
+    stairSign: new THREE.MeshBasicMaterial({ color: 0xfff0c0 }),
     lightPanel: new THREE.MeshBasicMaterial({ color: 0xfff6d0 }),
   };
 
@@ -78,9 +79,11 @@ async function init() {
       player.setStairs(world.getStairs());
       player.update(dt);
 
+      const hint = world.getStairHint(world.getStairs(), player.position, player.floor);
+      hud.textContent = hint || world.getFloorLabel(player.floor);
+
       if (player.floor !== lastFloor) {
         lastFloor = player.floor;
-        hud.textContent = world.getFloorLabel(player.floor);
         if (player.floor < 0) {
           scene.fog.color.setHex(0x6a6450);
           scene.background.setHex(0x6a6450);

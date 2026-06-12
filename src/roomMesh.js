@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CELL, HW, DOOR_H, FLOOR_STEP, WALL_THICK } from "./roomGen.js";
+import { CELL, HW, DOOR_H, FLOOR_STEP } from "./roomGen.js";
 import {
   createTiledMaterial,
   setSurfaceRepeat,
@@ -16,13 +16,13 @@ function wallBox(w, h, d, x, y, z, mat, group) {
 function wallAlongZ(group, z, x0, x1, y0, h, mat) {
   const w = x1 - x0;
   if (w < 0.08) return;
-  wallBox(w, h, WALL_THICK, (x0 + x1) / 2, y0 + h / 2, z, mat, group);
+  wallBox(w, h, 0.12, (x0 + x1) / 2, y0 + h / 2, z, mat, group);
 }
 
 function wallAlongX(group, x, z0, z1, y0, h, mat) {
   const d = z1 - z0;
   if (d < 0.08) return;
-  wallBox(WALL_THICK, h, d, x, y0 + h / 2, (z0 + z1) / 2, mat, group);
+  wallBox(0.12, h, d, x, y0 + h / 2, (z0 + z1) / 2, mat, group);
 }
 
 function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
@@ -62,43 +62,85 @@ function wallSegment(group, wallTex, matOpts, y0, roomH, v0, v1, door, open) {
 }
 
 function buildPolygonWalls(group, room, wallTex, matOpts, y0, h) {
-  const doorFor = (boundary) => {
-    if (!boundary) return null;
-    if (boundary === "n") return room.doors.north;
-    if (boundary === "s") return room.doors.south;
-    if (boundary === "e") return room.doors.east;
-    return room.doors.west;
-  };
+  const doorFor = (b) =>
+    b === "n" ? room.doors.north : b === "s" ? room.doors.south : b === "e" ? room.doors.east : room.doors.west;
 
-  const openFor = (boundary) => {
-    if (boundary === "s" && room.feature === "stairs_south") return true;
-    if (boundary === "n" && room.feature === "stairs_north") return true;
-    const d = doorFor(boundary);
-    return d?.open || false;
+  const openFor = (b) => {
+    if (b === "s" && room.feature === "stairs_south") return true;
+    if (b === "n" && room.feature === "stairs_north") return true;
+    return false;
   };
 
   for (const edge of room.edges) {
     const door = edge.boundary ? doorFor(edge.boundary) : null;
-    const open = edge.boundary ? openFor(edge.boundary) : false;
-    wallSegment(group, wallTex, matOpts, y0, h, edge.v0, edge.v1, door, open);
+    wallSegment(group, wallTex, matOpts, y0, h, edge.v0, edge.v1, door, openFor(edge.boundary));
+  }
+}
+
+function buildDecor(group, room, wallTex, matOpts, y0, h) {
+  const d = room.shape.decor;
+  if (!d || d.type === "none") return;
+
+  if (d.type === "pillars") {
+    for (const p of d.posts) {
+      wallBox(0.45, h, 0.45, p.x, y0 + h / 2, p.z, createTiledMaterial(wallTex, 0.45, h, matOpts), group);
+    }
+  }
+
+  if (d.type === "mat") {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(d.size, d.size),
+      new THREE.MeshLambertMaterial({ color: 0x6a5a42 })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(0, y0 + 0.02, 0);
+    group.add(m);
+  }
+
+  if (d.type === "corner") {
+    const hw = d.w / 2;
+    const hd = d.d / 2;
+    wallAlongZ(group, d.z - hd, d.x - hw, d.x + hw, y0, h * 0.55, createTiledMaterial(wallTex, d.w, h * 0.55, matOpts));
+    wallAlongX(group, d.x - hw, d.z - hd, d.z + hd, y0, h * 0.55, createTiledMaterial(wallTex, d.d, h * 0.55, matOpts));
+  }
+
+  if (d.type === "cross") {
+    wallAlongZ(group, 0, -d.len, d.len, y0, h * 0.4, createTiledMaterial(wallTex, d.len * 2, h * 0.4, matOpts));
+    wallAlongX(group, 0, -d.len, d.len, y0, h * 0.4, createTiledMaterial(wallTex, d.len * 2, h * 0.4, matOpts));
+  }
+
+  if (d.type === "island") {
+    wallAlongZ(group, d.z, d.x - d.w / 2, d.x + d.w / 2, y0, h * 0.9, createTiledMaterial(wallTex, d.w, h * 0.9, matOpts));
+    wallAlongZ(group, d.z + d.d, d.x - d.w / 2, d.x + d.w / 2, y0, h * 0.9, createTiledMaterial(wallTex, d.w, h * 0.9, matOpts));
+    wallAlongX(group, d.x - d.w / 2, d.z, d.z + d.d, y0, h * 0.9, createTiledMaterial(wallTex, d.d, h * 0.9, matOpts));
+    wallAlongX(group, d.x + d.w / 2, d.z, d.z + d.d, y0, h * 0.9, createTiledMaterial(wallTex, d.d, h * 0.9, matOpts));
   }
 }
 
 function buildStairs(room, materials, group, y0) {
-  const steps = 5;
+  const steps = 6;
   const rise = FLOOR_STEP / steps;
-  const run = 2.8 / steps;
+  const run = 2.6 / steps;
   const south = room.feature === "stairs_south";
-  const zStart = south ? HW - 3 : -HW + 0.5;
+  const z0 = south ? 1.2 : -1.2;
 
   for (let i = 0; i < steps; i++) {
     const m = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, rise, run),
+      new THREE.BoxGeometry(2.8, rise, run + 0.02),
       materials.stair
     );
-    m.position.set(0, y0 + rise * (i + 0.5), zStart + (south ? i : -i) * run);
+    const z = south ? z0 + i * run : z0 - i * run;
+    m.position.set(0, y0 + rise * (i + 0.5), z);
     group.add(m);
   }
+
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.2, 0.35),
+    materials.stairSign
+  );
+  sign.position.set(0, y0 + 1.4, south ? 2.8 : -2.8);
+  sign.rotation.y = south ? 0 : Math.PI;
+  group.add(sign);
 }
 
 export function buildRoomMesh(room, materials) {
@@ -136,6 +178,7 @@ export function buildRoomMesh(room, materials) {
   group.add(light);
 
   buildPolygonWalls(group, room, wallTex, matOpts, y0, h);
+  buildDecor(group, room, wallTex, matOpts, y0, h);
 
   if (room.feature) buildStairs(room, materials, group, y0);
 

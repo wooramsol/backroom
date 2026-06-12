@@ -1,131 +1,62 @@
 const HW = 5;
-const M = HW - 0.15;
+const M = HW - 0.1;
 
-/** Rectilinear room footprints (orthogonal walls only, reliable collision). */
+/**
+ * Every shape uses the full cell boundary so all 4 doors stay connected.
+ * Variety comes from non-blocking interior decor.
+ */
 export function generateShape(rng) {
-  const type = rng.pick([
-    "rect",
-    "l",
-    "t",
-    "u",
-    "z",
-    "bay",
-    "alcove",
-    "step",
-    "wide",
-    "narrow",
+  const decor = rng.pick([
+    "plain",
+    "pillars",
+    "mat",
+    "corner_nw",
+    "corner_se",
+    "cross",
+    "island",
   ]);
 
-  let verts;
-  switch (type) {
-    case "l":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, 0],
-        [1, 0],
-        [1, M],
-        [-M, M],
-      ];
+  const verts = [
+    [-M, -M],
+    [M, -M],
+    [M, M],
+    [-M, M],
+  ];
+
+  let decorData = { type: "none" };
+
+  switch (decor) {
+    case "pillars":
+      decorData = {
+        type: "pillars",
+        posts: [
+          { x: -3, z: -3 },
+          { x: 3, z: -3 },
+          { x: -3, z: 3 },
+          { x: 3, z: 3 },
+        ],
+      };
       break;
-    case "t":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, -0.5],
-        [1.2, -0.5],
-        [1.2, M],
-        [-1.2, M],
-        [-1.2, -0.5],
-        [-M, -0.5],
-      ];
+    case "mat":
+      decorData = { type: "mat", size: rng.range(3, 5) };
       break;
-    case "u":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, M],
-        [1, M],
-        [1, -1],
-        [-1, -1],
-        [-1, M],
-        [-M, M],
-      ];
+    case "corner_nw":
+      decorData = { type: "corner", x: -3.2, z: -3.2, w: 2.5, d: 2.5 };
       break;
-    case "z":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, 0],
-        [-1, 0],
-        [-1, M],
-        [M, M],
-        [M, 1],
-        [-M, 1],
-      ];
+    case "corner_se":
+      decorData = { type: "corner", x: 3.2, z: 3.2, w: 2.5, d: 2.5 };
       break;
-    case "bay":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, 0],
-        [M - 1.5, 0],
-        [M - 1.5, M],
-        [-M + 1.5, M],
-        [-M + 1.5, 0],
-        [-M, 0],
-      ];
+    case "cross":
+      decorData = { type: "cross", w: 0.35, len: 3.8 };
       break;
-    case "alcove":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, M],
-        [0.5, M],
-        [0.5, 1],
-        [-0.5, 1],
-        [-0.5, M],
-        [-M, M],
-      ];
-      break;
-    case "step":
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, -1],
-        [0, -1],
-        [0, 1],
-        [M, 1],
-        [M, M],
-        [-M, M],
-      ];
-      break;
-    case "wide":
-      verts = [
-        [-M, -M * 0.7],
-        [M, -M * 0.7],
-        [M, M * 0.7],
-        [-M, M * 0.7],
-      ];
-      break;
-    case "narrow":
-      verts = [
-        [-M * 0.55, -M],
-        [M * 0.55, -M],
-        [M * 0.55, M],
-        [-M * 0.55, M],
-      ];
+    case "island":
+      decorData = { type: "island", x: rng.range(-1, 1), z: rng.range(-1, 1), w: 2, d: 1.2 };
       break;
     default:
-      verts = [
-        [-M, -M],
-        [M, -M],
-        [M, M],
-        [-M, M],
-      ];
+      decorData = { type: "none" };
   }
 
-  return { type, verts };
+  return { type: decor, verts, decor: decorData };
 }
 
 const EPS = 0.2;
@@ -142,11 +73,7 @@ export function edgeInfo(v0, v1) {
   const b0 = boundaryOf(v0);
   const b1 = boundaryOf(v1);
   const boundary = b0 && b0 === b1 ? b0 : null;
-  const dx = Math.abs(v1[0] - v0[0]);
-  const dz = Math.abs(v1[1] - v0[1]);
-  const axis = dx >= dz ? "x" : "z";
-  const len = axis === "x" ? dx : dz;
-  return { boundary, axis, len, v0, v1 };
+  return { boundary, v0, v1 };
 }
 
 export function getEdges(verts) {

@@ -1,5 +1,4 @@
 import {
-  CELL,
   FLOOR_STEP,
   cellOf,
   generateRoom,
@@ -36,17 +35,15 @@ export class InfiniteWorld {
 
   rebuildPhysics() {
     const edgeMap = new Map();
-    const rooms = [];
     this.stairs = [];
 
     for (const { room } of this.chunks.values()) {
-      rooms.push(room);
       registerRoomEdges(edgeMap, room);
       const stair = buildStairVolume(room);
       if (stair) this.stairs.push(stair);
     }
 
-    this.walls = buildCollidersFromEdges(edgeMap, rooms);
+    this.walls = buildCollidersFromEdges(edgeMap);
     this.dirty = false;
   }
 
@@ -116,6 +113,16 @@ export class InfiniteWorld {
 
   getStairs() {
     return this.stairs;
+  }
+
+  getStairHint(stairs, playerPos, floor) {
+    for (const s of stairs) {
+      if (s.sourceFloor !== floor) continue;
+      const dx = Math.abs(playerPos.x - s.cx);
+      const dz = Math.abs(playerPos.z - s.cz);
+      if (dx < s.width / 2 + 0.5 && dz < s.depth / 2 + 0.5) return s.label;
+    }
+    return null;
   }
 
   getFloorLabel(floor) {

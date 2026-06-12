@@ -13,6 +13,7 @@ export class Player {
     this.position = new THREE.Vector3(0, EYE_HEIGHT, 0);
     this.floor = 0;
     this.stairT = 0;
+    this.activeStair = null;
     this.yaw = 0;
     this.pitch = 0;
     this.keys = {};
@@ -60,6 +61,7 @@ export class Player {
   _unstuck() {
     this.position.set(0, this.floor * FLOOR_STEP + EYE_HEIGHT, 0);
     this.stairT = 0;
+    this.activeStair = null;
   }
 
   _insideWall(px, pz, c) {
@@ -73,16 +75,15 @@ export class Player {
   }
 
   _pushOut(px, pz) {
-    const r = PLAYER_RADIUS;
     for (let iter = 0; iter < 4; iter++) {
       for (const c of this.walls) {
         if (this.position.y < c.minY - 0.2 || this.position.y > c.maxY + 0.2) continue;
         if (!this._insideWall(px, pz, c)) continue;
 
-        const overlapL = px + r - c.minX;
-        const overlapR = c.maxX - (px - r);
-        const overlapF = pz + r - c.minZ;
-        const overlapB = c.maxZ - (pz - r);
+        const overlapL = px + PLAYER_RADIUS - c.minX;
+        const overlapR = c.maxX - (px - PLAYER_RADIUS);
+        const overlapF = pz + PLAYER_RADIUS - c.minZ;
+        const overlapB = c.maxZ - (pz - PLAYER_RADIUS);
         const min = Math.min(overlapL, overlapR, overlapF, overlapB);
 
         if (min === overlapL) px -= overlapL;
@@ -94,33 +95,62 @@ export class Player {
     return { px, pz };
   }
 
+  _inStairZone(s) {
+    const dx = Math.abs(this.position.x - s.cx);
+    const dz = Math.abs(this.position.z - s.cz);
+    return dx < s.width / 2 + 0.3 && dz < s.depth / 2 + 0.3;
+  }
+
   _tryStairs(dt) {
-    const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    const moving = this.keys["KeyW"] || this.keys["ArrowUp"];
+    const wantUse =
+      this.keys["KeyW"] ||
+      this.keys["ArrowUp"] ||
+      this.keys["KeyE"] ||
+      this.stairT > 0;
 
-    for (const s of this.stairs) {
-      if (s.sourceFloor !== this.floor) continue;
-      const lx = this.position.x - s.cx;
-      const lz = this.position.z - s.cz;
-      const along = lx * s.dirX + lz * s.dirZ;
-      const across = Math.abs(lx * s.dirZ - lz * s.dirX);
-
-      if (across < s.width * 0.5 && along > -0.5 && along < s.depth) {
-        const dot = forward.x * s.dirX + forward.z * s.dirZ;
-        if (moving && dot > 0.1) {
-          this.stairT += dt * 0.65;
-          this.position.y = s.fromY + EYE_HEIGHT + this.stairT * FLOOR_STEP;
-          if (this.stairT >= 1) {
-            this.floor = s.targetFloor;
-            this.stairT = 0;
-            this.position.set(s.cx, this.floor * FLOOR_STEP + EYE_HEIGHT, s.cz + s.dirZ * 2);
-          }
-          return true;
+    let target = this.activeStair;
+    if (!target) {
+      for (const s of this.stairs) {
+        if (s.sourceFloor !== this.floor) continue;
+        if (this._inStairZone(s)) {
+          target = s;
+          break;
         }
       }
     }
-    this.stairT = 0;
-    return false;
+
+    if (!target || !wantUse) {
+      this.activeStair = null;
+      if (this.stairT <= 0) this.stairT = 0;
+      return false;
+    }
+
+    this.activeStair = target;
+
+    const going =
+      target.dirZ > 0
+        ? this.keys["KeyW"] || this.keys["ArrowUp"] || this.keys["KeyE"]
+        : this.keys["KeyW"] || this.keys["ArrowUp"] || this.keys["KeyE"];
+
+    if (!going && this.stairT <= 0) {
+      this.activeStair = null;
+      return false;
+    }
+
+    this.stairT += dt * 0.9;
+    this.position.y = target.fromY + EYE_HEIGHT + this.stairT * FLOOR_STEP;
+
+    if (this.stairT >= 1) {
+      this.floor = target.targetFloor;
+      this.stairT = 0;
+      this.activeStair = null;
+      this.position.set(
+        target.cx,
+        this.floor * FLOOR_STEP + EYE_HEIGHT,
+        target.cz + target.dirZ * 1.5
+      );
+    }
+    return true;
   }
 
   update(dt) {
@@ -135,7 +165,9 @@ export class Player {
 
     const speed = this.keys["ShiftLeft"] || this.keys["ShiftRight"] ? RUN_SPEED : WALK_SPEED;
 
-    if (move.lengthSq() > 0) {
+    const onStairs = this._tryStairs(dt);
+
+    if (!onStairs && move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
       let px = this.position.x + move.x;
       let pz = this.position.z + move.z;
@@ -144,7 +176,7 @@ export class Player {
       this.position.z = pushed.pz;
     }
 
-    if (!this._tryStairs(dt)) {
+    if (!onStairs) {
       this.position.y = this.floor * FLOOR_STEP + EYE_HEIGHT;
     }
 
