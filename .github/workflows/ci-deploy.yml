@@ -2,13 +2,18 @@ name: CI, Auto-merge, Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, "cursor/**"]
   pull_request:
     branches: [main]
 
 permissions:
   contents: write
   pull-requests: write
+  pages: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -33,9 +38,6 @@ jobs:
       startsWith(github.head_ref, 'cursor/') &&
       github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - uses: actions/github-script@v7
         with:
@@ -49,6 +51,27 @@ jobs:
               merge_method: 'merge',
             });
             core.info(`Merged PR #${pr} into main`);
+
+  promote:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/cursor/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge cursor branch into main
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git pull origin main
+          git merge "origin/$BRANCH" -m "chore: auto-promote $BRANCH to main"
+          git push origin main
 
   deploy:
     needs: build
