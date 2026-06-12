@@ -1,5 +1,11 @@
 import * as THREE from "three";
 import { CELL, HW, DOOR_H, FLOOR_STEP, WALL_THICK } from "./roomGen.js";
+import {
+  createTiledMaterial,
+  setSurfaceRepeat,
+  CARPET_TILE_M,
+  CEILING_TILE_M,
+} from "./textures.js";
 
 function wallBox(w, h, d, x, y, z, mat, group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -19,31 +25,31 @@ function wallAlongX(group, x, z0, z1, y0, h, mat) {
   wallBox(WALL_THICK, h, d, x, y0 + h / 2, (z0 + z1) / 2, mat, group);
 }
 
-function buildOuterWall(group, mat, y0, roomH, axis, fixed, center, span, door, open) {
+function buildOuterWall(group, wallTex, isBasement, y0, roomH, axis, fixed, center, span, door, open) {
   if (open) return;
+  const opts = isBasement ? { color: 0x9a9078 } : {};
   const dw = door.width / 2;
-  const c = center + (door.offset || 0);
-  const g0 = Math.max(center - span, c - dw);
-  const g1 = Math.min(center + span, c + dw);
+  const g0 = center - dw;
+  const g1 = center + dw;
 
   if (axis === "z") {
-    wallAlongZ(group, fixed, center - span, g0, y0, DOOR_H, mat);
-    wallAlongZ(group, fixed, g1, center + span, y0, DOOR_H, mat);
-    wallAlongZ(group, fixed, center - span, center + span, y0 + DOOR_H, roomH - DOOR_H, mat);
+    wallAlongZ(group, fixed, center - span, g0, y0, DOOR_H, createTiledMaterial(wallTex, center - span - g0, DOOR_H, opts));
+    wallAlongZ(group, fixed, g1, center + span, y0, DOOR_H, createTiledMaterial(wallTex, center + span - g1, DOOR_H, opts));
+    wallAlongZ(group, fixed, center - span, center + span, y0 + DOOR_H, roomH - DOOR_H, createTiledMaterial(wallTex, span * 2, roomH - DOOR_H, opts));
   } else {
-    wallAlongX(group, fixed, center - span, g0, y0, DOOR_H, mat);
-    wallAlongX(group, fixed, g1, center + span, y0, DOOR_H, mat);
-    wallAlongX(group, fixed, center - span, center + span, y0 + DOOR_H, roomH - DOOR_H, mat);
+    wallAlongX(group, fixed, center - span, g0, y0, DOOR_H, createTiledMaterial(wallTex, center - span - g0, DOOR_H, opts));
+    wallAlongX(group, fixed, g1, center + span, y0, DOOR_H, createTiledMaterial(wallTex, center + span - g1, DOOR_H, opts));
+    wallAlongX(group, fixed, center - span, center + span, y0 + DOOR_H, roomH - DOOR_H, createTiledMaterial(wallTex, span * 2, roomH - DOOR_H, opts));
   }
 }
 
-function buildInterior(group, room, mat, y0, h) {
+function buildInterior(group, room, wallTex, matOpts, y0, h) {
   const interior = room.interior;
   if (!interior) return;
 
   if (interior.type === "columns" && interior.posts) {
     for (const p of interior.posts) {
-      wallBox(0.5, h, 0.5, p.x, y0 + h / 2, p.z, mat, group);
+      wallBox(0.5, h, 0.5, p.x, y0 + h / 2, p.z, createTiledMaterial(wallTex, 0.5, h, matOpts), group);
     }
   }
 
@@ -59,28 +65,28 @@ function buildInterior(group, room, mat, y0, h) {
 
   for (const p of interior.walls || []) {
     if (p.axis === "z") {
-      const z = p.z1;
-      const x0 = Math.min(p.x1, p.x2);
-      const x1 = Math.max(p.x1, p.x2);
+      const z = p.z;
+      const x0 = p.x0;
+      const x1 = p.x1;
       if (p.door) {
         const mid = (x0 + x1) / 2;
-        wallAlongZ(group, z, x0, mid - 0.9, y0, DOOR_H, mat);
-        wallAlongZ(group, z, mid + 0.9, x1, y0, DOOR_H, mat);
-        wallAlongZ(group, z, x0, x1, y0 + DOOR_H, h - DOOR_H, mat);
+        wallAlongZ(group, z, x0, mid - 0.9, y0, DOOR_H, createTiledMaterial(wallTex, mid - 0.9 - x0, DOOR_H, matOpts));
+        wallAlongZ(group, z, mid + 0.9, x1, y0, DOOR_H, createTiledMaterial(wallTex, x1 - mid - 0.9, DOOR_H, matOpts));
+        wallAlongZ(group, z, x0, x1, y0 + DOOR_H, h - DOOR_H, createTiledMaterial(wallTex, x1 - x0, h - DOOR_H, matOpts));
       } else {
-        wallAlongZ(group, z, x0, x1, y0, h, mat);
+        wallAlongZ(group, z, x0, x1, y0, h, createTiledMaterial(wallTex, x1 - x0, h, matOpts));
       }
     } else {
-      const x = p.x1;
-      const z0 = Math.min(p.z1, p.z2);
-      const z1 = Math.max(p.z1, p.z2);
+      const x = p.x;
+      const z0 = p.z0;
+      const z1 = p.z1;
       if (p.door) {
         const mid = (z0 + z1) / 2;
-        wallAlongX(group, x, z0, mid - 0.9, y0, DOOR_H, mat);
-        wallAlongX(group, x, mid + 0.9, z1, y0, DOOR_H, mat);
-        wallAlongX(group, x, z0, z1, y0 + DOOR_H, h - DOOR_H, mat);
+        wallAlongX(group, x, z0, mid - 0.9, y0, DOOR_H, createTiledMaterial(wallTex, mid - 0.9 - z0, DOOR_H, matOpts));
+        wallAlongX(group, x, mid + 0.9, z1, y0, DOOR_H, createTiledMaterial(wallTex, z1 - mid - 0.9, DOOR_H, matOpts));
+        wallAlongX(group, x, z0, z1, y0 + DOOR_H, h - DOOR_H, createTiledMaterial(wallTex, z1 - z0, h - DOOR_H, matOpts));
       } else {
-        wallAlongX(group, x, z0, z1, y0, h, mat);
+        wallAlongX(group, x, z0, z1, y0, h, createTiledMaterial(wallTex, z1 - z0, h, matOpts));
       }
     }
   }
@@ -107,22 +113,24 @@ export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const y0 = room.floorLevel * FLOOR_STEP;
   const h = room.height;
-  const mat = room.isBasement ? materials.basementWall : materials.wall;
-  const ox = 0;
-  const oz = 0;
+  const wallTex = materials.wallTex;
+  const matOpts = room.isBasement ? { color: 0x9a9078 } : {};
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(CELL + 0.04, CELL + 0.04),
-    room.isBasement ? materials.basementFloor : materials.floor
-  );
+  const floorTex = room.isBasement ? materials.basementFloorTex : materials.carpetTex;
+  const floorMat = new THREE.MeshLambertMaterial({
+    map: setSurfaceRepeat(floorTex.clone(), CARPET_TILE_M, CELL, CELL),
+    side: THREE.DoubleSide,
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(CELL + 0.04, CELL + 0.04), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = y0;
   group.add(floor);
 
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(CELL + 0.04, CELL + 0.04),
-    materials.ceiling
-  );
+  const ceilMat = new THREE.MeshLambertMaterial({
+    map: setSurfaceRepeat(materials.ceilingTex.clone(), CEILING_TILE_M, CELL, CELL),
+    side: THREE.DoubleSide,
+  });
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CELL + 0.04, CELL + 0.04), ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = y0 + h;
   group.add(ceiling);
@@ -135,16 +143,15 @@ export function buildRoomMesh(room, materials) {
   light.position.set(0, y0 + h - 0.04, 0);
   group.add(light);
 
-  buildOuterWall(group, mat, y0, h, "z", oz - HW, ox, HW, room.doors.north, room.doors.north.open);
-  buildOuterWall(group, mat, y0, h, "z", oz + HW, ox, HW, room.doors.south, room.doors.south.open);
-  buildOuterWall(group, mat, y0, h, "x", ox - HW, oz, HW, room.doors.west, room.doors.west.open);
-  buildOuterWall(group, mat, y0, h, "x", ox + HW, oz, HW, room.doors.east, room.doors.east.open);
+  buildOuterWall(group, wallTex, room.isBasement, y0, h, "z", -HW, 0, HW, room.doors.north, room.doors.north.open);
+  buildOuterWall(group, wallTex, room.isBasement, y0, h, "z", HW, 0, HW, room.doors.south, room.doors.south.open);
+  buildOuterWall(group, wallTex, room.isBasement, y0, h, "x", -HW, 0, HW, room.doors.west, room.doors.west.open);
+  buildOuterWall(group, wallTex, room.isBasement, y0, h, "x", HW, 0, HW, room.doors.east, room.doors.east.open);
 
-  buildInterior(group, room, mat, y0, h);
+  buildInterior(group, room, wallTex, matOpts, y0, h);
 
   if (room.feature) buildStairs(room, materials, group, y0);
 
   group.position.set(room.cx * CELL, 0, room.cz * CELL);
-  group.userData.room = room;
   return group;
 }

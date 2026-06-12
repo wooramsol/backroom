@@ -1,4 +1,12 @@
-import { CELL, FLOOR_STEP, cellOf, generateRoom, buildColliders, buildStairVolume } from "./roomGen.js";
+import {
+  CELL,
+  FLOOR_STEP,
+  cellOf,
+  generateRoom,
+  registerRoomEdges,
+  buildCollidersFromEdges,
+  buildStairVolume,
+} from "./roomGen.js";
 import { buildRoomMesh } from "./roomMesh.js";
 
 const GRID_RADIUS = 2;
@@ -27,13 +35,18 @@ export class InfiniteWorld {
   }
 
   rebuildPhysics() {
-    this.walls = [];
+    const edgeMap = new Map();
+    const rooms = [];
     this.stairs = [];
+
     for (const { room } of this.chunks.values()) {
-      this.walls.push(...buildColliders(room));
+      rooms.push(room);
+      registerRoomEdges(edgeMap, room);
       const stair = buildStairVolume(room);
       if (stair) this.stairs.push(stair);
     }
+
+    this.walls = buildCollidersFromEdges(edgeMap, rooms);
     this.dirty = false;
   }
 
@@ -73,6 +86,10 @@ export class InfiniteWorld {
         this.chunks.delete(k);
         mesh.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+            else obj.material.dispose();
+          }
         });
         this.dirty = true;
       }

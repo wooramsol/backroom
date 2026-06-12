@@ -1,5 +1,12 @@
 import * as THREE from "three";
 
+/** Real-world size of one wallpaper repeat (30 cm). */
+export const WALL_TILE_M = 0.3;
+/** Ceiling tile ~60 cm. */
+export const CEILING_TILE_M = 0.6;
+/** Carpet repeat ~50 cm. */
+export const CARPET_TILE_M = 0.5;
+
 function makeCanvasTexture(draw, size = 256) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -11,6 +18,23 @@ function makeCanvasTexture(draw, size = 256) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.generateMipmaps = false;
   tex.minFilter = THREE.LinearFilter;
+  return tex;
+}
+
+export function createTiledMaterial(sourceTex, widthM, heightM, opts = {}) {
+  const tex = sourceTex.clone();
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(widthM / WALL_TILE_M, heightM / WALL_TILE_M);
+  return new THREE.MeshLambertMaterial({
+    map: tex,
+    side: THREE.DoubleSide,
+    ...opts,
+  });
+}
+
+export function setSurfaceRepeat(tex, tileM, widthM, heightM) {
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(widthM / tileM, heightM / tileM);
   return tex;
 }
 

@@ -26,7 +26,7 @@ scene.background = new THREE.Color(0xc4b47a);
 scene.fog = new THREE.Fog(0xc4b47a, 8, 32);
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 45);
-camera.position.set(0, 1.62, 3);
+camera.position.set(0, 1.62, 0);
 
 scene.add(new THREE.AmbientLight(0xb0a880, 0.85));
 scene.add(new THREE.HemisphereLight(0xfff4d0, 0x5a4a30, 0.35));
@@ -34,27 +34,15 @@ scene.add(new THREE.HemisphereLight(0xfff4d0, 0x5a4a30, 0.35));
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaperTex = await loadWallpaperTexture(loader);
-  wallpaperTex.repeat.set(2, 2);
-
   const carpetTex = createCarpetTexture();
-  carpetTex.repeat.set(3, 3);
-
   const basementFloorTex = createBasementFloorTexture();
-  basementFloorTex.repeat.set(3, 3);
-
   const ceilingTex = createCeilingTexture();
-  ceilingTex.repeat.set(2, 2);
 
   const materials = {
-    wall: new THREE.MeshLambertMaterial({ map: wallpaperTex, side: THREE.DoubleSide }),
-    basementWall: new THREE.MeshLambertMaterial({
-      map: wallpaperTex,
-      color: 0x9a9078,
-      side: THREE.DoubleSide,
-    }),
-    floor: new THREE.MeshLambertMaterial({ map: carpetTex, side: THREE.DoubleSide }),
-    basementFloor: new THREE.MeshLambertMaterial({ map: basementFloorTex, side: THREE.DoubleSide }),
-    ceiling: new THREE.MeshLambertMaterial({ map: ceilingTex, side: THREE.DoubleSide }),
+    wallTex: wallpaperTex,
+    carpetTex,
+    basementFloorTex,
+    ceilingTex,
     stair: new THREE.MeshLambertMaterial({ color: 0x7a6a50 }),
     lightPanel: new THREE.MeshBasicMaterial({ color: 0xfff6d0 }),
   };
