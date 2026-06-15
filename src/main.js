@@ -2,17 +2,15 @@ import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
-  createCeilingTexture,
   loadWallpaperOrFallback,
   tiled,
   CARPET_TILE_M,
-  CEILING_TILE_M,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
 import { PanelLightPool } from "./lightPool.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_OFF_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_OFF_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -44,7 +42,6 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
-  const ceilingTex = createCeilingTexture();
 
   const materials = {
     wallTex: wallpaper,
@@ -52,13 +49,6 @@ async function init() {
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
       roughness: 0.94,
-      metalness: 0,
-      side: THREE.DoubleSide,
-    }),
-    ceiling: new THREE.MeshStandardMaterial({
-      map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
-      color: CEILING_COLOR,
-      roughness: 0.9,
       metalness: 0,
       side: THREE.DoubleSide,
     }),

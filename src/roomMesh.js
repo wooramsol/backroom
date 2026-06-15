@@ -9,7 +9,7 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_W,
   PANEL_H,
-  CEILING_COLOR,
+  CARPET_COLOR,
   CEILING_EMISSIVE_MIN,
   CEILING_EMISSIVE_MAX,
 } from "./constants.js";
@@ -71,8 +71,8 @@ export function buildRoomMesh(room, materials) {
   group.add(floor);
 
   const strength = roomLitStrength(room);
-  const ceilingMat = materials.ceiling.clone();
-  ceilingMat.emissive = new THREE.Color(CEILING_COLOR);
+  const ceilingMat = materials.carpet.clone();
+  ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
   const ceilingEmissive =
     CEILING_EMISSIVE_MIN + strength * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
   ceilingMat.emissiveIntensity = ceilingEmissive;

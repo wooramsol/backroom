@@ -4,7 +4,6 @@ import * as THREE from "three";
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
 export const WALL_TILE_W = 0.76;
 export const CARPET_TILE_M = 0.55;
-export const CEILING_TILE_M = 0.65;
 
 function canvasTex(draw, size = 256) {
   const c = document.createElement("canvas");
@@ -67,22 +66,6 @@ export function createCarpetTexture() {
       const y = Math.random() * size;
       ctx.fillStyle = `rgba(120,110,60,${0.02 + Math.random() * 0.05})`;
       ctx.fillRect(x, y, 4 + Math.random() * 6, 3 + Math.random() * 5);
-    }
-  });
-}
-
-/** Drop ceiling — pale yellow cream, same palette as walls */
-export function createCeilingTexture() {
-  return canvasTex((ctx, size) => {
-    const tile = 28;
-    for (let y = 0; y < size; y += tile) {
-      for (let x = 0; x < size; x += tile) {
-        const v = 232 + ((x + y) % 10);
-        ctx.fillStyle = `rgb(${v},${v - 2},${v - 22})`;
-        ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(175,165,110,0.32)";
-        ctx.strokeRect(x, y, tile, tile);
-      }
     }
   });
 }
