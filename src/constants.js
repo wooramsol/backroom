@@ -25,7 +25,7 @@ export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
 /** Low fill — lit rooms come from ceiling fixtures, not sky */
 export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.06;
+export const AMBIENT_INTENSITY = 0.09;
 export const HEMI_SKY = 0x706860;
 export const HEMI_GROUND = 0x281f18;
 export const HEMI_INTENSITY = 0.035;
@@ -35,12 +35,13 @@ export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 export const PANEL_EMISSIVE_INTENSITY = 2.6;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
+/** Recessed into drop ceiling — panel face sits below tile plane */
+export const PANEL_RECESS_DEPTH = 0.032;
+export const PANEL_FRAME_PAD = 0.055;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight from panel face (nits) — lights floor/walls below */
-export const PANEL_LIGHT_INTENSITY = 14;
+/** RectAreaLight from recessed panel face (nits) */
+export const PANEL_LIGHT_INTENSITY = 12;
 export const LIGHT_POOL_SIZE = 40;
-/** Ceiling brightens with nearby ON panels (indirect wash) */
-export const CEILING_EMISSIVE_MAX = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.85;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf5f0c8;
