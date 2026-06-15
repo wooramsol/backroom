@@ -9,8 +9,9 @@ import {
   PANEL_W,
   PANEL_H,
   PANEL_RECESS_DEPTH,
-  PANEL_FRAME_PAD,
   CEILING_COLOR,
+  CEILING_EMISSIVE_MIN,
+  CEILING_EMISSIVE_MAX,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -42,33 +43,29 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-/** 매립형 면조명 — 천장 타일 안에 파인 사각 면광원 */
-function addRecessedPanel(group, room, panel, materials, h) {
-  const emissive = new THREE.Color(LIGHT_PANEL_COLOR);
-  const yFace = h - PANEL_RECESS_DEPTH;
+function litRatio(room) {
+  if (!room.panels.length) return 0;
+  return room.panels.filter((p) => p.on).length / room.panels.length;
+}
 
-  const frame = new THREE.Mesh(
-    new THREE.PlaneGeometry(PANEL_W + PANEL_FRAME_PAD, PANEL_H + PANEL_FRAME_PAD),
-    materials.ceiling.clone()
-  );
-  frame.rotation.x = Math.PI / 2;
-  frame.position.set(panel.x, h - 0.004, panel.z);
-  frame.renderOrder = 1;
-  group.add(frame);
+/** Flush troffer — panel face level with ceiling grid, emissive when ON */
+function addFlushPanel(group, panel, h) {
+  const emissive = new THREE.Color(LIGHT_PANEL_COLOR);
+  const y = h - PANEL_RECESS_DEPTH;
 
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(PANEL_W, PANEL_H),
     new THREE.MeshStandardMaterial({
-      color: LIGHT_PANEL_OFF_COLOR,
+      color: panel.on ? LIGHT_PANEL_COLOR : LIGHT_PANEL_OFF_COLOR,
       emissive,
       emissiveIntensity: panel.on ? PANEL_EMISSIVE_INTENSITY * panel.bright : 0,
-      roughness: 0.18,
+      roughness: 0.12,
       metalness: 0,
     })
   );
   face.rotation.x = Math.PI / 2;
-  face.position.set(panel.x, yFace, panel.z);
-  face.renderOrder = 2;
+  face.position.set(panel.x, y, panel.z);
+  face.renderOrder = 1;
   face.userData.panel = panel;
   group.add(face);
 }
@@ -76,6 +73,7 @@ function addRecessedPanel(group, room, panel, materials, h) {
 export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const h = room.height;
+  const ratio = litRatio(room);
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.carpet.clone());
   floor.rotation.x = -Math.PI / 2;
@@ -83,7 +81,8 @@ export function buildRoomMesh(room, materials) {
 
   const ceilingMat = materials.ceiling.clone();
   ceilingMat.emissive = new THREE.Color(CEILING_COLOR);
-  ceilingMat.emissiveIntensity = 0;
+  ceilingMat.emissiveIntensity =
+    CEILING_EMISSIVE_MIN + ratio * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
@@ -91,7 +90,7 @@ export function buildRoomMesh(room, materials) {
   group.add(ceiling);
 
   for (const panel of room.panels) {
-    addRecessedPanel(group, room, panel, materials, h);
+    addFlushPanel(group, panel, h);
   }
 
   const wt = materials.wallTex;
