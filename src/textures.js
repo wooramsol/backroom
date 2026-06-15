@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
-/** One wallpaper tile ≈ 30 cm × 30 cm in world space */
-export const WALL_TILE_M = 0.3;
-export const CARPET_TILE_M = 0.5;
-export const CEILING_TILE_M = 0.6;
+/** One wallpaper tile ≈ 60 cm × 60 cm (2× previous 30 cm scale) */
+export const WALL_TILE_M = 0.6;
+export const CARPET_TILE_M = 0.55;
+export const CEILING_TILE_M = 0.65;
 
 function canvasTex(draw, size = 256) {
   const c = document.createElement("canvas");
@@ -32,37 +32,37 @@ export function tiled(tex, tileM, w, h) {
   return t;
 }
 
-/** Damp moist office carpet — Level 0 */
+/** Damp office carpet — classic Level 0 beige (#C2B280) */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {
-    ctx.fillStyle = "#9a8468";
+    ctx.fillStyle = "#c2b280";
     ctx.fillRect(0, 0, size, size);
     for (let y = 0; y < size; y += 3) {
       for (let x = 0; x < size; x += 3) {
-        const v = 118 + ((x * 17 + y * 31) % 36);
-        ctx.fillStyle = `rgb(${v + 10},${v + 4},${v - 8})`;
+        const v = 168 + ((x * 17 + y * 31) % 28);
+        ctx.fillStyle = `rgb(${v + 6},${v},${v - 12})`;
         ctx.fillRect(x, y, 2, 2);
       }
     }
-    for (let i = 0; i < 280; i++) {
+    for (let i = 0; i < 200; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.fillStyle = `rgba(70,80,55,${0.03 + Math.random() * 0.07})`;
-      ctx.fillRect(x, y, 4 + Math.random() * 8, 3 + Math.random() * 6);
+      ctx.fillStyle = `rgba(90,80,55,${0.02 + Math.random() * 0.05})`;
+      ctx.fillRect(x, y, 4 + Math.random() * 6, 3 + Math.random() * 5);
     }
   });
 }
 
-/** Acoustic drop-ceiling tiles */
+/** Acoustic drop-ceiling — off-white cream */
 export function createCeilingTexture() {
   return canvasTex((ctx, size) => {
     const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 210 + ((x + y) % 12);
-        ctx.fillStyle = `rgb(${v},${v},${v - 4})`;
+        const v = 228 + ((x + y) % 10);
+        ctx.fillStyle = `rgb(${v},${v - 2},${v - 8})`;
         ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(150,150,145,0.35)";
+        ctx.strokeStyle = "rgba(170,168,155,0.28)";
         ctx.strokeRect(x, y, tile, tile);
       }
     }
@@ -91,7 +91,7 @@ export async function loadWallpaperOrFallback(loader) {
     return await loadWallpaper(loader);
   } catch {
     return canvasTex((ctx, size) => {
-      ctx.fillStyle = "#c4a85a";
+      ctx.fillStyle = "#e5e4ad";
       ctx.fillRect(0, 0, size, size);
       for (let y = 0; y < size; y += 8) {
         ctx.strokeStyle = "rgba(90,75,40,0.15)";

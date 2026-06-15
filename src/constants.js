@@ -19,19 +19,20 @@ export const CAMERA_FOV = 60;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 8;
-export const FOG_FAR = 36;
-export const FOG_COLOR = 0xc9b87a;
-export const AMBIENT_COLOR = 0x9a8a68;
-export const AMBIENT_INTENSITY = 0.52;
-export const HEMI_SKY = 0xfff0c8;
-export const HEMI_GROUND = 0x7a6a50;
-export const HEMI_INTENSITY = 0.34;
-export const LIGHT_PANEL_COLOR = 0xfff4d0;
-export const LIGHT_PANEL_INTENSITY = 0.88;
-export const TONE_MAPPING_EXPOSURE = 1.02;
-export const CARPET_COLOR = 0xf0e4d0;
-export const CEILING_COLOR = 0xfaf8f2;
+export const FOG_NEAR = 10;
+export const FOG_FAR = 40;
+export const FOG_COLOR = 0xe5e4ad;
+export const AMBIENT_COLOR = 0xe8e4c8;
+export const AMBIENT_INTENSITY = 0.58;
+export const HEMI_SKY = 0xfff8e8;
+export const HEMI_GROUND = 0xc2b280;
+export const HEMI_INTENSITY = 0.38;
+export const LIGHT_PANEL_COLOR = 0xfff6e0;
+export const LIGHT_PANEL_INTENSITY = 0.78;
+export const TONE_MAPPING_EXPOSURE = 1.0;
+export const CARPET_COLOR = 0xffffff;
+export const CEILING_COLOR = 0xffffff;
+export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;
