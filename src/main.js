@@ -11,7 +11,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { roomLitStrength } from "./room.js";
+import { PanelLightPool } from "./lightPool.js";
 import {
   CHUNK,
   EYE_H,
@@ -26,8 +26,6 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_LIGHT_INTENSITY,
-  ROOM_LIGHT_SCALE,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -87,6 +85,7 @@ async function init() {
 
   const world = new World(scene, materials);
   world.init();
+  const panelLights = new PanelLightPool(scene);
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
@@ -120,20 +119,15 @@ async function init() {
       hum.tick(lightT);
     }
 
-    for (const { mesh, room } of world.chunks.values()) {
-      const strength = roomLitStrength(room);
-      const flicker = 0.94 + Math.sin(lightT * 8 + room.lightSeed * 0.01) * 0.04;
-      const roomLight = mesh.userData.roomLight;
-      if (roomLight) {
-        roomLight.intensity = PANEL_LIGHT_INTENSITY * strength * ROOM_LIGHT_SCALE * flicker;
-      }
+    panelLights.update(player.position, world.chunks, lightT);
 
+    for (const { mesh } of world.chunks.values()) {
       mesh.traverse((obj) => {
         const panel = obj.userData?.panel;
         if (!panel) return;
         if (panel.on) {
-          const pf = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * pf);
+          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
         } else {
           obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
         }
