@@ -31,15 +31,17 @@ export const HEMI_GROUND = 0x281f18;
 export const HEMI_INTENSITY = 0.035;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
-/** Panel emissive visual — the lit rectangle itself */
-export const LIGHT_PANEL_INTENSITY = 0.48;
+/** Panel surface glow — the fixture itself is the light source */
+export const PANEL_EMISSIVE_INTENSITY = 2.6;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — light emits from panel face downward */
-export const PANEL_LIGHT_INTENSITY = 7;
+/** RectAreaLight from panel face (nits) — lights floor/walls below */
+export const PANEL_LIGHT_INTENSITY = 14;
 export const LIGHT_POOL_SIZE = 40;
-export const TONE_MAPPING_EXPOSURE = 0.78;
+/** Ceiling brightens with nearby ON panels (indirect wash) */
+export const CEILING_EMISSIVE_MAX = 0.5;
+export const TONE_MAPPING_EXPOSURE = 0.85;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf5f0c8;
 export const WALL_COLOR = 0xffffff;
