@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
-/** Horizontal repeat width of wallpaper.png in world space (metres) */
+/** User wallpaper — one image = one repeat; horizontal width 76 cm */
+export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
 export const WALL_TILE_W = 0.76;
 export const CARPET_TILE_M = 0.55;
 export const CEILING_TILE_M = 0.65;
@@ -84,7 +85,7 @@ export function createCeilingTexture() {
 export function loadWallpaper(loader) {
   return new Promise((resolve, reject) => {
     loader.load(
-      "./assets/wallpaper.png",
+      WALLPAPER_URL,
       (tex) => {
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.colorSpace = THREE.SRGBColorSpace;
