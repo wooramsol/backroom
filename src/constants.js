@@ -25,13 +25,13 @@ export const FOG_COLOR = 0xe5e4ad;
 export const AMBIENT_COLOR = 0xe8e4c8;
 export const AMBIENT_INTENSITY = 0.58;
 export const HEMI_SKY = 0xfff8e8;
-export const HEMI_GROUND = 0xc2b280;
+export const HEMI_GROUND = 0xe5d890;
 export const HEMI_INTENSITY = 0.38;
 export const LIGHT_PANEL_COLOR = 0xfff6e0;
 export const LIGHT_PANEL_INTENSITY = 0.78;
 export const TONE_MAPPING_EXPOSURE = 1.0;
-export const CARPET_COLOR = 0xffffff;
-export const CEILING_COLOR = 0xffffff;
+export const CARPET_COLOR = 0xf0e8a8;
+export const CEILING_COLOR = 0xf5f0c8;
 export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
