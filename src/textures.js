@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-/** One wallpaper tile ≈ 60 cm × 60 cm (2× previous 30 cm scale) */
-export const WALL_TILE_M = 0.6;
+/** One wallpaper repeat ≈ 76 cm wide (user reference) */
+export const WALL_TILE_M = 0.76;
 export const CARPET_TILE_M = 0.55;
 export const CEILING_TILE_M = 0.65;
 

@@ -1,49 +1,59 @@
-"""Generate tileable Backrooms Level 0 wallpaper — chevron / dashed band pattern."""
+"""Generate tileable Level 0 wallpaper — pale ikat chevron, 76 cm repeat width."""
 from PIL import Image, ImageDraw, ImageFilter
 import random
 import os
 
-W, H = 512, 512
-# Classic Level 0 — pale sickly yellow (#E5E4AD)
-BASE = (229, 228, 173)
-DARK = (158, 152, 118)
-MID = (194, 190, 148)
+# Square tile = one horizontal repeat (76 cm in world space)
+W, H = 768, 768
+BASE = (248, 244, 218)
+SHADE = (228, 222, 192)
+LINE = (210, 204, 172)
+CHEV = (235, 228, 198)
 
 img = Image.new("RGB", (W, H), BASE)
 draw = ImageDraw.Draw(img)
 
-band_w = 56
-for bx in range(0, W, band_w):
+cols = 4
+band_w = W // cols
+
+for i in range(cols):
+    bx = i * band_w
     cx = bx + band_w // 2
 
-    for y in range(0, H, 10):
-        draw.rectangle([cx - 1, y, cx + 1, y + 5], fill=DARK)
+    # Thin vertical line groups between columns
+    for lx in (bx + 6, bx + 10, bx + band_w - 10, bx + band_w - 6):
+        if 0 <= lx < W:
+            draw.line([(lx, 0), (lx, H)], fill=LINE, width=1)
 
-    chev_h = 44
-    for y in range(0, H, chev_h):
+    # Dashed center stem (ikat bleed)
+    for y in range(0, H, 14):
+        draw.rectangle([cx - 1, y, cx + 1, y + 7], fill=LINE)
+
+    chev_h = 52
+    for y in range(-chev_h // 2, H + chev_h, chev_h):
         cy = y + chev_h // 2
-        phase = (bx // band_w) % 2
-        cy += chev_h // 4 if phase else -chev_h // 6
         half = band_w // 3
         pts = [
             (cx, cy - chev_h // 3),
-            (cx - half, cy + chev_h // 8),
-            (cx - half // 2, cy + chev_h // 8),
-            (cx, cy - chev_h // 12),
-            (cx + half // 2, cy + chev_h // 8),
-            (cx + half, cy + chev_h // 8),
+            (cx - half, cy + chev_h // 10),
+            (cx - half // 2, cy + chev_h // 10),
+            (cx, cy - chev_h // 14),
+            (cx + half // 2, cy + chev_h // 10),
+            (cx + half, cy + chev_h // 10),
         ]
-        draw.polygon(pts, fill=MID)
-        draw.polygon(pts, outline=DARK)
+        draw.polygon(pts, fill=CHEV)
+        draw.polygon(pts, outline=SHADE)
 
-img = img.filter(ImageFilter.GaussianBlur(radius=0.35))
+# Soft ikat edges
+img = img.filter(ImageFilter.GaussianBlur(radius=0.75))
+
 pixels = img.load()
-random.seed(7)
-for _ in range(4000):
+random.seed(11)
+for _ in range(5000):
     px = random.randint(0, W - 1)
     py = random.randint(0, H - 1)
     r, g, b = pixels[px, py]
-    n = random.randint(-8, 8)
+    n = random.randint(-6, 6)
     pixels[px, py] = (
         max(0, min(255, r + n)),
         max(0, min(255, g + n)),
@@ -53,4 +63,4 @@ for _ in range(4000):
 out = os.path.join(os.path.dirname(__file__), "..", "public", "assets", "wallpaper.png")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 img.save(out, optimize=True)
-print(f"Saved {out}")
+print(f"Saved {out} ({W}x{H})")
