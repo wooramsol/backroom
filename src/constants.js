@@ -24,11 +24,11 @@ export const FOG_NEAR = 10;
 export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
 /** Low fill — lit rooms come from ceiling fixtures, not sky */
-export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.09;
-export const HEMI_SKY = 0x706860;
-export const HEMI_GROUND = 0x281f18;
-export const HEMI_INTENSITY = 0.035;
+export const AMBIENT_COLOR = 0xc0b8a0;
+export const AMBIENT_INTENSITY = 0.11;
+export const HEMI_SKY = 0xf0e8c8;
+export const HEMI_GROUND = 0xc8c0a0;
+export const HEMI_INTENSITY = 0.14;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 /** Panel surface glow — the fixture itself is the light source */
@@ -39,8 +39,13 @@ export const PANEL_H = 0.42;
 export const PANEL_RECESS_DEPTH = 0.032;
 export const PANEL_FRAME_PAD = 0.055;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight from recessed panel face (nits) */
+/** Downward area light from recessed panel face */
 export const PANEL_LIGHT_INTENSITY = 12;
+/** Upward bounce onto ceiling tiles around each ON panel */
+export const PANEL_CEILING_INTENSITY = 5.5;
+export const PANEL_CEILING_SPREAD = 1.6;
+/** Subtle emissive wash — keeps tile texture visible */
+export const CEILING_BOUNCE_EMISSIVE = 0.11;
 export const LIGHT_POOL_SIZE = 40;
 export const TONE_MAPPING_EXPOSURE = 0.85;
 export const CARPET_COLOR = 0xf0e8a8;

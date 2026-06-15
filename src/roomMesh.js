@@ -10,6 +10,7 @@ import {
   PANEL_H,
   PANEL_RECESS_DEPTH,
   PANEL_FRAME_PAD,
+  CEILING_COLOR,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -80,9 +81,13 @@ export function buildRoomMesh(room, materials) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.ceiling.clone());
+  const ceilingMat = materials.ceiling.clone();
+  ceilingMat.emissive = new THREE.Color(CEILING_COLOR);
+  ceilingMat.emissiveIntensity = 0;
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
+  ceiling.userData.ceiling = true;
   group.add(ceiling);
 
   for (const panel of room.panels) {
