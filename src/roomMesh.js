@@ -4,12 +4,11 @@ import {
   WALL_T,
   DOOR_H,
   LIGHT_PANEL_COLOR,
+  LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
-  DARK_ROOM_LIGHT_MULT,
-  ROOM_LIGHT_INTENSITY,
-  ROOM_LIGHT_DISTANCE,
-  CARPET_COLOR,
-  CEILING_COLOR,
+  PANEL_POINT_INTENSITY,
+  PANEL_POINT_DISTANCE,
+  PANEL_POINT_DECAY,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -45,59 +44,50 @@ function fract(n) {
   return n - Math.floor(n);
 }
 
-function addCeilingLights(group, room, lightMat, time) {
+function addCeilingLights(group, room, lightMat) {
   const h = room.height;
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
-  const flicker = room.lightsOn ? 0.92 + Math.sin(time * 8 + room.flicker) * 0.06 : 1;
   const spacing = room.lightSpacing || 2.5;
-  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
-  const baseMult = room.lightsOn ? 1 : DARK_ROOM_LIGHT_MULT;
+  const on = room.lightsOn;
+  const panelColor = new THREE.Color(on ? LIGHT_PANEL_COLOR : LIGHT_PANEL_OFF_COLOR);
 
   for (let x = room.westOff + spacing / 2; x < CHUNK; x += spacing) {
     for (let z = room.northOff + spacing / 2; z < CHUNK; z += spacing) {
       if (hash(x * 3.1 + z) < 0.1) continue;
-      if (!room.lightsOn && hash(x * 7.3 + z * 2.1) < 0.82) continue;
-      const panel = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.15, 0.42),
-        lightMat.clone()
-      );
-      const bright = LIGHT_PANEL_INTENSITY * flicker * baseMult * (0.92 + hash(z) * 0.12);
-      panel.material.color.copy(panelColor).multiplyScalar(bright);
+
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.42), lightMat.clone());
+      const bright = on ? LIGHT_PANEL_INTENSITY * (0.92 + hash(z) * 0.12) : 1;
+      panel.material.color.copy(panelColor);
+      if (on) panel.material.color.multiplyScalar(bright);
       panel.userData.fluorescent = true;
-      panel.userData.lightsOn = room.lightsOn;
       panel.rotation.x = Math.PI / 2;
       panel.position.set(x, h - 0.05, z);
       group.add(panel);
+
+      const bulb = new THREE.PointLight(0xfff4d8, 0, PANEL_POINT_DISTANCE, PANEL_POINT_DECAY);
+      bulb.position.set(x, h - 0.12, z);
+      bulb.userData.panelLight = true;
+      bulb.userData.baseIntensity = PANEL_POINT_INTENSITY * (0.9 + hash(z + x) * 0.15);
+      if (on) bulb.intensity = bulb.userData.baseIntensity;
+      group.add(bulb);
     }
   }
 }
 
-export function buildRoomMesh(room, materials, time = 0) {
+export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const h = room.height;
 
-  const floorMat = materials.carpet.clone();
-  floorMat.color.setHex(room.lightsOn ? CARPET_COLOR : 0x2a2818);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), floorMat);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.carpet.clone());
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const ceilingMat = materials.ceiling.clone();
-  ceilingMat.color.setHex(room.lightsOn ? CEILING_COLOR : 0x1a1810);
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.ceiling.clone());
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
   group.add(ceiling);
 
-  addCeilingLights(group, room, materials.lightPanel, time);
-
-  if (room.lightsOn) {
-    const roomLight = new THREE.PointLight(0xfff4d8, ROOM_LIGHT_INTENSITY, ROOM_LIGHT_DISTANCE);
-    roomLight.position.set(CHUNK * 0.5, h - 0.35, CHUNK * 0.5);
-    roomLight.userData.roomLight = true;
-    roomLight.userData.baseIntensity = ROOM_LIGHT_INTENSITY;
-    group.add(roomLight);
-  }
+  addCeilingLights(group, room, materials.lightPanel);
 
   const wt = materials.wallTex;
   wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);

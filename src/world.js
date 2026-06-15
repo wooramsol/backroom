@@ -20,7 +20,7 @@ export class World {
 
   spawn(cx, cz) {
     const room = generateRoom(cx, cz);
-    const mesh = buildRoomMesh(room, this.materials, this.time);
+    const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
   }
