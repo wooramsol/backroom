@@ -34,14 +34,12 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
     group.add(m);
   };
 
-  const topH = h - WAINSCOT_H;
-
   if (door) {
     add(a0, mid - dw, DOOR_H, 0);
     add(mid + dw, a1, DOOR_H, 0);
     if (h - DOOR_H > 0.1) add(a0, a1, h - DOOR_H, DOOR_H);
-  } else if (topH > 0.1) {
-    add(a0, a1, topH, WAINSCOT_H);
+  } else {
+    add(a0, a1, h, 0);
   }
 }
 
@@ -53,7 +51,7 @@ function addBaseboard(group, mat, axis, linePos, a0, a1, face) {
   const len = a1 - a0;
   if (len < 0.1) return;
   const bh = BASEBOARD_H;
-  const d = 0.085;
+  const d = 0.1;
   const geo =
     axis === "z"
       ? new THREE.BoxGeometry(len, bh, d)
@@ -87,8 +85,8 @@ function addWainscot(group, mat, axis, linePos, a0, a1, face) {
 function addFloorShadow(group, mat, axis, linePos, a0, a1, face) {
   const len = a1 - a0;
   if (len < 0.1) return;
-  const sh = 0.08;
-  const depth = 0.45;
+  const sh = 0.1;
+  const depth = 0.55;
   const geo =
     axis === "z"
       ? new THREE.BoxGeometry(len, sh, depth)
