@@ -4,7 +4,7 @@ import * as THREE from "three";
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
 export const WALL_TILE_W = 0.76;
 export const CARPET_TILE_M = 0.55;
-export const CEILING_TILE_M = 0.65;
+export const CEILING_TILE_M = 0.62;
 
 function canvasTex(draw, size = 256) {
   const c = document.createElement("canvas");
@@ -14,8 +14,9 @@ function canvasTex(draw, size = 256) {
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
-  t.minFilter = THREE.LinearFilter;
-  t.generateMipmaps = false;
+  t.generateMipmaps = size >= 512;
+  t.minFilter = size >= 512 ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
+  t.magFilter = THREE.LinearFilter;
   return t;
 }
 
@@ -71,20 +72,29 @@ export function createCarpetTexture() {
   });
 }
 
-/** Reference drop ceiling — pale yellow cream tile grid, same palette as walls */
+/** Reference drop ceiling — visible yellow cream tile grid */
 export function createCeilingTexture() {
   return canvasTex((ctx, size) => {
-    const tile = 28;
+    const tile = 32;
+    ctx.fillStyle = "#c8c0a0";
+    ctx.fillRect(0, 0, size, size);
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 232 + ((x + y) % 10);
-        ctx.fillStyle = `rgb(${v},${v - 2},${v - 22})`;
-        ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(175,165,110,0.32)";
-        ctx.strokeRect(x, y, tile, tile);
+        const v = 228 + ((x * 3 + y * 5) % 14);
+        ctx.fillStyle = `rgb(${v},${v - 6},${v - 30})`;
+        ctx.fillRect(x + 2, y + 2, tile - 4, tile - 4);
+        ctx.strokeStyle = "rgba(110,100,60,0.72)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, tile - 2, tile - 2);
+        for (let n = 0; n < 6; n++) {
+          const nx = x + 4 + ((n * 17 + x) % (tile - 8));
+          const ny = y + 4 + ((n * 23 + y) % (tile - 8));
+          ctx.fillStyle = `rgba(80,70,40,${0.04 + (n % 3) * 0.02})`;
+          ctx.fillRect(nx, ny, 2, 2);
+        }
       }
     }
-  });
+  }, 512);
 }
 
 export function loadWallpaper(loader) {

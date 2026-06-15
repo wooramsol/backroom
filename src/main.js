@@ -30,6 +30,7 @@ import {
   CAMERA_FOV,
   CARPET_COLOR,
   CEILING_COLOR,
+  ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
@@ -63,6 +64,8 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
   const ceilingTex = createCeilingTexture();
+  const ceilingMap = tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK);
+  ceilingMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
   const materials = {
     wallTex: wallpaper,
@@ -73,9 +76,11 @@ async function init() {
       metalness: 0,
       side: THREE.DoubleSide,
     }),
-    ceiling: new THREE.MeshLambertMaterial({
-      map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
-      color: CEILING_COLOR,
+    ceiling: new THREE.MeshStandardMaterial({
+      map: ceilingMap,
+      color: 0xffffff,
+      roughness: 0.96,
+      metalness: 0,
       side: THREE.DoubleSide,
     }),
     lightPanel: new THREE.MeshBasicMaterial({
@@ -99,7 +104,7 @@ async function init() {
       overlay.classList.add("hidden");
       hud.classList.add("visible");
       vignette.classList.add("visible");
-      hum.start();
+      if (ENABLE_FLUORESCENT_HUM) hum.start();
     }
   });
 
@@ -116,7 +121,7 @@ async function init() {
     player.setColliders(world.getColliders());
     if (started) {
       player.update(dt);
-      hum.tick(lightT);
+      if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
     panelLights.update(player.position, world.chunks, lightT);
