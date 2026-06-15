@@ -42,17 +42,27 @@ async function loadWallpaperOrFallback(loader) {
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaperTex = await loadWallpaperOrFallback(loader);
+  wallpaperTex.repeat.set(2, 2);
+
   const carpetTex = createCarpetTexture();
+  carpetTex.repeat.set(3, 3);
+
   const basementFloorTex = createBasementFloorTexture();
+  basementFloorTex.repeat.set(3, 3);
+
   const ceilingTex = createCeilingTexture();
+  ceilingTex.repeat.set(2, 2);
 
   const materials = {
-    wallTex: wallpaperTex,
-    carpetTex,
-    basementFloorTex,
-    ceilingTex,
-    stair: new THREE.MeshLambertMaterial({ color: 0x7a6a50 }),
-    stairSign: new THREE.MeshBasicMaterial({ color: 0xfff0c0 }),
+    wall: new THREE.MeshLambertMaterial({ map: wallpaperTex, side: THREE.DoubleSide }),
+    basementWall: new THREE.MeshLambertMaterial({
+      map: wallpaperTex,
+      color: 0x9a9078,
+      side: THREE.DoubleSide,
+    }),
+    floor: new THREE.MeshLambertMaterial({ map: carpetTex, side: THREE.DoubleSide }),
+    basementFloor: new THREE.MeshLambertMaterial({ map: basementFloorTex, side: THREE.DoubleSide }),
+    ceiling: new THREE.MeshLambertMaterial({ map: ceilingTex, side: THREE.DoubleSide }),
     lightPanel: new THREE.MeshBasicMaterial({ color: 0xfff6d0 }),
   };
 
@@ -71,11 +81,11 @@ async function init() {
       overlay.classList.add("hidden");
       hud.classList.add("visible");
       vignette.classList.add("visible");
+      hud.textContent = world.getFloorLabel();
     }
   });
 
   const clock = new THREE.Clock();
-  let lastFloor = 0;
 
   function animate() {
     requestAnimationFrame(animate);
@@ -83,25 +93,8 @@ async function init() {
 
     if (started) {
       world.update(player.position, player.floor);
-      player.setWalls(world.getWallsForFloor(player.floor));
-      player.setStairs(world.getStairs());
+      player.setColliders(world.getCollidersForFloor(player.floor));
       player.update(dt);
-
-      const hint = world.getStairHint(world.getStairs(), player.position, player.floor);
-      hud.textContent = hint || world.getFloorLabel(player.floor);
-
-      if (player.floor !== lastFloor) {
-        lastFloor = player.floor;
-        const t = Math.max(0, Math.min(1, (player.floor + 1) / 6));
-        const r = Math.floor(106 + (196 - 106) * t);
-        const g = Math.floor(100 + (180 - 100) * t);
-        const b = Math.floor(80 + (122 - 80) * t);
-        const col = (r << 16) | (g << 8) | b;
-        scene.fog.color.setHex(col);
-        scene.background.setHex(col);
-        scene.fog.near = player.floor < 0 ? 6 : 8;
-        scene.fog.far = player.floor < 0 ? 22 : 30 + player.floor * 2;
-      }
     }
 
     renderer.render(scene, camera);

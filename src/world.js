@@ -1,12 +1,9 @@
 import {
+  CELL,
   FLOOR_STEP,
-  cellOf,
   generateRoom,
-  registerRoomEdges,
-  registerDecorColliders,
-  buildCollidersFromEdges,
-  buildStairVolume,
-  getFloorLabel,
+  registerRoomColliders,
+  buildCollidersFromMap,
 } from "./roomGen.js";
 import { buildRoomMesh } from "./roomMesh.js";
 
@@ -19,8 +16,7 @@ export class InfiniteWorld {
     this.chunks = new Map();
     this.playerCell = { x: 0, z: 0 };
     this.playerFloor = 0;
-    this.walls = [];
-    this.stairs = [];
+    this.colliders = [];
     this.dirty = true;
   }
 
@@ -36,18 +32,11 @@ export class InfiniteWorld {
   }
 
   rebuildPhysics() {
-    const edgeMap = new Map();
-    this.stairs = [];
-
-    const decorBoxes = [];
+    const map = new Map();
     for (const { room } of this.chunks.values()) {
-      registerRoomEdges(edgeMap, room);
-      registerDecorColliders(decorBoxes, room);
-      const stair = buildStairVolume(room);
-      if (stair) this.stairs.push(stair);
+      registerRoomColliders(map, room);
     }
-
-    this.walls = [...buildCollidersFromEdges(edgeMap), ...decorBoxes];
+    this.colliders = buildCollidersFromMap(map);
     this.dirty = false;
   }
 
@@ -61,8 +50,14 @@ export class InfiniteWorld {
   }
 
   update(playerPos, playerFloor) {
-    const { x: pcx, z: pcz } = cellOf(playerPos);
-    const moved = pcx !== this.playerCell.x || pcz !== this.playerCell.z || playerFloor !== this.playerFloor;
+    const pcx = Math.floor(playerPos.x / CELL);
+    const pcz = Math.floor(playerPos.z / CELL);
+
+    const moved =
+      pcx !== this.playerCell.x ||
+      pcz !== this.playerCell.z ||
+      playerFloor !== this.playerFloor;
+
     if (!moved) return;
 
     this.playerCell = { x: pcx, z: pcz };
@@ -82,10 +77,6 @@ export class InfiniteWorld {
         this.chunks.delete(k);
         mesh.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
-          if (obj.material) {
-            if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-            else obj.material.dispose();
-          }
         });
         this.dirty = true;
       }
@@ -104,29 +95,13 @@ export class InfiniteWorld {
     if (this.dirty) this.rebuildPhysics();
   }
 
-  getWallsForFloor(floor) {
+  getCollidersForFloor(floor) {
     const yMin = floor * FLOOR_STEP - 0.5;
     const yMax = floor * FLOOR_STEP + 3.5;
-    return this.walls.filter((w) => w.maxY > yMin && w.minY < yMax);
+    return this.colliders.filter((c) => c.maxY > yMin && c.minY < yMax);
   }
 
-  getStairs() {
-    return this.stairs;
-  }
-
-  getStairHint(stairs, pos, floor) {
-    for (const s of stairs) {
-      if (floor !== s.lowerFloor && floor !== s.upperFloor) continue;
-      const dx = Math.abs(pos.x - s.cx);
-      const dz = Math.abs(pos.z - s.cz);
-      if (dx > s.width / 2 + 1 || dz > s.depth / 2 + 1) continue;
-      if (floor === s.lowerFloor) return `▲ 위층으로 (W) — ${getFloorLabel(s.upperFloor)}`;
-      return `▼ 아래층으로 (W) — ${getFloorLabel(s.lowerFloor)}`;
-    }
-    return null;
-  }
-
-  getFloorLabel(floor) {
-    return getFloorLabel(floor);
+  getFloorLabel() {
+    return "LEVEL 0 — THE LOBBY";
   }
 }
