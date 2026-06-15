@@ -89,7 +89,14 @@ export function generateRoom(cx, cz) {
     lightSpacing: rng.pick([2.2, 2.5, 2.8]),
   };
   room.panels = generatePanels(rng, room);
+  room.litRatio =
+    room.panels.length > 0 ? room.panels.filter((p) => p.on).length / room.panels.length : 0;
   return room;
+}
+
+/** 0–1 brightness from how many ceiling panels are on in this room */
+export function roomLitStrength(room) {
+  return room.litRatio ?? 0;
 }
 
 function addBox(out, minX, maxX, minZ, maxZ, minY, maxY) {

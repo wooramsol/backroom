@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
+import { roomLitStrength } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
@@ -8,6 +9,9 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_W,
   PANEL_H,
+  CEILING_COLOR,
+  CEILING_EMISSIVE_MIN,
+  CEILING_EMISSIVE_MAX,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -66,9 +70,16 @@ export function buildRoomMesh(room, materials) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.ceiling.clone());
+  const strength = roomLitStrength(room);
+  const ceilingMat = materials.ceiling.clone();
+  ceilingMat.emissive = new THREE.Color(CEILING_COLOR);
+  const ceilingEmissive =
+    CEILING_EMISSIVE_MIN + strength * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
+  ceilingMat.emissiveIntensity = ceilingEmissive;
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
+  ceiling.userData.ceilingEmissive = ceilingEmissive;
   group.add(ceiling);
 
   addCeilingPanels(group, room, materials.lightPanel, h);
