@@ -12,7 +12,7 @@ import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
 import { PanelLightPool } from "./lightPool.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, PANEL_EMISSIVE_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, PANEL_EMISSIVE_INTENSITY, CEILING_BOUNCE_EMISSIVE, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -102,8 +102,14 @@ async function init() {
 
     panelLights.update(player.position, world.chunks, lightT);
 
-    for (const { mesh } of world.chunks.values()) {
+    for (const { mesh, room } of world.chunks.values()) {
+      const litRatio =
+        room.panels.filter((p) => p.on).length / Math.max(1, room.panels.length);
+
       mesh.traverse((obj) => {
+        if (obj.userData?.ceiling) {
+          obj.material.emissiveIntensity = litRatio * CEILING_BOUNCE_EMISSIVE;
+        }
         const panel = obj.userData?.panel;
         if (!panel) return;
         const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
