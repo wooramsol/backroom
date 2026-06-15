@@ -8,8 +8,8 @@ import {
   PANEL_EMISSIVE_INTENSITY,
   PANEL_W,
   PANEL_H,
-  CEILING_COLOR,
-  CEILING_EMISSIVE_MAX,
+  PANEL_RECESS_DEPTH,
+  PANEL_FRAME_PAD,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -41,28 +41,35 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function litPanelRatio(room) {
-  if (!room.panels.length) return 0;
-  return room.panels.filter((p) => p.on).length / room.panels.length;
-}
-
-function addCeilingPanels(group, room, h) {
+/** 매립형 면조명 — 천장 타일 안에 파인 사각 면광원 */
+function addRecessedPanel(group, room, panel, materials, h) {
   const emissive = new THREE.Color(LIGHT_PANEL_COLOR);
+  const yFace = h - PANEL_RECESS_DEPTH;
 
-  for (const panel of room.panels) {
-    const mat = new THREE.MeshStandardMaterial({
+  const frame = new THREE.Mesh(
+    new THREE.PlaneGeometry(PANEL_W + PANEL_FRAME_PAD, PANEL_H + PANEL_FRAME_PAD),
+    materials.ceiling.clone()
+  );
+  frame.rotation.x = Math.PI / 2;
+  frame.position.set(panel.x, h - 0.004, panel.z);
+  frame.renderOrder = 1;
+  group.add(frame);
+
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(PANEL_W, PANEL_H),
+    new THREE.MeshStandardMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
       emissive,
       emissiveIntensity: panel.on ? PANEL_EMISSIVE_INTENSITY * panel.bright : 0,
-      roughness: 0.25,
+      roughness: 0.18,
       metalness: 0,
-    });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PANEL_W, PANEL_H), mat);
-    mesh.userData.panel = panel;
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.set(panel.x, h - 0.05, panel.z);
-    group.add(mesh);
-  }
+    })
+  );
+  face.rotation.x = Math.PI / 2;
+  face.position.set(panel.x, yFace, panel.z);
+  face.renderOrder = 2;
+  face.userData.panel = panel;
+  group.add(face);
 }
 
 export function buildRoomMesh(room, materials) {
@@ -73,16 +80,14 @@ export function buildRoomMesh(room, materials) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const ceilingMat = materials.ceiling.clone();
-  ceilingMat.emissive = new THREE.Color(CEILING_COLOR);
-  ceilingMat.emissiveIntensity = litPanelRatio(room) * CEILING_EMISSIVE_MAX;
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.ceiling.clone());
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
-  ceiling.userData.ceiling = true;
   group.add(ceiling);
 
-  addCeilingPanels(group, room, h);
+  for (const panel of room.panels) {
+    addRecessedPanel(group, room, panel, materials, h);
+  }
 
   const wt = materials.wallTex;
   wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);

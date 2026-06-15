@@ -4,6 +4,7 @@ import {
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
+  PANEL_RECESS_DEPTH,
   LIGHT_POOL_SIZE,
 } from "./constants.js";
 
@@ -28,7 +29,7 @@ export class PanelLightPool {
     for (const { room } of chunks.values()) {
       const ox = room.cx * CHUNK;
       const oz = room.cz * CHUNK;
-      const y = room.height - 0.05;
+      const y = room.height - PANEL_RECESS_DEPTH;
 
       for (const panel of room.panels) {
         if (!panel.on) continue;
