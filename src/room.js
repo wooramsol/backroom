@@ -63,7 +63,7 @@ export function generateRoom(cx, cz) {
     lightSeed: rng.int(0, 99999),
     flicker: rng.range(0, Math.PI * 2),
     lightSpacing: rng.pick([2.2, 2.5, 2.8]),
-    lightsOn: rng.float() > 0.28,
+    lightsOn: rng.chance(0.72),
   };
 }
 
