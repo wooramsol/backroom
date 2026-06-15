@@ -1,6 +1,15 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
-import { WALL_T, DOOR_H, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY } from "./constants.js";
+import {
+  WALL_T,
+  DOOR_H,
+  LIGHT_PANEL_COLOR,
+  LIGHT_PANEL_INTENSITY,
+  FLUORESCENT_LIGHT_COLOR,
+  FLUORESCENT_LIGHT_INTENSITY,
+  FLUORESCENT_LIGHT_DISTANCE,
+  FLUORESCENT_LIGHT_DECAY,
+} from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
@@ -55,6 +64,17 @@ function addCeilingLights(group, room, lightMat, time) {
       panel.rotation.x = Math.PI / 2;
       panel.position.set(x, h - 0.05, z);
       group.add(panel);
+
+      const bulb = new THREE.PointLight(
+        FLUORESCENT_LIGHT_COLOR,
+        FLUORESCENT_LIGHT_INTENSITY * (0.9 + hash(x) * 0.15),
+        FLUORESCENT_LIGHT_DISTANCE,
+        FLUORESCENT_LIGHT_DECAY
+      );
+      bulb.position.set(x, h - 0.12, z);
+      bulb.userData.fluorescent = true;
+      bulb.userData.baseIntensity = bulb.intensity;
+      group.add(bulb);
     }
   }
 }
