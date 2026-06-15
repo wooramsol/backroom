@@ -10,12 +10,11 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR, BASEBOARD_COLOR, CROWN_COLOR, WAINSCOT_COLOR, FLOOR_SHADOW_COLOR, BUILD_TAG } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
-const grade = document.getElementById("grade");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -49,15 +48,13 @@ async function init() {
     carpet: new THREE.MeshLambertMaterial({
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
+      side: THREE.DoubleSide,
     }),
     ceiling: new THREE.MeshLambertMaterial({
       map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
       color: CEILING_COLOR,
+      side: THREE.DoubleSide,
     }),
-    baseboard: new THREE.MeshBasicMaterial({ color: BASEBOARD_COLOR }),
-    wainscot: new THREE.MeshBasicMaterial({ color: WAINSCOT_COLOR }),
-    crown: new THREE.MeshBasicMaterial({ color: CROWN_COLOR }),
-    floorShadow: new THREE.MeshBasicMaterial({ color: FLOOR_SHADOW_COLOR }),
     lightPanel: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),
@@ -77,7 +74,7 @@ async function init() {
       started = true;
       overlay.classList.add("hidden");
       hud.classList.add("visible");
-      hud.textContent = `LEVEL 0 · ${BUILD_TAG}`;
+      vignette.classList.add("visible");
       hum.start();
     }
   });
@@ -102,12 +99,8 @@ async function init() {
           if (!obj.userData?.fluorescent) return;
           const room = mesh.userData.room;
           if (!room) return;
-          const wave = 0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06;
-          if (obj.isLight) {
-            obj.intensity = obj.userData.baseIntensity * wave;
-          } else if (obj.material?.color) {
-            obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * wave);
-          }
+          const f = LIGHT_PANEL_INTENSITY * (0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06);
+          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(f);
         });
       }
     }

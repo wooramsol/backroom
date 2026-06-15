@@ -35,7 +35,7 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  return new THREE.MeshLambertMaterial({ map, color: 0xffffff, ...opts });
+  return new THREE.MeshLambertMaterial({ map, ...opts });
 }
 
 export function tiled(tex, tileM, w, h) {
@@ -45,38 +45,37 @@ export function tiled(tex, tileM, w, h) {
   return t;
 }
 
-/** Dark brown carpet — clearly not wall yellow */
+/** Damp office carpet — classic Level 0 beige (#C2B280) */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {
-    ctx.fillStyle = "#4a3818";
+    ctx.fillStyle = "#c2b280";
     ctx.fillRect(0, 0, size, size);
     for (let y = 0; y < size; y += 3) {
       for (let x = 0; x < size; x += 3) {
-        const v = 88 + ((x * 17 + y * 31) % 30);
-        ctx.fillStyle = `rgb(${v + 2},${v - 8},${v - 36})`;
+        const v = 168 + ((x * 17 + y * 31) % 28);
+        ctx.fillStyle = `rgb(${v + 6},${v},${v - 12})`;
         ctx.fillRect(x, y, 2, 2);
       }
     }
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 200; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.fillStyle = `rgba(20,14,6,${0.06 + Math.random() * 0.1})`;
+      ctx.fillStyle = `rgba(90,80,55,${0.02 + Math.random() * 0.05})`;
       ctx.fillRect(x, y, 4 + Math.random() * 6, 3 + Math.random() * 5);
     }
   });
 }
 
-/** Light ceiling tiles — visible grid vs yellow walls */
+/** Acoustic drop-ceiling — off-white cream */
 export function createCeilingTexture() {
   return canvasTex((ctx, size) => {
     const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 238 + ((x + y) % 7);
-        ctx.fillStyle = `rgb(${v},${v - 2},${v - 10})`;
+        const v = 228 + ((x + y) % 10);
+        ctx.fillStyle = `rgb(${v},${v - 2},${v - 8})`;
         ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(100,92,72,0.55)";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(170,168,155,0.28)";
         ctx.strokeRect(x, y, tile, tile);
       }
     }
