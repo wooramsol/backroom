@@ -12,7 +12,7 @@ import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
 import { PanelLightPool } from "./lightPool.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, PANEL_EMISSIVE_INTENSITY, CEILING_BOUNCE_EMISSIVE, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, PANEL_EMISSIVE_INTENSITY, CEILING_EMISSIVE_MIN, CEILING_EMISSIVE_MAX, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -108,7 +108,8 @@ async function init() {
 
       mesh.traverse((obj) => {
         if (obj.userData?.ceiling) {
-          obj.material.emissiveIntensity = litRatio * CEILING_BOUNCE_EMISSIVE;
+          obj.material.emissiveIntensity =
+            CEILING_EMISSIVE_MIN + litRatio * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
         }
         const panel = obj.userData?.panel;
         if (!panel) return;
