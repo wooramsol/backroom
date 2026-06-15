@@ -1,10 +1,11 @@
 import * as THREE from "three";
-import { EYE_H, PLAYER_R, CHUNK } from "./constants.js";
+import { EYE_H, PLAYER_R, CHUNK, MOUSE_SENS, PITCH_LIMIT } from "./constants.js";
 
 const WALK = 3.2;
 const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
+const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 
 export class Player {
   constructor(camera, domElement) {
@@ -27,9 +28,9 @@ export class Player {
     };
     this._onMouseMove = (e) => {
       if (!this.locked) return;
-      this.yaw -= e.movementX * 0.0022;
-      this.pitch -= e.movementY * 0.0022;
-      this.pitch = THREE.MathUtils.clamp(this.pitch, -1.45, 1.45);
+      this.yaw -= e.movementX * MOUSE_SENS;
+      this.pitch -= e.movementY * MOUSE_SENS;
+      this.pitch = THREE.MathUtils.clamp(this.pitch, -PITCH_LIMIT, PITCH_LIMIT);
     };
     this._onLockChange = () => {
       this.locked = document.pointerLockElement === this.domElement;
@@ -114,8 +115,8 @@ export class Player {
     this.position.y = EYE_H + bobY;
 
     this.camera.position.copy(this.position);
-    this.camera.rotation.order = "YXZ";
-    this.camera.rotation.y = this.yaw;
-    this.camera.rotation.x = this.pitch;
+    this.camera.up.set(0, 1, 0);
+    _lookEuler.set(this.pitch, this.yaw, 0);
+    this.camera.quaternion.setFromEuler(_lookEuler);
   }
 }

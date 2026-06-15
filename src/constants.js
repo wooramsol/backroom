@@ -8,12 +8,17 @@ export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
 export const DOOR_H = 2.2;
 export const DOOR_CLEAR = 0.42;
-/** Fixed ceiling — varying height made doorways look tilted */
+/** Fixed ceiling height */
 export const ROOM_H = 2.7;
 export const MIN_ROOM_H = ROOM_H;
 export const MAX_ROOM_H = ROOM_H;
 export const EYE_H = 1.62;
 export const PLAYER_R = 0.3;
+/** Narrower FOV — 72° caused heavy edge distortion that felt tilted */
+export const CAMERA_FOV = 60;
+export const MOUSE_SENS = 0.0022;
+/** ~±68° — old ±83° made doorways look skewed when looking down */
+export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 6;
 export const FOG_FAR = 30;
 export const FOG_COLOR = 0xc9b87a;
