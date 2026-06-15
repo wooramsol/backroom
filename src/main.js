@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   createCeilingTexture,
@@ -11,7 +12,6 @@ import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
 import { PanelLightPool } from "./lightPool.js";
-import { roomLitStrength } from "./room.js";
 import {
   CHUNK,
   EYE_H,
@@ -25,9 +25,7 @@ import {
   HEMI_INTENSITY,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
-  LIGHT_PANEL_BRIGHT,
-  CEILING_EMISSIVE_MIN,
-  CEILING_EMISSIVE_MAX,
+  LIGHT_PANEL_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -39,7 +37,8 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+RectAreaLightUniformsLib.init();
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -67,9 +66,11 @@ async function init() {
 
   const materials = {
     wallTex: wallpaper,
-    carpet: new THREE.MeshLambertMaterial({
+    carpet: new THREE.MeshStandardMaterial({
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
+      roughness: 0.94,
+      metalness: 0,
       side: THREE.DoubleSide,
     }),
     ceiling: new THREE.MeshLambertMaterial({
@@ -77,7 +78,9 @@ async function init() {
       color: CEILING_COLOR,
       side: THREE.DoubleSide,
     }),
-    lightPanel: new THREE.MeshBasicMaterial({ color: LIGHT_PANEL_COLOR }),
+    lightPanel: new THREE.MeshBasicMaterial({
+      color: LIGHT_PANEL_COLOR,
+    }),
   };
 
   const world = new World(scene, materials);
@@ -118,24 +121,17 @@ async function init() {
 
     panelLights.update(player.position, world.chunks, lightT);
 
-    for (const { mesh, room } of world.chunks.values()) {
-      const strength = roomLitStrength(room);
-      const ceil = mesh.userData.ceiling;
-      if (ceil) {
-        ceil.material.emissiveIntensity =
-          CEILING_EMISSIVE_MIN + strength * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
-      }
-      for (const face of mesh.userData.panels || []) {
-        const panel = face.userData.panel;
+    for (const { mesh } of world.chunks.values()) {
+      mesh.traverse((obj) => {
+        const panel = obj.userData?.panel;
+        if (!panel) return;
         if (panel.on) {
-          const flicker = 0.95 + Math.sin(lightT * 8 + panel.phase) * 0.03;
-          face.material.color
-            .set(LIGHT_PANEL_COLOR)
-            .multiplyScalar(LIGHT_PANEL_BRIGHT * panel.bright * flicker);
+          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
         } else {
-          face.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
+          obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
         }
-      }
+      });
     }
 
     renderer.render(scene, camera);
