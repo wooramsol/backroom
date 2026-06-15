@@ -4,8 +4,11 @@ import {
   WALL_T,
   DOOR_H,
   DOOR_CLEAR,
-  MIN_ROOM_H,
-  MAX_ROOM_H,
+  ROOM_H,
+  MIN_ROOM_W,
+  MAX_ROOM_W,
+  MIN_ROOM_D,
+  MAX_ROOM_D,
 } from "./constants.js";
 
 export { CHUNK };
@@ -20,7 +23,6 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const rng = createRng(ax, az, bx, bz, 42);
   const width = rng.pick([2.0, 2.4, 2.8, 3.2]);
   const maxOff = Math.max(0, CHUNK / 2 - width / 2 - 0.5);
-  // Door must include room center (spawn) so exits are never blocked invisibly
   const centerClear = width / 2 + DOOR_CLEAR - 0.1;
   const cap = Math.min(maxOff, centerClear);
   return {
@@ -31,19 +33,35 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
 
 export function generateRoom(cx, cz) {
   const rng = createRng(cx, cz, 7);
+  const width = rng.range(MIN_ROOM_W, MAX_ROOM_W);
+  const depth = rng.range(MIN_ROOM_D, MAX_ROOM_D);
+  const westOff = CHUNK - width;
+  const northOff = CHUNK - depth;
+
+  const innerDoor = (span) => {
+    const w = rng.pick([1.4, 1.8, 2.2, 2.6]);
+    const maxOff = Math.max(0, span / 2 - w / 2 - 0.35);
+    return { width: Math.min(w, span * 0.5), offset: rng.range(-maxOff, maxOff) };
+  };
+
   return {
     cx,
     cz,
-    height: rng.range(MIN_ROOM_H, MAX_ROOM_H),
+    width,
+    depth,
+    westOff,
+    northOff,
+    height: ROOM_H,
     doors: {
       north: getSharedDoor(cx, cz, cx, cz - 1),
       south: getSharedDoor(cx, cz, cx, cz + 1),
       east: getSharedDoor(cx, cz, cx + 1, cz),
       west: getSharedDoor(cx, cz, cx - 1, cz),
+      innerWest: westOff > 0.5 ? innerDoor(CHUNK - northOff) : null,
+      innerNorth: northOff > 0.5 ? innerDoor(CHUNK - westOff) : null,
     },
     lightSeed: rng.int(0, 99999),
     flicker: rng.range(0, Math.PI * 2),
-    // Visual variety — ceiling light density
     lightSpacing: rng.pick([2.2, 2.5, 2.8]),
   };
 }
@@ -75,6 +93,7 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   addBox(boxes, x - t, x + t, z0, z1, y0 + DOOR_H, yTop);
 }
 
+/** Outer chunk walls only — inner partitions are visual */
 export function registerRoomWalls(map, room) {
   const ox = room.cx * CHUNK;
   const oz = room.cz * CHUNK;

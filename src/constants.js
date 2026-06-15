@@ -8,8 +8,10 @@ export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
 export const DOOR_H = 2.2;
 export const DOOR_CLEAR = 0.42;
-export const MIN_ROOM_H = 2.5;
-export const MAX_ROOM_H = 2.85;
+/** Fixed ceiling — varying height made doorways look tilted */
+export const ROOM_H = 2.7;
+export const MIN_ROOM_H = ROOM_H;
+export const MAX_ROOM_H = ROOM_H;
 export const EYE_H = 1.62;
 export const PLAYER_R = 0.3;
 export const FOG_NEAR = 6;
