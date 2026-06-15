@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
-  createCeilingMaps,
+  createCeilingTexture,
   loadWallpaperOrFallback,
   tiled,
   CARPET_TILE_M,
@@ -11,7 +11,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { PanelLightPool } from "./lightPool.js";
+import { roomLitStrength } from "./room.js";
 import {
   CHUNK,
   EYE_H,
@@ -26,6 +26,8 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
+  PANEL_LIGHT_INTENSITY,
+  ROOM_LIGHT_SCALE,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -62,14 +64,7 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
-  const ceilingMaps = createCeilingMaps();
-  const ceilingColor = tiled(ceilingMaps.color, CEILING_TILE_M, CHUNK, CHUNK);
-  const ceilingEmissive = tiled(ceilingMaps.emissive, CEILING_TILE_M, CHUNK, CHUNK);
-  const ceilingBump = tiled(ceilingMaps.bump, CEILING_TILE_M, CHUNK, CHUNK);
-  const aniso = renderer.capabilities.getMaxAnisotropy();
-  for (const t of [ceilingColor, ceilingEmissive, ceilingBump]) {
-    t.anisotropy = aniso;
-  }
+  const ceilingTex = createCeilingTexture();
 
   const materials = {
     wallTex: wallpaper,
@@ -80,16 +75,9 @@ async function init() {
       metalness: 0,
       side: THREE.DoubleSide,
     }),
-    ceiling: new THREE.MeshStandardMaterial({
-      map: ceilingColor,
-      emissiveMap: ceilingEmissive,
-      bumpMap: ceilingBump,
-      bumpScale: 0.014,
+    ceiling: new THREE.MeshLambertMaterial({
+      map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
       color: CEILING_COLOR,
-      emissive: CEILING_COLOR,
-      emissiveIntensity: 0,
-      roughness: 0.97,
-      metalness: 0,
       side: THREE.DoubleSide,
     }),
     lightPanel: new THREE.MeshBasicMaterial({
@@ -99,7 +87,6 @@ async function init() {
 
   const world = new World(scene, materials);
   world.init();
-  const panelLights = new PanelLightPool(scene);
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
@@ -133,15 +120,20 @@ async function init() {
       hum.tick(lightT);
     }
 
-    panelLights.update(player.position, world.chunks, lightT);
+    for (const { mesh, room } of world.chunks.values()) {
+      const strength = roomLitStrength(room);
+      const flicker = 0.94 + Math.sin(lightT * 8 + room.lightSeed * 0.01) * 0.04;
+      const roomLight = mesh.userData.roomLight;
+      if (roomLight) {
+        roomLight.intensity = PANEL_LIGHT_INTENSITY * strength * ROOM_LIGHT_SCALE * flicker;
+      }
 
-    for (const { mesh } of world.chunks.values()) {
       mesh.traverse((obj) => {
         const panel = obj.userData?.panel;
         if (!panel) return;
         if (panel.on) {
-          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
+          const pf = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * pf);
         } else {
           obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
         }
