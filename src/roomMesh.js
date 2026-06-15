@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
+import { CHUNK, roomLitStrength } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
@@ -43,12 +43,6 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function litRatio(room) {
-  if (!room.panels.length) return 0;
-  return room.panels.filter((p) => p.on).length / room.panels.length;
-}
-
-/** Flush troffer — panel face level with ceiling grid, emissive when ON */
 function addFlushPanel(group, panel, h) {
   const emissive = new THREE.Color(LIGHT_PANEL_COLOR);
   const y = h - PANEL_RECESS_DEPTH;
@@ -73,7 +67,7 @@ function addFlushPanel(group, panel, h) {
 export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const h = room.height;
-  const ratio = litRatio(room);
+  const strength = roomLitStrength(room);
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.carpet.clone());
   floor.rotation.x = -Math.PI / 2;
@@ -82,7 +76,7 @@ export function buildRoomMesh(room, materials) {
   const ceilingMat = materials.ceiling.clone();
   ceilingMat.emissive = new THREE.Color(CEILING_COLOR);
   ceilingMat.emissiveIntensity =
-    CEILING_EMISSIVE_MIN + ratio * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
+    CEILING_EMISSIVE_MIN + strength * (CEILING_EMISSIVE_MAX - CEILING_EMISSIVE_MIN);
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;

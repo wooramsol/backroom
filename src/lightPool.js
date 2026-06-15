@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
+import { CHUNK, roomLitStrength } from "./room.js";
 import {
   PANEL_LIGHT_INTENSITY,
   ROOM_FILL_INTENSITY,
@@ -13,12 +13,7 @@ import {
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const MAX_ROOMS = 30;
 
-function litRatio(room) {
-  if (!room.panels.length) return 0;
-  return room.panels.filter((p) => p.on).length / room.panels.length;
-}
-
-/** Room-wide soft fill + per-panel recessed area lights (reference fluorescent wash) */
+/** Room-wide soft fill + per-panel recessed area lights */
 export class PanelLightPool {
   constructor(scene) {
     this.roomFills = [];
@@ -59,12 +54,12 @@ export class PanelLightPool {
         continue;
       }
       const { room } = chunk;
-      const ratio = litRatio(room);
+      const strength = roomLitStrength(room);
       const ox = room.cx * CHUNK;
       const oz = room.cz * CHUNK;
       fill.position.set(ox + CHUNK / 2, room.height - 0.008, oz + CHUNK / 2);
-      fill.intensity = ratio * ROOM_FILL_INTENSITY;
-      fill.visible = ratio > 0.02;
+      fill.intensity = strength * ROOM_FILL_INTENSITY;
+      fill.visible = strength > 0.06;
     }
 
     for (const { room } of chunks.values()) {

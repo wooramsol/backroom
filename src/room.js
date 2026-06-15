@@ -16,6 +16,17 @@ export { CHUNK };
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
 
+export function roomLitRatio(room) {
+  if (!room.panels?.length) return 0;
+  return room.panels.filter((p) => p.on).length / room.panels.length;
+}
+
+/** Squared curve — rooms with few ON panels stay noticeably darker */
+export function roomLitStrength(room) {
+  const r = roomLitRatio(room);
+  return r * r;
+}
+
 function fract(n) {
   return n - Math.floor(n);
 }
