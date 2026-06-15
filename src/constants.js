@@ -43,8 +43,11 @@ export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Reference Level 0 — pale yellow cream ceiling tiles */
 export const CEILING_COLOR = 0xf5f0c8;
-export const CEILING_EMISSIVE_MIN = 0.1;
-export const CEILING_EMISSIVE_MAX = 0.26;
+/** Keep low — high emissive washes out ceiling tile texture */
+export const CEILING_EMISSIVE_MIN = 0;
+export const CEILING_EMISSIVE_MAX = 0.06;
+/** Fluorescent hum — disabled until re-enabled later */
+export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
