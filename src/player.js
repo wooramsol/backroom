@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { EYE_H, PLAYER_R } from "./constants.js";
+import { EYE_H, PLAYER_R, CHUNK } from "./constants.js";
 
 const WALK = 3.2;
 const RUN = 5.8;
@@ -10,7 +10,7 @@ export class Player {
   constructor(camera, domElement) {
     this.camera = camera;
     this.domElement = domElement;
-    this.position = new THREE.Vector3(0, EYE_H, 0);
+    this.position = new THREE.Vector3(CHUNK / 2, EYE_H, CHUNK / 2);
     this.yaw = 0;
     this.pitch = 0;
     this.keys = {};
@@ -20,6 +20,7 @@ export class Player {
 
     this._onKeyDown = (e) => {
       this.keys[e.code] = true;
+      if (e.code === "KeyR") this._unstuck();
     };
     this._onKeyUp = (e) => {
       this.keys[e.code] = false;
@@ -50,16 +51,8 @@ export class Player {
     this.colliders = colliders;
   }
 
-  _blocked(px, pz) {
-    const r = PLAYER_R;
-    const y = this.position.y;
-    for (const c of this.colliders) {
-      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
-      if (px + r > c.minX && px - r < c.maxX && pz + r > c.minZ && pz - r < c.maxZ) {
-        return c;
-      }
-    }
-    return null;
+  _unstuck() {
+    this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
   }
 
   _pushOut(px, pz) {

@@ -28,7 +28,7 @@ scene.background = new THREE.Color(FOG_COLOR);
 scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 50);
-camera.position.set(0, 1.62, 0);
+camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, 0.55));
 scene.add(new THREE.HemisphereLight(0xfff0c8, 0x4a3a28, 0.35));

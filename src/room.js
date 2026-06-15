@@ -16,7 +16,6 @@ export { CHUNK };
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
 
-/** Shared doorway — position & width identical on both sides */
 export function getSharedDoor(cx0, cz0, cx1, cz1, span) {
   const ax = Math.min(cx0, cx1);
   const az = Math.min(cz0, cz1);
@@ -25,7 +24,7 @@ export function getSharedDoor(cx0, cz0, cx1, cz1, span) {
   const rng = createRng(ax, az, bx, bz, 42);
   const maxW = span * 0.55;
   const width = Math.min(rng.pick([1.6, 2.0, 2.4, 2.8, 3.2]), maxW);
-  const maxOff = span / 2 - width / 2 - 0.45;
+  const maxOff = Math.max(0, span / 2 - width / 2 - 0.45);
   return {
     width,
     offset: rng.range(-maxOff, maxOff),
@@ -41,7 +40,7 @@ export function generateRoom(cx, cz) {
 
   const innerDoor = (span) => {
     const w = rng.pick([1.4, 1.8, 2.2, 2.6]);
-    const maxOff = span / 2 - w / 2 - 0.35;
+    const maxOff = Math.max(0, span / 2 - w / 2 - 0.35);
     return { width: Math.min(w, span * 0.5), offset: rng.range(-maxOff, maxOff) };
   };
 
@@ -58,8 +57,8 @@ export function generateRoom(cx, cz) {
       south: getSharedDoor(cx, cz, cx, cz + 1, CHUNK),
       east: getSharedDoor(cx, cz, cx + 1, cz, CHUNK),
       west: getSharedDoor(cx, cz, cx - 1, cz, CHUNK),
-      innerWest: westOff > 0.5 ? innerDoor(depth - northOff) : null,
-      innerNorth: northOff > 0.5 ? innerDoor(width - westOff) : null,
+      innerWest: westOff > 0.5 ? innerDoor(CHUNK - northOff) : null,
+      innerNorth: northOff > 0.5 ? innerDoor(CHUNK - westOff) : null,
     },
     lightSeed: rng.int(0, 99999),
     flicker: rng.range(0, Math.PI * 2),
@@ -71,26 +70,28 @@ function addBox(out, minX, maxX, minZ, maxZ, minY, maxY) {
   out.push({ minX, maxX, minZ, maxZ, minY, maxY });
 }
 
-function wallAlongZ(boxes, z, x0, span, door, y0, yTop) {
+/** Wall along constant Z; xCenter is wall center X, xSpan half-width along X */
+function wallAlongZ(boxes, z, xCenter, xSpan, door, y0, yTop) {
   const t = WALL_T;
-  const dc = x0 + door.offset;
+  const dc = xCenter + door.offset;
   const half = door.width / 2 + DOOR_CLEAR;
   const lo = dc - half;
   const hi = dc + half;
-  addBox(boxes, x0 - span, lo, z - t, z + t, y0, y0 + DOOR_H);
-  addBox(boxes, hi, x0 + span, z - t, z + t, y0, y0 + DOOR_H);
-  addBox(boxes, x0 - span, x0 + span, z - t, z + t, y0 + DOOR_H, yTop);
+  addBox(boxes, xCenter - xSpan, lo, z - t, z + t, y0, y0 + DOOR_H);
+  addBox(boxes, hi, xCenter + xSpan, z - t, z + t, y0, y0 + DOOR_H);
+  addBox(boxes, xCenter - xSpan, xCenter + xSpan, z - t, z + t, y0 + DOOR_H, yTop);
 }
 
-function wallAlongX(boxes, x, z0, span, door, y0, yTop) {
+/** Wall along constant X; zCenter is wall center Z */
+function wallAlongX(boxes, x, zCenter, zSpan, door, y0, yTop) {
   const t = WALL_T;
-  const dc = z0 + door.offset;
+  const dc = zCenter + door.offset;
   const half = door.width / 2 + DOOR_CLEAR;
   const lo = dc - half;
   const hi = dc + half;
-  addBox(boxes, x - t, x + t, z0 - span, lo, y0, y0 + DOOR_H);
-  addBox(boxes, x - t, x + t, hi, z0 + span, y0, y0 + DOOR_H);
-  addBox(boxes, x - t, x + t, z0 - span, z0 + span, y0 + DOOR_H, yTop);
+  addBox(boxes, x - t, x + t, zCenter - zSpan, lo, y0, y0 + DOOR_H);
+  addBox(boxes, x - t, x + t, hi, zCenter + zSpan, y0, y0 + DOOR_H);
+  addBox(boxes, x - t, x + t, zCenter - zSpan, zCenter + zSpan, y0 + DOOR_H, yTop);
 }
 
 export function registerRoomWalls(map, room) {
@@ -98,51 +99,42 @@ export function registerRoomWalls(map, room) {
   const oz = room.cz * CHUNK;
   const y0 = 0;
   const yTop = room.height;
-  const hw = CHUNK / 2;
+  const midX = ox + CHUNK / 2;
+  const midZ = oz + CHUNK / 2;
+  const half = CHUNK / 2;
 
   const put = (key, fn) => {
     if (!map.has(key)) map.set(key, fn());
   };
 
-  put(`n,${room.cx},${room.cz - 1}`, () => {
+  // South + east only — north/west owned by neighbor (no duplicate invisible walls)
+  put(`h,${room.cx},${room.cz}`, () => {
     const b = [];
-    wallAlongZ(b, oz, ox, hw, room.doors.north, y0, yTop);
+    wallAlongZ(b, oz + CHUNK, midX, half, room.doors.south, y0, yTop);
     return b;
   });
-  put(`s,${room.cx},${room.cz}`, () => {
+  put(`v,${room.cx},${room.cz}`, () => {
     const b = [];
-    wallAlongZ(b, oz + CHUNK, ox, hw, room.doors.south, y0, yTop);
-    return b;
-  });
-  put(`e,${room.cx},${room.cz}`, () => {
-    const b = [];
-    wallAlongX(b, ox + CHUNK, oz, hw, room.doors.east, y0, yTop);
-    return b;
-  });
-  put(`w,${room.cx - 1},${room.cz}`, () => {
-    const b = [];
-    wallAlongX(b, ox, oz, hw, room.doors.west, y0, yTop);
+    wallAlongX(b, ox + CHUNK, midZ, half, room.doors.east, y0, yTop);
     return b;
   });
 
-  if (room.doors.innerWest) {
+  if (room.westOff > 0.5 && room.doors.innerWest) {
     put(`iw,${room.cx},${room.cz}`, () => {
       const b = [];
-      const wallX = ox + room.westOff;
       const z0 = oz + room.northOff;
       const z1 = oz + CHUNK;
-      wallAlongX(b, wallX, (z0 + z1) / 2, (z1 - z0) / 2, room.doors.innerWest, y0, yTop);
+      wallAlongX(b, ox + room.westOff, (z0 + z1) / 2, (z1 - z0) / 2, room.doors.innerWest, y0, yTop);
       return b;
     });
   }
 
-  if (room.doors.innerNorth) {
+  if (room.northOff > 0.5 && room.doors.innerNorth) {
     put(`in,${room.cx},${room.cz}`, () => {
       const b = [];
-      const wallZ = oz + room.northOff;
       const x0 = ox + room.westOff;
       const x1 = ox + CHUNK;
-      wallAlongZ(b, wallZ, (x0 + x1) / 2, (x1 - x0) / 2, room.doors.innerNorth, y0, yTop);
+      wallAlongZ(b, oz + room.northOff, (x0 + x1) / 2, (x1 - x0) / 2, room.doors.innerNorth, y0, yTop);
       return b;
     });
   }

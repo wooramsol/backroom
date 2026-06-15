@@ -3,7 +3,7 @@ import { CHUNK } from "./room.js";
 import { WALL_T, DOOR_H } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
-function wallSeg(group, wallTex, y0, h, axis, pos, a0, a1, door) {
+function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
@@ -23,11 +23,11 @@ function wallSeg(group, wallTex, y0, h, axis, pos, a0, a1, door) {
   };
 
   if (door) {
-    add(a0, mid - dw, DOOR_H, y0);
-    add(mid + dw, a1, DOOR_H, y0);
-    add(a0, a1, h - DOOR_H, y0 + DOOR_H);
+    add(a0, mid - dw, DOOR_H, 0);
+    add(mid + dw, a1, DOOR_H, 0);
+    add(a0, a1, h - DOOR_H, DOOR_H);
   } else {
-    add(a0, a1, h, y0);
+    add(a0, a1, h, 0);
   }
 }
 
@@ -39,14 +39,10 @@ function addCeilingLights(group, room, lightMat, time) {
   const h = room.height;
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
   const flicker = 0.88 + Math.sin(time * 8 + room.flicker) * 0.06;
-  const x0 = room.westOff - CHUNK / 2;
-  const z0 = room.northOff - CHUNK / 2;
-  const x1 = CHUNK / 2;
-  const z1 = CHUNK / 2;
   const spacing = 2.5;
 
-  for (let x = x0 + spacing / 2; x < x1; x += spacing) {
-    for (let z = z0 + spacing / 2; z < z1; z += spacing) {
+  for (let x = room.westOff + spacing / 2; x < CHUNK; x += spacing) {
+    for (let z = room.northOff + spacing / 2; z < CHUNK; z += spacing) {
       if (hash(x * 3.1 + z) < 0.1) continue;
       const panel = new THREE.Mesh(
         new THREE.PlaneGeometry(1.15, 0.42),
@@ -63,14 +59,7 @@ function addCeilingLights(group, room, lightMat, time) {
 export function buildRoomMesh(room, materials, time = 0) {
   const group = new THREE.Group();
   const h = room.height;
-  const ox = room.westOff - CHUNK / 2;
-  const oz = room.northOff - CHUNK / 2;
-  const w = room.width;
-  const d = room.depth;
-  const cx = ox + w / 2;
-  const cz = oz + d / 2;
 
-  // Full chunk floor — flat through doorways (no threshold)
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(CHUNK, CHUNK),
     materials.carpet
@@ -89,24 +78,18 @@ export function buildRoomMesh(room, materials, time = 0) {
   addCeilingLights(group, room, materials.lightPanel, time);
 
   const wt = materials.wallTex;
-  const hw = CHUNK / 2;
 
-  // Chunk boundary walls (neighbor connections)
-  wallSeg(group, wt, 0, h, "z", -hw, -hw, hw, room.doors.north);
-  wallSeg(group, wt, 0, h, "z", hw, -hw, hw, room.doors.south);
-  wallSeg(group, wt, 0, h, "x", -hw, -hw, hw, room.doors.west);
-  wallSeg(group, wt, 0, h, "x", hw, -hw, hw, room.doors.east);
+  // Local coords 0 … CHUNK — matches collision exactly
+  wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);
+  wallSeg(group, wt, h, "z", CHUNK, 0, CHUNK, room.doors.south);
+  wallSeg(group, wt, h, "x", 0, 0, CHUNK, room.doors.west);
+  wallSeg(group, wt, h, "x", CHUNK, 0, CHUNK, room.doors.east);
 
-  // Inner walls — vary effective room size
   if (room.doors.innerWest) {
-    const zA = oz;
-    const zB = oz + d;
-    wallSeg(group, wt, 0, h, "x", ox, zA, zB, room.doors.innerWest);
+    wallSeg(group, wt, h, "x", room.westOff, room.northOff, CHUNK, room.doors.innerWest);
   }
   if (room.doors.innerNorth) {
-    const xA = ox;
-    const xB = ox + w;
-    wallSeg(group, wt, 0, h, "z", oz, xA, xB, room.doors.innerNorth);
+    wallSeg(group, wt, h, "z", room.northOff, room.westOff, CHUNK, room.doors.innerNorth);
   }
 
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
