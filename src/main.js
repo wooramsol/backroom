@@ -87,31 +87,31 @@ async function init() {
     const dt = Math.min(clock.getDelta(), 0.05);
     lightT += dt;
 
+    world.tick(dt);
+    world.update(player.position);
+    player.setColliders(world.getColliders());
     if (started) {
-      world.tick(dt);
-      world.update(player.position);
-      player.setColliders(world.getColliders());
       player.update(dt);
       hum.tick(lightT);
+    }
 
-      for (const { mesh } of world.chunks.values()) {
-        const room = mesh.userData.room;
-        if (!room) continue;
-        const on = room.lightsOn;
-        const flicker = on ? 0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06 : 1;
-        mesh.traverse((obj) => {
-          if (obj.userData?.fluorescent) {
-            if (on) {
-              obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * flicker);
-            } else {
-              obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
-            }
+    for (const { mesh } of world.chunks.values()) {
+      const room = mesh.userData.room;
+      if (!room) continue;
+      const on = room.lightsOn;
+      const flicker = on ? 0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06 : 1;
+      mesh.traverse((obj) => {
+        if (obj.userData?.fluorescent) {
+          if (on) {
+            obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * flicker);
+          } else {
+            obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
           }
-          if (obj.userData?.panelLight) {
-            obj.intensity = on ? obj.userData.baseIntensity * flicker : 0;
-          }
-        });
-      }
+        }
+        if (obj.userData?.roomLight) {
+          obj.intensity = on ? obj.userData.baseIntensity * flicker : 0;
+        }
+      });
     }
 
     renderer.render(scene, camera);

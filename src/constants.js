@@ -20,22 +20,23 @@ export const CAMERA_FOV = 60;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 8;
-export const FOG_FAR = 36;
-export const FOG_COLOR = 0x0a0908;
-export const AMBIENT_COLOR = 0x908878;
-export const AMBIENT_INTENSITY = 0.06;
-export const HEMI_SKY = 0x605848;
-export const HEMI_GROUND = 0x201810;
-export const HEMI_INTENSITY = 0.04;
+export const FOG_NEAR = 10;
+export const FOG_FAR = 42;
+export const FOG_COLOR = 0x1a1810;
+/** Low fill — lit rooms come from ceiling fixtures, not sky */
+export const AMBIENT_COLOR = 0xa09888;
+export const AMBIENT_INTENSITY = 0.14;
+export const HEMI_SKY = 0x807868;
+export const HEMI_GROUND = 0x302820;
+export const HEMI_INTENSITY = 0.08;
 export const LIGHT_PANEL_COLOR = 0xfff6e0;
-export const LIGHT_PANEL_OFF_COLOR = 0x1a1814;
+export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 export const LIGHT_PANEL_INTENSITY = 0.95;
-/** Each ceiling panel casts a real point light */
-export const PANEL_POINT_INTENSITY = 2.1;
-export const PANEL_POINT_DISTANCE = 6.2;
-export const PANEL_POINT_DECAY = 2;
-export const TONE_MAPPING_EXPOSURE = 1.15;
+/** Real point lights per lit room (candela — Three.js physical units) */
+export const ROOM_POINT_INTENSITY = 150;
+export const ROOM_POINT_DISTANCE = 14;
+export const ROOM_POINT_DECAY = 2;
+export const TONE_MAPPING_EXPOSURE = 1.05;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf5f0c8;
 export const WALL_COLOR = 0xffffff;

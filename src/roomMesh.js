@@ -6,9 +6,9 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_POINT_INTENSITY,
-  PANEL_POINT_DISTANCE,
-  PANEL_POINT_DECAY,
+  ROOM_POINT_INTENSITY,
+  ROOM_POINT_DISTANCE,
+  ROOM_POINT_DECAY,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -44,7 +44,8 @@ function fract(n) {
   return n - Math.floor(n);
 }
 
-function addCeilingLights(group, room, lightMat) {
+/** Glowing panel mesh — visual only; room PointLights do the actual illumination */
+function addCeilingPanels(group, room, lightMat) {
   const h = room.height;
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
   const spacing = room.lightSpacing || 2.5;
@@ -63,14 +64,34 @@ function addCeilingLights(group, room, lightMat) {
       panel.rotation.x = Math.PI / 2;
       panel.position.set(x, h - 0.05, z);
       group.add(panel);
-
-      const bulb = new THREE.PointLight(0xfff4d8, 0, PANEL_POINT_DISTANCE, PANEL_POINT_DECAY);
-      bulb.position.set(x, h - 0.12, z);
-      bulb.userData.panelLight = true;
-      bulb.userData.baseIntensity = PANEL_POINT_INTENSITY * (0.9 + hash(z + x) * 0.15);
-      if (on) bulb.intensity = bulb.userData.baseIntensity;
-      group.add(bulb);
     }
+  }
+}
+
+/** A few ceiling fixtures per lit room — stays within WebGL light limits */
+function addRoomPointLights(group, room, h) {
+  if (!room.lightsOn) return;
+
+  const x0 = room.westOff + 2;
+  const x1 = CHUNK - 2;
+  const z0 = room.northOff + 2;
+  const z1 = CHUNK - 2;
+  const spots = [
+    [(x0 + x1) * 0.5, (z0 + z1) * 0.5],
+    [x0 + 1.2, z1 - 1.2],
+  ];
+
+  for (const [x, z] of spots) {
+    const bulb = new THREE.PointLight(
+      0xfff4d8,
+      ROOM_POINT_INTENSITY,
+      ROOM_POINT_DISTANCE,
+      ROOM_POINT_DECAY
+    );
+    bulb.position.set(x, h - 0.12, z);
+    bulb.userData.roomLight = true;
+    bulb.userData.baseIntensity = ROOM_POINT_INTENSITY;
+    group.add(bulb);
   }
 }
 
@@ -87,7 +108,8 @@ export function buildRoomMesh(room, materials) {
   ceiling.position.y = h;
   group.add(ceiling);
 
-  addCeilingLights(group, room, materials.lightPanel);
+  addCeilingPanels(group, room, materials.lightPanel);
+  addRoomPointLights(group, room, h);
 
   const wt = materials.wallTex;
   wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);
