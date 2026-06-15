@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
-export const WALL_TILE_M = 0.6;
+/** One wallpaper tile ≈ 30 cm × 30 cm in world space */
+export const WALL_TILE_M = 0.3;
 export const CARPET_TILE_M = 0.5;
 export const CEILING_TILE_M = 0.6;
 

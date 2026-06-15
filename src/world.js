@@ -1,4 +1,4 @@
-import { CELL, generateRoom, registerRoomWalls, collidersFromMap } from "./room.js";
+import { CHUNK, generateRoom, registerRoomWalls, collidersFromMap } from "./room.js";
 import { buildRoomMesh } from "./roomMesh.js";
 
 const GRID_RADIUS = 2;
@@ -44,8 +44,8 @@ export class World {
   }
 
   update(playerPos) {
-    const cx = Math.floor((playerPos.x + CELL / 2) / CELL);
-    const cz = Math.floor((playerPos.z + CELL / 2) / CELL);
+    const cx = Math.floor((playerPos.x + CHUNK / 2) / CHUNK);
+    const cz = Math.floor((playerPos.z + CHUNK / 2) / CHUNK);
 
     if (cx === this.cell.x && cz === this.cell.z) return;
     this.cell = { x: cx, z: cz };

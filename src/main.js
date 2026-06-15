@@ -10,7 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CELL, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR } from "./constants.js";
+import { CHUNK, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -44,11 +44,11 @@ async function init() {
   const materials = {
     wallTex: wallpaper,
     carpet: new THREE.MeshLambertMaterial({
-      map: tiled(carpetTex, CARPET_TILE_M, CELL, CELL),
+      map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       side: THREE.DoubleSide,
     }),
     ceiling: new THREE.MeshLambertMaterial({
-      map: tiled(ceilingTex, CEILING_TILE_M, CELL, CELL),
+      map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
       side: THREE.DoubleSide,
     }),
     lightPanel: new THREE.MeshStandardMaterial({
@@ -57,10 +57,7 @@ async function init() {
       emissiveIntensity: 0.95,
       roughness: 0.9,
     }),
-    baseboard: new THREE.MeshLambertMaterial({ color: 0x8a7a58 }),
   };
-
-  const world = new World(scene, materials);
   world.init();
 
   const player = new Player(camera, renderer.domElement);

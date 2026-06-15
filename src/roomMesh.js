@@ -1,10 +1,9 @@
 import * as THREE from "three";
-import { CELL, HW } from "./room.js";
+import { CHUNK } from "./room.js";
 import { WALL_T, DOOR_H } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
 function wallSeg(group, wallTex, y0, h, axis, pos, a0, a1, door) {
-  const len = a1 - a0;
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
@@ -39,19 +38,23 @@ function fract(n) {
 function addCeilingLights(group, room, lightMat, time) {
   const h = room.height;
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
-  const spacing = 2.4;
-  const flicker = 0.88 + Math.sin(time * 8 + room.flicker) * 0.06 + Math.sin(time * 13.7) * 0.03;
+  const flicker = 0.88 + Math.sin(time * 8 + room.flicker) * 0.06;
+  const x0 = room.westOff - CHUNK / 2;
+  const z0 = room.northOff - CHUNK / 2;
+  const x1 = CHUNK / 2;
+  const z1 = CHUNK / 2;
+  const spacing = 2.5;
 
-  for (let x = -HW + spacing / 2; x < HW; x += spacing) {
-    for (let z = -HW + spacing / 2; z < HW; z += spacing) {
-      if (hash(x * 3.1 + z) < 0.12) continue;
+  for (let x = x0 + spacing / 2; x < x1; x += spacing) {
+    for (let z = z0 + spacing / 2; z < z1; z += spacing) {
+      if (hash(x * 3.1 + z) < 0.1) continue;
       const panel = new THREE.Mesh(
         new THREE.PlaneGeometry(1.15, 0.42),
         lightMat.clone()
       );
       panel.material.emissiveIntensity = flicker * (0.9 + hash(z) * 0.15);
       panel.rotation.x = Math.PI / 2;
-      panel.position.set(x, h - 0.06, z);
+      panel.position.set(x, h - 0.05, z);
       group.add(panel);
     }
   }
@@ -60,19 +63,23 @@ function addCeilingLights(group, room, lightMat, time) {
 export function buildRoomMesh(room, materials, time = 0) {
   const group = new THREE.Group();
   const h = room.height;
-  const y0 = 0;
-  const span = HW;
+  const ox = room.westOff - CHUNK / 2;
+  const oz = room.northOff - CHUNK / 2;
+  const w = room.width;
+  const d = room.depth;
+  const cx = ox + w / 2;
+  const cz = oz + d / 2;
 
+  // Full chunk floor — flat through doorways (no threshold)
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(CELL, CELL),
+    new THREE.PlaneGeometry(CHUNK, CHUNK),
     materials.carpet
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = y0;
   group.add(floor);
 
   const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(CELL, CELL),
+    new THREE.PlaneGeometry(CHUNK, CHUNK),
     materials.ceiling
   );
   ceiling.rotation.x = Math.PI / 2;
@@ -82,27 +89,27 @@ export function buildRoomMesh(room, materials, time = 0) {
   addCeilingLights(group, room, materials.lightPanel, time);
 
   const wt = materials.wallTex;
-  wallSeg(group, wt, y0, h, "z", -span, -span, span, room.doors.north);
-  wallSeg(group, wt, y0, h, "z", span, -span, span, room.doors.south);
-  wallSeg(group, wt, y0, h, "x", -span, -span, span, room.doors.west);
-  wallSeg(group, wt, y0, h, "x", span, -span, span, room.doors.east);
+  const hw = CHUNK / 2;
 
-  const baseboardH = 0.12;
-  const baseGeo = new THREE.BoxGeometry(CELL, baseboardH, 0.06);
-  const baseMat = materials.baseboard;
-  for (const z of [-span + 0.04, span - 0.04]) {
-    const b = new THREE.Mesh(baseGeo, baseMat);
-    b.position.set(0, baseboardH / 2, z);
-    group.add(b);
+  // Chunk boundary walls (neighbor connections)
+  wallSeg(group, wt, 0, h, "z", -hw, -hw, hw, room.doors.north);
+  wallSeg(group, wt, 0, h, "z", hw, -hw, hw, room.doors.south);
+  wallSeg(group, wt, 0, h, "x", -hw, -hw, hw, room.doors.west);
+  wallSeg(group, wt, 0, h, "x", hw, -hw, hw, room.doors.east);
+
+  // Inner walls — vary effective room size
+  if (room.doors.innerWest) {
+    const zA = oz;
+    const zB = oz + d;
+    wallSeg(group, wt, 0, h, "x", ox, zA, zB, room.doors.innerWest);
   }
-  const baseGeoZ = new THREE.BoxGeometry(0.06, baseboardH, CELL);
-  for (const x of [-span + 0.04, span - 0.04]) {
-    const b = new THREE.Mesh(baseGeoZ, baseMat);
-    b.position.set(x, baseboardH / 2, 0);
-    group.add(b);
+  if (room.doors.innerNorth) {
+    const xA = ox;
+    const xB = ox + w;
+    wallSeg(group, wt, 0, h, "z", oz, xA, xB, room.doors.innerNorth);
   }
 
-  group.position.set(room.cx * CELL, 0, room.cz * CELL);
+  group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   group.userData.room = room;
   return group;
 }
