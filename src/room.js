@@ -93,7 +93,7 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   addBox(boxes, x - t, x + t, z0, z1, y0 + DOOR_H, yTop);
 }
 
-/** Outer chunk walls only — inner partitions are visual */
+/** Outer + inner walls — all visible walls block movement */
 export function registerRoomWalls(map, room) {
   const ox = room.cx * CHUNK;
   const oz = room.cz * CHUNK;
@@ -118,6 +118,22 @@ export function registerRoomWalls(map, room) {
     wallAlongZ(b, z1, x0, x1, room.doors.south, y0, yTop);
     return b;
   });
+
+  if (room.westOff > 0.5 && room.doors.innerWest) {
+    put(`iw,${room.cx},${room.cz}`, () => {
+      const b = [];
+      wallAlongX(b, ox + room.westOff, oz + room.northOff, oz + CHUNK, room.doors.innerWest, y0, yTop);
+      return b;
+    });
+  }
+
+  if (room.northOff > 0.5 && room.doors.innerNorth) {
+    put(`in,${room.cx},${room.cz}`, () => {
+      const b = [];
+      wallAlongZ(b, oz + room.northOff, ox + room.westOff, ox + CHUNK, room.doors.innerNorth, y0, yTop);
+      return b;
+    });
+  }
 }
 
 export function collidersFromMap(map) {
