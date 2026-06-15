@@ -59,7 +59,7 @@ export function createCeilingTexture() {
     const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 192 + ((x + y) % 16);
+        const v = 168 + ((x + y) % 14);
         ctx.fillStyle = `rgb(${v},${v},${v - 6})`;
         ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
         ctx.strokeStyle = "rgba(120,120,115,0.5)";

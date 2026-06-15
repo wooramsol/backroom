@@ -10,7 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -20,6 +20,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "h
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
 renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1";
 document.body.appendChild(renderer.domElement);
 
@@ -30,8 +32,8 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
-scene.add(new THREE.AmbientLight(AMBIENT_COLOR, 0.55));
-scene.add(new THREE.HemisphereLight(0xfff0c8, 0x4a3a28, 0.35));
+scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
+scene.add(new THREE.HemisphereLight(HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY));
 
 const hum = new FluorescentHum();
 
@@ -51,11 +53,8 @@ async function init() {
       map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
       side: THREE.DoubleSide,
     }),
-    lightPanel: new THREE.MeshStandardMaterial({
-      color: 0xfff8d8,
-      emissive: 0xfff0b0,
-      emissiveIntensity: 0.95,
-      roughness: 0.9,
+    lightPanel: new THREE.MeshBasicMaterial({
+      color: LIGHT_PANEL_COLOR,
     }),
   };
 
@@ -95,12 +94,11 @@ async function init() {
 
       for (const { mesh } of world.chunks.values()) {
         mesh.traverse((obj) => {
-          if (obj.isMesh && obj.material?.emissive) {
-            const room = mesh.userData.room;
-            if (!room) return;
-            const f = 0.88 + Math.sin(lightT * 8 + room.flicker) * 0.07;
-            obj.material.emissiveIntensity = f;
-          }
+          if (!obj.userData?.fluorescent) return;
+          const room = mesh.userData.room;
+          if (!room) return;
+          const f = LIGHT_PANEL_INTENSITY * (0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06);
+          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(f);
         });
       }
     }
