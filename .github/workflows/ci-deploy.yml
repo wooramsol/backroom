@@ -26,6 +26,13 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Require user-provided wallpaper
+        run: |
+          if [ ! -f public/assets/backroom_wallpaper.webp ]; then
+            echo "::error::Add your wallpaper at public/assets/backroom_wallpaper.webp (do not auto-generate)."
+            exit 1
+          fi
+
       - run: npm ci
       - run: npm run build
         env:

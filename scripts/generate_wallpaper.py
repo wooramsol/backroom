@@ -9,5 +9,9 @@ vertical repeat keeps the original aspect ratio.
 """
 import sys
 
-print(__doc__)
-sys.exit(0)
+print(__doc__, file=sys.stderr)
+print(
+    "Error: wallpaper must be provided by the user at public/assets/backroom_wallpaper.webp",
+    file=sys.stderr,
+)
+sys.exit(1)
