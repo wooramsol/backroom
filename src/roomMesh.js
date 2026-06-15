@@ -1,89 +1,108 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { WALL_THICK, FLOOR_STEP, CELL } from "./roomGen.js";
+import { CELL, HW } from "./room.js";
+import { WALL_T, DOOR_H } from "./constants.js";
+import { createTiledMaterial } from "./textures.js";
 
-function shapeFromVerts(verts) {
-  const shape = new THREE.Shape();
-  shape.moveTo(verts[0][0], verts[0][1]);
-  for (let i = 1; i < verts.length; i++) shape.lineTo(verts[i][0], verts[i][1]);
-  shape.closePath();
-  return shape;
-}
+function wallSeg(group, wallTex, y0, h, axis, pos, a0, a1, door) {
+  const len = a1 - a0;
+  const mid = (a0 + a1) / 2 + (door?.offset || 0);
+  const dw = door ? door.width / 2 : 0;
 
-function wallBoxes(edge, roomH, door) {
-  const geos = [];
-  const dx = edge.v1[0] - edge.v0[0];
-  const dz = edge.v1[1] - edge.v0[1];
-  const len = edge.len;
-  const ux = dx / len;
-  const uz = dz / len;
-  const angle = Math.atan2(dx, dz);
-  const nx = edge.normal[0];
-  const nz = edge.normal[1];
-
-  const addBox = (t0, tLen, h, y) => {
-    if (tLen < 0.12) return;
-    const mx = edge.v0[0] + ux * (t0 + tLen / 2) + nx * (WALL_THICK / 2);
-    const mz = edge.v0[1] + uz * (t0 + tLen / 2) + nz * (WALL_THICK / 2);
-    const g = new THREE.BoxGeometry(tLen, h, WALL_THICK);
-    g.rotateY(angle);
-    g.translate(mx, y + h / 2, mz);
-    geos.push(g);
+  const add = (s0, s1, segH, segY) => {
+    const slen = s1 - s0;
+    if (slen < 0.1) return;
+    const smid = (s0 + s1) / 2;
+    const geo =
+      axis === "z"
+        ? new THREE.BoxGeometry(slen, segH, WALL_T)
+        : new THREE.BoxGeometry(WALL_T, segH, slen);
+    const mat = createTiledMaterial(wallTex, slen, segH);
+    const m = new THREE.Mesh(geo, mat);
+    if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
+    else m.position.set(pos, segY + segH / 2, smid);
+    group.add(m);
   };
 
   if (door) {
-    const half = door.width / 2;
-    const mid = len / 2 + door.offset;
-    const d0 = mid - half;
-    const d1 = mid + half;
-    addBox(0, d0, door.height, 0);
-    addBox(d1, len - d1, door.height, 0);
-    addBox(0, len, roomH - door.height, door.height);
+    add(a0, mid - dw, DOOR_H, y0);
+    add(mid + dw, a1, DOOR_H, y0);
+    add(a0, a1, h - DOOR_H, y0 + DOOR_H);
   } else {
-    addBox(0, len, roomH, 0);
+    add(a0, a1, h, y0);
   }
-
-  return geos;
 }
 
-export function buildRoomMesh(room, materials) {
-  const group = new THREE.Group();
-  const y0 = room.floorLevel * FLOOR_STEP;
-  const shape = shapeFromVerts(room.vertices);
+function fract(n) {
+  return n - Math.floor(n);
+}
 
-  const floorGeo = new THREE.ShapeGeometry(shape);
-  floorGeo.rotateX(-Math.PI / 2);
-  const floor = new THREE.Mesh(floorGeo, room.isBasement ? materials.basementFloor : materials.floor);
+function addCeilingLights(group, room, lightMat, time) {
+  const h = room.height;
+  const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
+  const spacing = 2.4;
+  const flicker = 0.88 + Math.sin(time * 8 + room.flicker) * 0.06 + Math.sin(time * 13.7) * 0.03;
+
+  for (let x = -HW + spacing / 2; x < HW; x += spacing) {
+    for (let z = -HW + spacing / 2; z < HW; z += spacing) {
+      if (hash(x * 3.1 + z) < 0.12) continue;
+      const panel = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.15, 0.42),
+        lightMat.clone()
+      );
+      panel.material.emissiveIntensity = flicker * (0.9 + hash(z) * 0.15);
+      panel.rotation.x = Math.PI / 2;
+      panel.position.set(x, h - 0.06, z);
+      group.add(panel);
+    }
+  }
+}
+
+export function buildRoomMesh(room, materials, time = 0) {
+  const group = new THREE.Group();
+  const h = room.height;
+  const y0 = 0;
+  const span = HW;
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(CELL, CELL),
+    materials.carpet
+  );
+  floor.rotation.x = -Math.PI / 2;
   floor.position.y = y0;
   group.add(floor);
 
-  const ceilGeo = new THREE.ShapeGeometry(shape);
-  ceilGeo.rotateX(Math.PI / 2);
-  const ceiling = new THREE.Mesh(ceilGeo, materials.ceiling);
-  ceiling.position.y = y0 + room.height;
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(CELL, CELL),
+    materials.ceiling
+  );
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = h;
   group.add(ceiling);
 
-  const lightGeo = new THREE.PlaneGeometry(1.2, 0.3);
-  const light = new THREE.Mesh(lightGeo, materials.lightPanel);
-  light.rotation.x = -Math.PI / 2;
-  const cx = room.vertices.reduce((s, v) => s + v[0], 0) / room.vertices.length;
-  const cz = room.vertices.reduce((s, v) => s + v[1], 0) / room.vertices.length;
-  light.position.set(cx, y0 + room.height - 0.05, cz);
-  group.add(light);
+  addCeilingLights(group, room, materials.lightPanel, time);
 
-  const wallGeos = [];
-  const wallMat = room.isBasement ? materials.basementWall : materials.wall;
-  for (const edge of room.edges) {
-    wallGeos.push(...wallBoxes(edge, room.height, edge.door));
+  const wt = materials.wallTex;
+  wallSeg(group, wt, y0, h, "z", -span, -span, span, room.doors.north);
+  wallSeg(group, wt, y0, h, "z", span, -span, span, room.doors.south);
+  wallSeg(group, wt, y0, h, "x", -span, -span, span, room.doors.west);
+  wallSeg(group, wt, y0, h, "x", span, -span, span, room.doors.east);
+
+  const baseboardH = 0.12;
+  const baseGeo = new THREE.BoxGeometry(CELL, baseboardH, 0.06);
+  const baseMat = materials.baseboard;
+  for (const z of [-span + 0.04, span - 0.04]) {
+    const b = new THREE.Mesh(baseGeo, baseMat);
+    b.position.set(0, baseboardH / 2, z);
+    group.add(b);
   }
-
-  if (wallGeos.length) {
-    const merged = mergeGeometries(wallGeos, false);
-    wallGeos.forEach((g) => g.dispose());
-    merged.translate(0, y0, 0);
-    group.add(new THREE.Mesh(merged, wallMat));
+  const baseGeoZ = new THREE.BoxGeometry(0.06, baseboardH, CELL);
+  for (const x of [-span + 0.04, span - 0.04]) {
+    const b = new THREE.Mesh(baseGeoZ, baseMat);
+    b.position.set(x, baseboardH / 2, 0);
+    group.add(b);
   }
 
   group.position.set(room.cx * CELL, 0, room.cz * CELL);
+  group.userData.room = room;
   return group;
 }

@@ -1,22 +1,22 @@
 import * as THREE from "three";
-import { FLOOR_STEP } from "./roomGen.js";
+import { EYE_H, PLAYER_R } from "./constants.js";
 
-const PLAYER_RADIUS = 0.32;
-const EYE_HEIGHT = 1.62;
-const WALK_SPEED = 3.4;
-const RUN_SPEED = 6;
+const WALK = 3.2;
+const RUN = 5.8;
+const BOB_SPEED = 9;
+const BOB_AMOUNT = 0.035;
 
 export class Player {
   constructor(camera, domElement) {
     this.camera = camera;
     this.domElement = domElement;
-    this.position = new THREE.Vector3(0, EYE_HEIGHT, 0);
-    this.floor = 0;
+    this.position = new THREE.Vector3(0, EYE_H, 0);
     this.yaw = 0;
     this.pitch = 0;
     this.keys = {};
     this.locked = false;
     this.colliders = [];
+    this.bob = 0;
 
     this._onKeyDown = (e) => {
       this.keys[e.code] = true;
@@ -26,9 +26,9 @@ export class Player {
     };
     this._onMouseMove = (e) => {
       if (!this.locked) return;
-      this.yaw -= e.movementX * 0.002;
-      this.pitch -= e.movementY * 0.002;
-      this.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, this.pitch));
+      this.yaw -= e.movementX * 0.0022;
+      this.pitch -= e.movementY * 0.0022;
+      this.pitch = THREE.MathUtils.clamp(this.pitch, -1.45, 1.45);
     };
     this._onLockChange = () => {
       this.locked = document.pointerLockElement === this.domElement;
@@ -50,65 +50,75 @@ export class Player {
     this.colliders = colliders;
   }
 
-  _activeColliders() {
+  _blocked(px, pz) {
+    const r = PLAYER_R;
     const y = this.position.y;
-    return this.colliders.filter((c) => y >= c.minY - 0.15 && y <= c.maxY + 0.15);
-  }
-
-  _inside(px, pz, c) {
-    const r = PLAYER_RADIUS;
-    return px + r > c.minX && px - r < c.maxX && pz + r > c.minZ && pz - r < c.maxZ;
+    for (const c of this.colliders) {
+      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      if (px + r > c.minX && px - r < c.maxX && pz + r > c.minZ && pz - r < c.maxZ) {
+        return c;
+      }
+    }
+    return null;
   }
 
   _pushOut(px, pz) {
-    const walls = this._activeColliders();
-    for (let iter = 0; iter < 8; iter++) {
-      let moved = false;
-      for (const c of walls) {
-        if (!this._inside(px, pz, c)) continue;
-        const r = PLAYER_RADIUS;
-        const overlapL = px + r - c.minX;
-        const overlapR = c.maxX - (px - r);
-        const overlapF = pz + r - c.minZ;
-        const overlapB = c.maxZ - (pz - r);
-        const min = Math.min(overlapL, overlapR, overlapF, overlapB);
-        if (min === overlapL) px -= overlapL;
-        else if (min === overlapR) px += overlapR;
-        else if (min === overlapF) pz -= overlapF;
-        else pz += overlapB;
-        moved = true;
+    const r = PLAYER_R;
+    const y = this.position.y;
+    for (let n = 0; n < 10; n++) {
+      let hit = false;
+      for (const c of this.colliders) {
+        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+        if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
+          continue;
+        }
+        const oL = px + r - c.minX;
+        const oR = c.maxX - (px - r);
+        const oF = pz + r - c.minZ;
+        const oB = c.maxZ - (pz - r);
+        const m = Math.min(oL, oR, oF, oB);
+        if (m === oL) px -= oL;
+        else if (m === oR) px += oR;
+        else if (m === oF) pz -= oF;
+        else pz += oB;
+        hit = true;
       }
-      if (!moved) break;
+      if (!hit) break;
     }
     return { px, pz };
   }
 
   update(dt) {
-    const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const move = new THREE.Vector3();
 
-    if (this.keys["KeyW"] || this.keys["ArrowUp"]) move.add(forward);
-    if (this.keys["KeyS"] || this.keys["ArrowDown"]) move.sub(forward);
-    if (this.keys["KeyA"] || this.keys["ArrowLeft"]) move.sub(right);
-    if (this.keys["KeyD"] || this.keys["ArrowRight"]) move.add(right);
+    if (this.keys.KeyW || this.keys.ArrowUp) move.add(fwd);
+    if (this.keys.KeyS || this.keys.ArrowDown) move.sub(fwd);
+    if (this.keys.KeyA || this.keys.ArrowLeft) move.sub(right);
+    if (this.keys.KeyD || this.keys.ArrowRight) move.add(right);
 
-    const speed = this.keys["ShiftLeft"] || this.keys["ShiftRight"] ? RUN_SPEED : WALK_SPEED;
+    const running = this.keys.ShiftLeft || this.keys.ShiftRight;
+    const speed = running ? RUN : WALK;
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(move.length() / 0.12));
+      const steps = Math.max(1, Math.ceil(move.length() / 0.08));
       const step = move.clone().divideScalar(steps);
       for (let i = 0; i < steps; i++) {
         let px = this.position.x + step.x;
         let pz = this.position.z + step.z;
-        const pushed = this._pushOut(px, pz);
-        this.position.x = pushed.px;
-        this.position.z = pushed.pz;
+        const out = this._pushOut(px, pz);
+        this.position.x = out.px;
+        this.position.z = out.pz;
       }
+      this.bob += dt * BOB_SPEED * (running ? 1.3 : 1);
+    } else {
+      this.bob *= 0.85;
     }
 
-    this.position.y = this.floor * FLOOR_STEP + EYE_HEIGHT;
+    const bobY = Math.sin(this.bob) * BOB_AMOUNT;
+    this.position.y = EYE_H + bobY;
 
     this.camera.position.copy(this.position);
     this.camera.rotation.order = "YXZ";

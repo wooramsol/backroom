@@ -1,0 +1,14 @@
+/** Level 0 — one chunk = one sealed office room */
+export const CELL = 10;
+export const HW = CELL / 2;
+export const WALL_T = 0.16;
+export const DOOR_H = 2.15;
+export const DOOR_CLEAR = 0.38;
+export const MIN_ROOM_H = 2.5;
+export const MAX_ROOM_H = 2.85;
+export const EYE_H = 1.62;
+export const PLAYER_R = 0.3;
+export const FOG_NEAR = 6;
+export const FOG_FAR = 28;
+export const FOG_COLOR = 0xc9b87a;
+export const AMBIENT_COLOR = 0x9a8a68;

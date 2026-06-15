@@ -1,85 +1,74 @@
 import * as THREE from "three";
 
-/** Real-world size of one wallpaper repeat (60 cm — 2× the 30 cm source tile). */
 export const WALL_TILE_M = 0.6;
-/** Ceiling tile ~60 cm. */
-export const CEILING_TILE_M = 0.6;
-/** Carpet repeat ~50 cm. */
 export const CARPET_TILE_M = 0.5;
+export const CEILING_TILE_M = 0.6;
 
-function makeCanvasTexture(draw, size = 256) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
+function canvasTex(draw, size = 256) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
   draw(ctx, size);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.generateMipmaps = false;
-  tex.minFilter = THREE.LinearFilter;
-  return tex;
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.minFilter = THREE.LinearFilter;
+  t.generateMipmaps = false;
+  return t;
 }
 
-export function createTiledMaterial(sourceTex, widthM, heightM, opts = {}) {
-  const tex = sourceTex.clone();
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(widthM / WALL_TILE_M, heightM / WALL_TILE_M);
-  return new THREE.MeshLambertMaterial({
-    map: tex,
-    side: THREE.DoubleSide,
-    ...opts,
-  });
+export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
+  const map = tex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(widthM / WALL_TILE_M, heightM / WALL_TILE_M);
+  return new THREE.MeshLambertMaterial({ map, ...opts });
 }
 
-export function setSurfaceRepeat(tex, tileM, widthM, heightM) {
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(widthM / tileM, heightM / tileM);
-  return tex;
+export function tiled(tex, tileM, w, h) {
+  const t = tex.clone();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(w / tileM, h / tileM);
+  return t;
 }
 
+/** Damp moist office carpet — Level 0 */
 export function createCarpetTexture() {
-  return makeCanvasTexture((ctx, size) => {
-    ctx.fillStyle = "#8b7355";
+  return canvasTex((ctx, size) => {
+    ctx.fillStyle = "#6d5a42";
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 1800; i++) {
+    for (let y = 0; y < size; y += 3) {
+      for (let x = 0; x < size; x += 3) {
+        const v = 85 + ((x * 17 + y * 31) % 40);
+        ctx.fillStyle = `rgb(${v + 8},${v},${v - 14})`;
+        ctx.fillRect(x, y, 2, 2);
+      }
+    }
+    for (let i = 0; i < 400; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const shade = 65 + Math.random() * 45;
-      ctx.fillStyle = `rgb(${shade + 12},${shade},${shade - 12})`;
-      ctx.fillRect(x, y, 1.5, 1.5);
+      ctx.fillStyle = `rgba(45,55,40,${0.05 + Math.random() * 0.12})`;
+      ctx.fillRect(x, y, 4 + Math.random() * 8, 3 + Math.random() * 6);
     }
   });
 }
 
-export function createBasementFloorTexture() {
-  return makeCanvasTexture((ctx, size) => {
-    ctx.fillStyle = "#5a5a52";
-    ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 1200; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const v = 70 + Math.random() * 30;
-      ctx.fillStyle = `rgb(${v},${v},${v - 5})`;
-      ctx.fillRect(x, y, 2, 2);
-    }
-  });
-}
-
+/** Acoustic drop-ceiling tiles */
 export function createCeilingTexture() {
-  return makeCanvasTexture((ctx, size) => {
-    const tile = 32;
+  return canvasTex((ctx, size) => {
+    const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 198 + Math.floor(Math.random() * 12);
-        ctx.fillStyle = `rgb(${v},${v},${v - 4})`;
-        ctx.fillRect(x, y, tile, tile);
+        const v = 192 + ((x + y) % 16);
+        ctx.fillStyle = `rgb(${v},${v},${v - 6})`;
+        ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+        ctx.strokeStyle = "rgba(120,120,115,0.5)";
+        ctx.strokeRect(x, y, tile, tile);
       }
     }
   });
 }
 
-export function loadWallpaperTexture(loader) {
+export function loadWallpaper(loader) {
   return new Promise((resolve, reject) => {
     loader.load(
       "./assets/wallpaper.png",
@@ -87,7 +76,6 @@ export function loadWallpaperTexture(loader) {
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.minFilter = THREE.LinearFilter;
-        tex.magFilter = THREE.LinearFilter;
         tex.generateMipmaps = false;
         resolve(tex);
       },
@@ -95,4 +83,22 @@ export function loadWallpaperTexture(loader) {
       reject
     );
   });
+}
+
+export async function loadWallpaperOrFallback(loader) {
+  try {
+    return await loadWallpaper(loader);
+  } catch {
+    return canvasTex((ctx, size) => {
+      ctx.fillStyle = "#c4a85a";
+      ctx.fillRect(0, 0, size, size);
+      for (let y = 0; y < size; y += 8) {
+        ctx.strokeStyle = "rgba(90,75,40,0.15)";
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(size, y);
+        ctx.stroke();
+      }
+    });
+  }
 }

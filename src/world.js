@@ -1,107 +1,88 @@
-import {
-  CELL,
-  FLOOR_STEP,
-  generateRoom,
-  registerRoomColliders,
-  buildCollidersFromMap,
-} from "./roomGen.js";
+import { CELL, generateRoom, registerRoomWalls, collidersFromMap } from "./room.js";
 import { buildRoomMesh } from "./roomMesh.js";
 
 const GRID_RADIUS = 2;
 
-export class InfiniteWorld {
+export class World {
   constructor(scene, materials) {
     this.scene = scene;
     this.materials = materials;
     this.chunks = new Map();
-    this.playerCell = { x: 0, z: 0 };
-    this.playerFloor = 0;
+    this.cell = { x: 0, z: 0 };
     this.colliders = [];
     this.dirty = true;
+    this.time = 0;
   }
 
-  key(cx, cz, floor) {
-    return `${cx},${cz},${floor}`;
+  key(cx, cz) {
+    return `${cx},${cz}`;
   }
 
-  spawnChunk(cx, cz, floor) {
-    const room = generateRoom(cx, cz, floor);
-    const mesh = buildRoomMesh(room, this.materials);
+  spawn(cx, cz) {
+    const room = generateRoom(cx, cz);
+    const mesh = buildRoomMesh(room, this.materials, this.time);
     this.scene.add(mesh);
-    this.chunks.set(this.key(cx, cz, floor), { mesh, room });
+    this.chunks.set(this.key(cx, cz), { mesh, room });
   }
 
-  rebuildPhysics() {
+  rebuildColliders() {
     const map = new Map();
     for (const { room } of this.chunks.values()) {
-      registerRoomColliders(map, room);
+      registerRoomWalls(map, room);
     }
-    this.colliders = buildCollidersFromMap(map);
+    this.colliders = collidersFromMap(map);
     this.dirty = false;
   }
 
   init() {
-    for (let dz = -GRID_RADIUS; dz <= GRID_RADIUS; dz++) {
-      for (let dx = -GRID_RADIUS; dx <= GRID_RADIUS; dx++) {
-        this.spawnChunk(dx, dz, 0);
+    for (let z = -GRID_RADIUS; z <= GRID_RADIUS; z++) {
+      for (let x = -GRID_RADIUS; x <= GRID_RADIUS; x++) {
+        this.spawn(x, z);
       }
     }
-    this.rebuildPhysics();
+    this.rebuildColliders();
   }
 
-  update(playerPos, playerFloor) {
-    const pcx = Math.floor(playerPos.x / CELL);
-    const pcz = Math.floor(playerPos.z / CELL);
+  update(playerPos) {
+    const cx = Math.floor((playerPos.x + CELL / 2) / CELL);
+    const cz = Math.floor((playerPos.z + CELL / 2) / CELL);
 
-    const moved =
-      pcx !== this.playerCell.x ||
-      pcz !== this.playerCell.z ||
-      playerFloor !== this.playerFloor;
+    if (cx === this.cell.x && cz === this.cell.z) return;
+    this.cell = { x: cx, z: cz };
 
-    if (!moved) return;
-
-    this.playerCell = { x: pcx, z: pcz };
-    this.playerFloor = playerFloor;
-
-    const needed = new Set();
-    for (let z = pcz - GRID_RADIUS; z <= pcz + GRID_RADIUS; z++) {
-      for (let x = pcx - GRID_RADIUS; x <= pcx + GRID_RADIUS; x++) {
-        needed.add(this.key(x, z, playerFloor));
+    const need = new Set();
+    for (let z = cz - GRID_RADIUS; z <= cz + GRID_RADIUS; z++) {
+      for (let x = cx - GRID_RADIUS; x <= cx + GRID_RADIUS; x++) {
+        need.add(this.key(x, z));
       }
     }
 
     for (const k of [...this.chunks.keys()]) {
-      if (!needed.has(k)) {
+      if (!need.has(k)) {
         const { mesh } = this.chunks.get(k);
         this.scene.remove(mesh);
+        mesh.traverse((o) => o.geometry?.dispose());
         this.chunks.delete(k);
-        mesh.traverse((obj) => {
-          if (obj.geometry) obj.geometry.dispose();
-        });
         this.dirty = true;
       }
     }
 
-    for (let z = pcz - GRID_RADIUS; z <= pcz + GRID_RADIUS; z++) {
-      for (let x = pcx - GRID_RADIUS; x <= pcx + GRID_RADIUS; x++) {
-        const k = this.key(x, z, playerFloor);
-        if (!this.chunks.has(k)) {
-          this.spawnChunk(x, z, playerFloor);
-          this.dirty = true;
-        }
+    for (const k of need) {
+      if (!this.chunks.has(k)) {
+        const [x, z] = k.split(",").map(Number);
+        this.spawn(x, z);
+        this.dirty = true;
       }
     }
 
-    if (this.dirty) this.rebuildPhysics();
+    if (this.dirty) this.rebuildColliders();
   }
 
-  getCollidersForFloor(floor) {
-    const yMin = floor * FLOOR_STEP - 0.5;
-    const yMax = floor * FLOOR_STEP + 3.5;
-    return this.colliders.filter((c) => c.maxY > yMin && c.minY < yMax);
+  tick(dt) {
+    this.time += dt;
   }
 
-  getFloorLabel() {
-    return "LEVEL 0 — THE LOBBY";
+  getColliders() {
+    return this.colliders;
   }
 }
