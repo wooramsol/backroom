@@ -73,15 +73,41 @@ jobs:
           git merge "origin/$BRANCH" -m "chore: auto-promote $BRANCH to main"
           git push origin main
 
-  # GITHUB_TOKEN pushes to main do not re-trigger workflows — deploy in same run
+  # Deploy from the branch that was just built (GITHUB_TOKEN main pushes don't re-trigger workflows)
   deploy-after-promote:
-    needs: promote
+    needs: [build, promote]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/cursor/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          ref: main
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_BASE: /backroom/
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+
+  deploy-after-merge:
+    needs: [build, auto-merge]
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.build.result == 'success' &&
+      needs.auto-merge.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -105,35 +131,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci
-      - run: npm run build
-        env:
-          VITE_BASE: /backroom/
-
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-
-  # PR auto-merge does not always re-fire main push — deploy from merged cursor PRs too
-  deploy-after-merge:
-    needs: [build, auto-merge]
-    if: >-
-      github.event_name == 'pull_request' &&
-      needs.build.result == 'success' &&
-      needs.auto-merge.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
 
       - uses: actions/setup-node@v4
         with:

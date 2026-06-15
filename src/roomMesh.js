@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
-import { LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY } from "./constants.js";
+import { WALL_T, DOOR_H, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
