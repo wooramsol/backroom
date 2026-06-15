@@ -36,15 +36,15 @@ export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — light emits from panel face downward */
+/** RectAreaLight strength — scaled per room by lit panel ratio */
 export const PANEL_LIGHT_INTENSITY = 7;
-export const LIGHT_POOL_SIZE = 40;
+export const ROOM_LIGHT_SCALE = 11;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
+/** Reference Level 0 — pale yellow cream ceiling tiles */
 export const CEILING_COLOR = 0xf5f0c8;
-/** Glow on tile faces only — grid lines stay dark via emissiveMap */
-export const CEILING_EMISSIVE_MIN = 0.2;
-export const CEILING_EMISSIVE_MAX = 0.42;
+export const CEILING_EMISSIVE_MIN = 0.1;
+export const CEILING_EMISSIVE_MAX = 0.26;
 export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
