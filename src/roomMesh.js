@@ -1,13 +1,12 @@
 import * as THREE from "three";
-import { CHUNK, roomLitStrength } from "./room.js";
+import { CHUNK } from "./room.js";
+import { roomLitStrength } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_LIGHT_INTENSITY,
-  ROOM_LIGHT_SCALE,
   PANEL_W,
   PANEL_H,
   CEILING_COLOR,
@@ -15,8 +14,6 @@ import {
   CEILING_EMISSIVE_MAX,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
-
-const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -65,18 +62,6 @@ function addCeilingPanels(group, room, lightMat, h) {
   }
 }
 
-/** One fixed room light — brightness from predetermined on-panel ratio, not player distance */
-function addRoomLight(group, room, h) {
-  const strength = roomLitStrength(room);
-  if (strength < 0.02) return;
-
-  const light = new THREE.RectAreaLight(0xfff4d8, PANEL_LIGHT_INTENSITY * strength * ROOM_LIGHT_SCALE, CHUNK - 0.6, CHUNK - 0.6);
-  light.rotation.copy(_down);
-  light.position.set(CHUNK / 2, h - 0.05, CHUNK / 2);
-  group.add(light);
-  group.userData.roomLight = light;
-}
-
 export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const h = room.height;
@@ -96,7 +81,6 @@ export function buildRoomMesh(room, materials) {
   group.add(ceiling);
 
   addCeilingPanels(group, room, materials.lightPanel, h);
-  addRoomLight(group, room, h);
 
   const wt = materials.wallTex;
   wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);
