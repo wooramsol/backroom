@@ -1,68 +1,74 @@
 import * as THREE from "three";
 import { CHUNK, roomLitStrength } from "./room.js";
 import {
-  PANEL_LIGHT_INTENSITY,
-  ROOM_FILL_INTENSITY,
-  ROOM_FILL_SIZE,
-  PANEL_W,
-  PANEL_H,
+  ROOM_POINT_INTENSITY,
+  ROOM_POINT_DISTANCE,
+  PANEL_POINT_INTENSITY,
+  PANEL_POINT_DISTANCE,
   PANEL_RECESS_DEPTH,
+  ROOM_LIGHT_POOL,
   PANEL_LIGHT_POOL,
 } from "./constants.js";
 
-const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
-const MAX_ROOMS = 30;
+const ROOM_RADIUS = 1;
 
-/** Room-wide soft fill + per-panel recessed area lights */
+/** PointLight pools — nearby rooms + nearest ON panels only */
 export class PanelLightPool {
   constructor(scene) {
-    this.roomFills = [];
-    this.panelDown = [];
-    for (let i = 0; i < MAX_ROOMS; i++) {
-      const fill = new THREE.RectAreaLight(0xfff8e8, 0, ROOM_FILL_SIZE, ROOM_FILL_SIZE);
-      fill.rotation.copy(_down);
-      fill.visible = false;
-      scene.add(fill);
-      this.roomFills.push(fill);
+    this.roomLights = [];
+    this.panelLights = [];
+    for (let i = 0; i < ROOM_LIGHT_POOL; i++) {
+      const l = new THREE.PointLight(0xfff8e8, 0, ROOM_POINT_DISTANCE, 2);
+      l.visible = false;
+      scene.add(l);
+      this.roomLights.push(l);
     }
     for (let i = 0; i < PANEL_LIGHT_POOL; i++) {
-      const d = new THREE.RectAreaLight(0xfffdf5, 0, PANEL_W, PANEL_H);
-      d.rotation.copy(_down);
-      d.visible = false;
-      scene.add(d);
-      this.panelDown.push(d);
+      const l = new THREE.PointLight(0xfffdf5, 0, PANEL_POINT_DISTANCE, 2);
+      l.visible = false;
+      scene.add(l);
+      this.panelLights.push(l);
     }
   }
 
   update(playerPos, chunks, time) {
-    const nearby = [];
-    const rooms = [...chunks.values()];
-    rooms.sort((a, b) => {
-      const ax = a.room.cx * CHUNK + CHUNK / 2 - playerPos.x;
-      const az = a.room.cz * CHUNK + CHUNK / 2 - playerPos.z;
-      const bx = b.room.cx * CHUNK + CHUNK / 2 - playerPos.x;
-      const bz = b.room.cz * CHUNK + CHUNK / 2 - playerPos.z;
-      return ax * ax + az * az - (bx * bx + bz * bz);
-    });
+    const pcx = Math.floor(playerPos.x / CHUNK);
+    const pcz = Math.floor(playerPos.z / CHUNK);
 
-    for (let i = 0; i < this.roomFills.length; i++) {
-      const fill = this.roomFills[i];
-      const chunk = rooms[i];
-      if (!chunk) {
-        fill.intensity = 0;
-        fill.visible = false;
+    const nearRooms = [];
+    for (const chunk of chunks.values()) {
+      const { room } = chunk;
+      if (Math.abs(room.cx - pcx) > ROOM_RADIUS || Math.abs(room.cz - pcz) > ROOM_RADIUS) {
         continue;
       }
-      const { room } = chunk;
       const strength = roomLitStrength(room);
-      const ox = room.cx * CHUNK;
-      const oz = room.cz * CHUNK;
-      fill.position.set(ox + CHUNK / 2, room.height - 0.008, oz + CHUNK / 2);
-      fill.intensity = strength * ROOM_FILL_INTENSITY;
-      fill.visible = strength > 0.06;
+      if (strength < 0.06) continue;
+      const ox = room.cx * CHUNK + CHUNK / 2;
+      const oz = room.cz * CHUNK + CHUNK / 2;
+      const dx = ox - playerPos.x;
+      const dz = oz - playerPos.z;
+      nearRooms.push({ ox, oz, y: room.height - 0.02, strength, dist: dx * dx + dz * dz });
+    }
+    nearRooms.sort((a, b) => a.dist - b.dist);
+
+    for (let i = 0; i < this.roomLights.length; i++) {
+      const light = this.roomLights[i];
+      const hit = nearRooms[i];
+      if (!hit) {
+        light.intensity = 0;
+        light.visible = false;
+        continue;
+      }
+      light.position.set(hit.ox, hit.y, hit.oz);
+      light.intensity = hit.strength * ROOM_POINT_INTENSITY;
+      light.visible = true;
     }
 
+    const nearby = [];
     for (const { room } of chunks.values()) {
+      if (Math.abs(room.cx - pcx) > ROOM_RADIUS || Math.abs(room.cz - pcz) > ROOM_RADIUS) {
+        continue;
+      }
       const ox = room.cx * CHUNK;
       const oz = room.cz * CHUNK;
       const y = room.height - PANEL_RECESS_DEPTH;
@@ -77,8 +83,8 @@ export class PanelLightPool {
     }
     nearby.sort((a, b) => a.dist - b.dist);
 
-    for (let i = 0; i < this.panelDown.length; i++) {
-      const light = this.panelDown[i];
+    for (let i = 0; i < this.panelLights.length; i++) {
+      const light = this.panelLights[i];
       const hit = nearby[i];
       if (!hit) {
         light.intensity = 0;
@@ -87,7 +93,7 @@ export class PanelLightPool {
       }
       const flicker = 0.95 + Math.sin(time * 8 + hit.panel.phase) * 0.03;
       light.position.set(hit.wx, hit.y, hit.wz);
-      light.intensity = PANEL_LIGHT_INTENSITY * hit.panel.bright * flicker;
+      light.intensity = PANEL_POINT_INTENSITY * hit.panel.bright * flicker;
       light.visible = true;
     }
   }

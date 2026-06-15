@@ -35,12 +35,7 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  return new THREE.MeshStandardMaterial({
-    map,
-    roughness: 0.92,
-    metalness: 0,
-    ...opts,
-  });
+  return new THREE.MeshLambertMaterial({ map, ...opts });
 }
 
 export function tiled(tex, tileM, w, h) {
@@ -71,16 +66,18 @@ export function createCarpetTexture() {
   });
 }
 
-/** Drop ceiling — pale yellow cream, same palette as walls */
+/** Drop ceiling — yellow cream (#e5e4ad), same as early build */
 export function createCeilingTexture() {
   return canvasTex((ctx, size) => {
+    ctx.fillStyle = "#e5e4ad";
+    ctx.fillRect(0, 0, size, size);
     const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 232 + ((x + y) % 10);
-        ctx.fillStyle = `rgb(${v},${v - 2},${v - 22})`;
+        const v = 228 + ((x + y) % 10);
+        ctx.fillStyle = `rgb(${v + 12},${v + 8},${v - 28})`;
         ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(175,165,110,0.32)";
+        ctx.strokeStyle = "rgba(165,155,95,0.28)";
         ctx.strokeRect(x, y, tile, tile);
       }
     }

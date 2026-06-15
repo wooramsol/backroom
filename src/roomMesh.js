@@ -5,7 +5,7 @@ import {
   DOOR_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
-  PANEL_EMISSIVE_INTENSITY,
+  LIGHT_PANEL_BRIGHT,
   PANEL_W,
   PANEL_H,
   PANEL_RECESS_DEPTH,
@@ -43,31 +43,28 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function addFlushPanel(group, panel, h) {
-  const emissive = new THREE.Color(LIGHT_PANEL_COLOR);
+function addFlushPanel(group, panel, lightMat, h, out) {
   const y = h - PANEL_RECESS_DEPTH;
-
-  const face = new THREE.Mesh(
-    new THREE.PlaneGeometry(PANEL_W, PANEL_H),
-    new THREE.MeshStandardMaterial({
-      color: panel.on ? LIGHT_PANEL_COLOR : LIGHT_PANEL_OFF_COLOR,
-      emissive,
-      emissiveIntensity: panel.on ? PANEL_EMISSIVE_INTENSITY * panel.bright : 0,
-      roughness: 0.12,
-      metalness: 0,
-    })
-  );
+  const mat = lightMat.clone();
+  if (panel.on) {
+    mat.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_BRIGHT * panel.bright);
+  } else {
+    mat.color.setHex(LIGHT_PANEL_OFF_COLOR);
+  }
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(PANEL_W, PANEL_H), mat);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
   face.renderOrder = 1;
   face.userData.panel = panel;
   group.add(face);
+  out.push(face);
 }
 
 export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const h = room.height;
   const strength = roomLitStrength(room);
+  const panels = [];
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.carpet.clone());
   floor.rotation.x = -Math.PI / 2;
@@ -80,11 +77,10 @@ export function buildRoomMesh(room, materials) {
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
-  ceiling.userData.ceiling = true;
   group.add(ceiling);
 
-  for (const panel of room.panels) {
-    addFlushPanel(group, panel, h);
+  for (const p of room.panels) {
+    addFlushPanel(group, p, materials.lightPanel, h, panels);
   }
 
   const wt = materials.wallTex;
@@ -102,5 +98,7 @@ export function buildRoomMesh(room, materials) {
 
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   group.userData.room = room;
+  group.userData.ceiling = ceiling;
+  group.userData.panels = panels;
   return group;
 }

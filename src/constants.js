@@ -19,28 +19,30 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 10;
 export const FOG_FAR = 44;
 export const FOG_COLOR = 0xe5e4ad;
-/** Low base — room brightness comes from ON panels */
-export const AMBIENT_COLOR = 0xd8d0b0;
-export const AMBIENT_INTENSITY = 0.07;
-export const HEMI_SKY = 0xf0e8c8;
-export const HEMI_GROUND = 0xc8c0a0;
-export const HEMI_INTENSITY = 0.09;
+export const AMBIENT_COLOR = 0xe8e4c8;
+export const AMBIENT_INTENSITY = 0.08;
+export const HEMI_SKY = 0xfff8e8;
+export const HEMI_GROUND = 0xe8e4ad;
+export const HEMI_INTENSITY = 0.1;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
-export const LIGHT_PANEL_OFF_COLOR = 0x5a5548;
-export const PANEL_EMISSIVE_INTENSITY = 1.65;
+export const LIGHT_PANEL_OFF_COLOR = 0x6a6458;
+export const LIGHT_PANEL_BRIGHT = 0.92;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 export const PANEL_RECESS_DEPTH = 0.008;
 export const PANEL_ON_CHANCE = 0.72;
-export const PANEL_LIGHT_INTENSITY = 6.5;
-export const ROOM_FILL_INTENSITY = 2.6;
-export const ROOM_FILL_SIZE = CHUNK - 0.6;
-export const PANEL_LIGHT_POOL = 28;
+/** PointLight pools — much cheaper than 58× RectAreaLight */
+export const ROOM_LIGHT_POOL = 9;
+export const PANEL_LIGHT_POOL = 14;
+export const ROOM_POINT_INTENSITY = 58;
+export const ROOM_POINT_DISTANCE = 15;
+export const PANEL_POINT_INTENSITY = 42;
+export const PANEL_POINT_DISTANCE = 6.5;
 export const CEILING_EMISSIVE_MIN = 0;
-export const CEILING_EMISSIVE_MAX = 0.19;
-export const TONE_MAPPING_EXPOSURE = 0.8;
+export const CEILING_EMISSIVE_MAX = 0.17;
+export const TONE_MAPPING_EXPOSURE = 0.82;
 export const CARPET_COLOR = 0xf0e8a8;
-export const CEILING_COLOR = 0xf5f0c8;
+export const CEILING_COLOR = 0xf8f0a8;
 export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
