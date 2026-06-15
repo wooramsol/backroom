@@ -42,9 +42,9 @@ export const LIGHT_POOL_SIZE = 40;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf5f0c8;
-/** Soft ceiling tile glow from nearby panels — not a flat light plane */
-export const CEILING_EMISSIVE_MIN = 0.14;
-export const CEILING_EMISSIVE_MAX = 0.3;
+/** Glow on tile faces only — grid lines stay dark via emissiveMap */
+export const CEILING_EMISSIVE_MIN = 0.2;
+export const CEILING_EMISSIVE_MAX = 0.42;
 export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */

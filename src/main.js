@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
-  createCeilingTexture,
+  createCeilingMaps,
   loadWallpaperOrFallback,
   tiled,
   CARPET_TILE_M,
@@ -62,7 +62,14 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
-  const ceilingTex = createCeilingTexture();
+  const ceilingMaps = createCeilingMaps();
+  const ceilingColor = tiled(ceilingMaps.color, CEILING_TILE_M, CHUNK, CHUNK);
+  const ceilingEmissive = tiled(ceilingMaps.emissive, CEILING_TILE_M, CHUNK, CHUNK);
+  const ceilingBump = tiled(ceilingMaps.bump, CEILING_TILE_M, CHUNK, CHUNK);
+  const aniso = renderer.capabilities.getMaxAnisotropy();
+  for (const t of [ceilingColor, ceilingEmissive, ceilingBump]) {
+    t.anisotropy = aniso;
+  }
 
   const materials = {
     wallTex: wallpaper,
@@ -73,9 +80,16 @@ async function init() {
       metalness: 0,
       side: THREE.DoubleSide,
     }),
-    ceiling: new THREE.MeshLambertMaterial({
-      map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
+    ceiling: new THREE.MeshStandardMaterial({
+      map: ceilingColor,
+      emissiveMap: ceilingEmissive,
+      bumpMap: ceilingBump,
+      bumpScale: 0.014,
       color: CEILING_COLOR,
+      emissive: CEILING_COLOR,
+      emissiveIntensity: 0,
+      roughness: 0.97,
+      metalness: 0,
       side: THREE.DoubleSide,
     }),
     lightPanel: new THREE.MeshBasicMaterial({
