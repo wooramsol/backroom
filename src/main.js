@@ -10,11 +10,12 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_DENSITY, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
+const grade = document.getElementById("grade");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -27,7 +28,7 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(FOG_COLOR);
-scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
+scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, 0.08, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
@@ -75,6 +76,7 @@ async function init() {
       overlay.classList.add("hidden");
       hud.classList.add("visible");
       vignette.classList.add("visible");
+      grade.classList.add("visible");
       hum.start();
     }
   });
@@ -99,8 +101,12 @@ async function init() {
           if (!obj.userData?.fluorescent) return;
           const room = mesh.userData.room;
           if (!room) return;
-          const f = LIGHT_PANEL_INTENSITY * (0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06);
-          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(f);
+          const wave = 0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06;
+          if (obj.isLight) {
+            obj.intensity = obj.userData.baseIntensity * wave;
+          } else if (obj.material?.color) {
+            obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * wave);
+          }
         });
       }
     }

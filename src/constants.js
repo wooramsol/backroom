@@ -19,20 +19,25 @@ export const CAMERA_FOV = 60;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 10;
-export const FOG_FAR = 40;
-export const FOG_COLOR = 0xe5e4ad;
-export const AMBIENT_COLOR = 0xe8e4c8;
-export const AMBIENT_INTENSITY = 0.58;
-export const HEMI_SKY = 0xfff8e8;
-export const HEMI_GROUND = 0xc2b280;
-export const HEMI_INTENSITY = 0.38;
-export const LIGHT_PANEL_COLOR = 0xfff6e0;
-export const LIGHT_PANEL_INTENSITY = 0.78;
-export const TONE_MAPPING_EXPOSURE = 1.0;
-export const CARPET_COLOR = 0xffffff;
-export const CEILING_COLOR = 0xffffff;
-export const WALL_COLOR = 0xffffff;
+/** Hazy yellow-green liminal atmosphere */
+export const FOG_COLOR = 0xe8e6c4;
+export const FOG_DENSITY = 0.034;
+export const AMBIENT_COLOR = 0xf0f5cf;
+export const AMBIENT_INTENSITY = 0.28;
+export const HEMI_SKY = 0xf2f0dc;
+export const HEMI_GROUND = 0x9a8460;
+export const HEMI_INTENSITY = 0.2;
+export const LIGHT_PANEL_COLOR = 0xfffae8;
+export const LIGHT_PANEL_INTENSITY = 0.82;
+export const FLUORESCENT_LIGHT_COLOR = 0xf0f5cf;
+export const FLUORESCENT_LIGHT_INTENSITY = 0.48;
+export const FLUORESCENT_LIGHT_DISTANCE = 5.5;
+export const FLUORESCENT_LIGHT_DECAY = 2;
+export const TONE_MAPPING_EXPOSURE = 0.88;
+/** Muddy tan carpet / pale yellow ceiling — tinted under cold fluorescents */
+export const CARPET_COLOR = 0xc4ad78;
+export const CEILING_COLOR = 0xe6e2c8;
+export const WALL_COLOR = 0xf8f6e8;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;
