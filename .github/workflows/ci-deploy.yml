@@ -95,3 +95,32 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
+
+  # PR auto-merge does not always re-fire main push — deploy from merged cursor PRs too
+  deploy-after-merge:
+    needs: [build, auto-merge]
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.build.result == 'success' &&
+      needs.auto-merge.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_BASE: /backroom/
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
