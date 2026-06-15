@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-/** One wallpaper repeat ≈ 76 cm wide (user reference) */
-export const WALL_TILE_M = 0.76;
+/** Horizontal repeat width of wallpaper.png in world space (metres) */
+export const WALL_TILE_W = 0.76;
 export const CARPET_TILE_M = 0.55;
 export const CEILING_TILE_M = 0.65;
 
@@ -18,10 +18,22 @@ function canvasTex(draw, size = 256) {
   return t;
 }
 
+/** Store physical tile size from image pixels — no scaling or recoloring */
+export function applyWallpaperTileSize(tex) {
+  const img = tex.image;
+  const pxW = img?.width || 1;
+  const pxH = img?.height || 1;
+  tex.userData.tileW = WALL_TILE_W;
+  tex.userData.tileH = WALL_TILE_W * (pxH / pxW);
+  return tex;
+}
+
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
-  map.repeat.set(widthM / WALL_TILE_M, heightM / WALL_TILE_M);
+  const tileW = tex.userData?.tileW ?? WALL_TILE_W;
+  const tileH = tex.userData?.tileH ?? WALL_TILE_W;
+  map.repeat.set(widthM / tileW, heightM / tileH);
   return new THREE.MeshLambertMaterial({ map, ...opts });
 }
 
@@ -78,6 +90,7 @@ export function loadWallpaper(loader) {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.minFilter = THREE.LinearFilter;
         tex.generateMipmaps = false;
+        applyWallpaperTileSize(tex);
         resolve(tex);
       },
       undefined,
@@ -90,16 +103,11 @@ export async function loadWallpaperOrFallback(loader) {
   try {
     return await loadWallpaper(loader);
   } catch {
-    return canvasTex((ctx, size) => {
+    const tex = canvasTex((ctx, size) => {
       ctx.fillStyle = "#e5e4ad";
       ctx.fillRect(0, 0, size, size);
-      for (let y = 0; y < size; y += 8) {
-        ctx.strokeStyle = "rgba(90,75,40,0.15)";
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(size, y);
-        ctx.stroke();
-      }
     });
+    applyWallpaperTileSize(tex);
+    return tex;
   }
 }
