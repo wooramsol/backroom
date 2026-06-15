@@ -63,6 +63,7 @@ export function generateRoom(cx, cz) {
     lightSeed: rng.int(0, 99999),
     flicker: rng.range(0, Math.PI * 2),
     lightSpacing: rng.pick([2.2, 2.5, 2.8]),
+    lightsOn: rng.float() > 0.28,
   };
 }
 
@@ -116,6 +117,16 @@ export function registerRoomWalls(map, room) {
   put(`ez,${room.cx},${room.cz + 1}`, () => {
     const b = [];
     wallAlongZ(b, z1, x0, x1, room.doors.south, y0, yTop);
+    return b;
+  });
+  put(`wx,${room.cx},${room.cz}`, () => {
+    const b = [];
+    wallAlongX(b, x0, z0, z1, room.doors.west, y0, yTop);
+    return b;
+  });
+  put(`nz,${room.cx},${room.cz}`, () => {
+    const b = [];
+    wallAlongZ(b, z0, x0, x1, room.doors.north, y0, yTop);
     return b;
   });
 

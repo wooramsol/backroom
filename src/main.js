@@ -10,7 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, DARK_ROOM_LIGHT_MULT, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -95,12 +95,18 @@ async function init() {
       hum.tick(lightT);
 
       for (const { mesh } of world.chunks.values()) {
+        const room = mesh.userData.room;
+        if (!room) continue;
+        const flicker = room.lightsOn ? 0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06 : 1;
+        const panelMult = room.lightsOn ? 1 : DARK_ROOM_LIGHT_MULT;
         mesh.traverse((obj) => {
-          if (!obj.userData?.fluorescent) return;
-          const room = mesh.userData.room;
-          if (!room) return;
-          const f = LIGHT_PANEL_INTENSITY * (0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06);
-          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(f);
+          if (obj.userData?.fluorescent) {
+            const f = LIGHT_PANEL_INTENSITY * panelMult * flicker;
+            obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(f);
+          }
+          if (obj.userData?.roomLight) {
+            obj.intensity = obj.userData.baseIntensity * flicker;
+          }
         });
       }
     }

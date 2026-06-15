@@ -59,7 +59,7 @@ export class Player {
   _pushOut(px, pz) {
     const r = PLAYER_R;
     const y = this.position.y;
-    for (let n = 0; n < 10; n++) {
+    for (let n = 0; n < 14; n++) {
       let hit = false;
       for (const c of this.colliders) {
         if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
@@ -97,7 +97,7 @@ export class Player {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(move.length() / 0.08));
+      const steps = Math.max(1, Math.ceil(move.length() / 0.05));
       const step = move.clone().divideScalar(steps);
       for (let i = 0; i < steps; i++) {
         let px = this.position.x + step.x;
