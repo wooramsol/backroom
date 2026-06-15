@@ -58,6 +58,8 @@ async function init() {
       roughness: 0.9,
     }),
   };
+
+  const world = new World(scene, materials);
   world.init();
 
   const player = new Player(camera, renderer.domElement);
