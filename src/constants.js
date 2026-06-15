@@ -21,29 +21,34 @@ export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 10;
-export const FOG_FAR = 42;
-export const FOG_COLOR = 0x1a1810;
-/** Low fill — lit rooms come from ceiling fixtures, not sky */
-export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.06;
-export const HEMI_SKY = 0x706860;
-export const HEMI_GROUND = 0x281f18;
-export const HEMI_INTENSITY = 0.035;
+export const FOG_FAR = 44;
+export const FOG_COLOR = 0xe5e4ad;
+/** Warm fill — ceiling lit by fixtures, not harsh self-glow */
+export const AMBIENT_COLOR = 0xe8e4c8;
+export const AMBIENT_INTENSITY = 0.08;
+export const HEMI_SKY = 0xfff8e8;
+export const HEMI_GROUND = 0xe8e4ad;
+export const HEMI_INTENSITY = 0.1;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
-export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
-/** Panel emissive visual — the lit rectangle itself */
-export const LIGHT_PANEL_INTENSITY = 0.48;
+export const LIGHT_PANEL_OFF_COLOR = 0x6a6458;
+export const LIGHT_PANEL_BRIGHT = 0.92;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
+export const PANEL_RECESS_DEPTH = 0.008;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — light emits from panel face downward */
-export const PANEL_LIGHT_INTENSITY = 7;
-export const LIGHT_POOL_SIZE = 40;
-export const TONE_MAPPING_EXPOSURE = 0.78;
+/** PointLight pools — omnidirectional, lights ceiling + floor naturally */
+export const ROOM_LIGHT_POOL = 9;
+export const PANEL_LIGHT_POOL = 14;
+export const ROOM_POINT_INTENSITY = 58;
+export const ROOM_POINT_DISTANCE = 15;
+export const PANEL_POINT_INTENSITY = 42;
+export const PANEL_POINT_DISTANCE = 6.5;
+export const TONE_MAPPING_EXPOSURE = 0.82;
 export const CARPET_COLOR = 0xf0e8a8;
-/** Ceiling uses carpet material; emissive simulates panel wash on tiles */
-export const CEILING_EMISSIVE_MIN = 0.22;
-export const CEILING_EMISSIVE_MAX = 0.52;
+export const CEILING_COLOR = 0xf8f0a8;
+/** Subtle tile bleed near lit panels — not a flat self-lit plane */
+export const CEILING_EMISSIVE_MIN = 0;
+export const CEILING_EMISSIVE_MAX = 0.1;
 export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
