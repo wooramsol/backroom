@@ -10,6 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
+import { PanelLightPool } from "./lightPool.js";
 import { CHUNK, EYE_H, FOG_COLOR, FOG_NEAR, FOG_FAR, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_OFF_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
@@ -62,6 +63,7 @@ async function init() {
 
   const world = new World(scene, materials);
   world.init();
+  const panelLights = new PanelLightPool(scene);
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
@@ -95,21 +97,17 @@ async function init() {
       hum.tick(lightT);
     }
 
+    panelLights.update(player.position, world.chunks, lightT);
+
     for (const { mesh } of world.chunks.values()) {
-      const room = mesh.userData.room;
-      if (!room) continue;
-      const on = room.lightsOn;
-      const flicker = on ? 0.92 + Math.sin(lightT * 8 + room.flicker) * 0.06 : 1;
       mesh.traverse((obj) => {
-        if (obj.userData?.fluorescent) {
-          if (on) {
-            obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * flicker);
-          } else {
-            obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
-          }
-        }
-        if (obj.userData?.roomLight) {
-          obj.intensity = on ? obj.userData.baseIntensity * flicker : 0;
+        const panel = obj.userData?.panel;
+        if (!panel) return;
+        if (panel.on) {
+          const flicker = 0.92 + Math.sin(lightT * 8 + panel.phase) * 0.06;
+          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
+        } else {
+          obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
         }
       });
     }

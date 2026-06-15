@@ -9,11 +9,36 @@ import {
   MAX_ROOM_W,
   MIN_ROOM_D,
   MAX_ROOM_D,
+  PANEL_ON_CHANCE,
 } from "./constants.js";
 
 export { CHUNK };
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
+
+function fract(n) {
+  return n - Math.floor(n);
+}
+
+function generatePanels(rng, room) {
+  const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
+  const spacing = room.lightSpacing;
+  const panels = [];
+
+  for (let x = room.westOff + spacing / 2; x < CHUNK; x += spacing) {
+    for (let z = room.northOff + spacing / 2; z < CHUNK; z += spacing) {
+      if (hash(x * 3.1 + z) < 0.1) continue;
+      panels.push({
+        x,
+        z,
+        on: rng.chance(PANEL_ON_CHANCE),
+        phase: rng.range(0, Math.PI * 2),
+        bright: 0.92 + hash(z) * 0.12,
+      });
+    }
+  }
+  return panels;
+}
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const ax = Math.min(cx0, cx1);
@@ -44,7 +69,7 @@ export function generateRoom(cx, cz) {
     return { width: Math.min(w, span * 0.5), offset: rng.range(-maxOff, maxOff) };
   };
 
-  return {
+  const room = {
     cx,
     cz,
     width,
@@ -61,10 +86,10 @@ export function generateRoom(cx, cz) {
       innerNorth: northOff > 0.5 ? innerDoor(CHUNK - westOff) : null,
     },
     lightSeed: rng.int(0, 99999),
-    flicker: rng.range(0, Math.PI * 2),
     lightSpacing: rng.pick([2.2, 2.5, 2.8]),
-    lightsOn: rng.chance(0.72),
   };
+  room.panels = generatePanels(rng, room);
+  return room;
 }
 
 function addBox(out, minX, maxX, minZ, maxZ, minY, maxY) {

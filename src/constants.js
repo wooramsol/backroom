@@ -32,10 +32,12 @@ export const HEMI_INTENSITY = 0.08;
 export const LIGHT_PANEL_COLOR = 0xfff6e0;
 export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 export const LIGHT_PANEL_INTENSITY = 0.95;
-/** Real point lights per lit room (candela — Three.js physical units) */
-export const ROOM_POINT_INTENSITY = 150;
-export const ROOM_POINT_DISTANCE = 14;
-export const ROOM_POINT_DECAY = 2;
+/** Per-panel fluorescent fixture (candela) */
+export const PANEL_ON_CHANCE = 0.72;
+export const PANEL_LIGHT_INTENSITY = 95;
+export const PANEL_LIGHT_DISTANCE = 6.5;
+export const PANEL_LIGHT_DECAY = 2;
+export const LIGHT_POOL_SIZE = 48;
 export const TONE_MAPPING_EXPOSURE = 1.05;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf5f0c8;
