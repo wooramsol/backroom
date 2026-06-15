@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
-import { WALL_T, DOOR_H } from "./constants.js";
+import { LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
@@ -38,8 +38,9 @@ function fract(n) {
 function addCeilingLights(group, room, lightMat, time) {
   const h = room.height;
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
-  const flicker = 0.88 + Math.sin(time * 8 + room.flicker) * 0.06;
+  const flicker = 0.92 + Math.sin(time * 8 + room.flicker) * 0.06;
   const spacing = room.lightSpacing || 2.5;
+  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
   for (let x = room.westOff + spacing / 2; x < CHUNK; x += spacing) {
     for (let z = room.northOff + spacing / 2; z < CHUNK; z += spacing) {
@@ -48,7 +49,9 @@ function addCeilingLights(group, room, lightMat, time) {
         new THREE.PlaneGeometry(1.15, 0.42),
         lightMat.clone()
       );
-      panel.material.emissiveIntensity = flicker * (0.9 + hash(z) * 0.15);
+      const bright = LIGHT_PANEL_INTENSITY * flicker * (0.92 + hash(z) * 0.12);
+      panel.material.color.copy(panelColor).multiplyScalar(bright);
+      panel.userData.fluorescent = true;
       panel.rotation.x = Math.PI / 2;
       panel.position.set(x, h - 0.05, z);
       group.add(panel);
