@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   createCeilingTexture,
@@ -18,6 +19,7 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -46,14 +48,18 @@ async function init() {
 
   const materials = {
     wallTex: wallpaper,
-    carpet: new THREE.MeshLambertMaterial({
+    carpet: new THREE.MeshStandardMaterial({
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
+      roughness: 0.94,
+      metalness: 0,
       side: THREE.DoubleSide,
     }),
-    ceiling: new THREE.MeshLambertMaterial({
+    ceiling: new THREE.MeshStandardMaterial({
       map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
       color: CEILING_COLOR,
+      roughness: 0.9,
+      metalness: 0,
       side: THREE.DoubleSide,
     }),
     lightPanel: new THREE.MeshBasicMaterial({
@@ -104,7 +110,7 @@ async function init() {
         const panel = obj.userData?.panel;
         if (!panel) return;
         if (panel.on) {
-          const flicker = 0.92 + Math.sin(lightT * 8 + panel.phase) * 0.06;
+          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
           obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
         } else {
           obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);

@@ -35,7 +35,12 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  return new THREE.MeshLambertMaterial({ map, ...opts });
+  return new THREE.MeshStandardMaterial({
+    map,
+    roughness: 0.92,
+    metalness: 0,
+    ...opts,
+  });
 }
 
 export function tiled(tex, tileM, w, h) {

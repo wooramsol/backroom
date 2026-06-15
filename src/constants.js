@@ -25,20 +25,21 @@ export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
 /** Low fill — lit rooms come from ceiling fixtures, not sky */
 export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.14;
-export const HEMI_SKY = 0x807868;
-export const HEMI_GROUND = 0x302820;
-export const HEMI_INTENSITY = 0.08;
-export const LIGHT_PANEL_COLOR = 0xfff6e0;
+export const AMBIENT_INTENSITY = 0.06;
+export const HEMI_SKY = 0x706860;
+export const HEMI_GROUND = 0x281f18;
+export const HEMI_INTENSITY = 0.035;
+export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
-export const LIGHT_PANEL_INTENSITY = 0.95;
-/** Per-panel fluorescent fixture (candela) */
+/** Panel emissive visual — the lit rectangle itself */
+export const LIGHT_PANEL_INTENSITY = 0.48;
+export const PANEL_W = 1.15;
+export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
-export const PANEL_LIGHT_INTENSITY = 95;
-export const PANEL_LIGHT_DISTANCE = 6.5;
-export const PANEL_LIGHT_DECAY = 2;
-export const LIGHT_POOL_SIZE = 48;
-export const TONE_MAPPING_EXPOSURE = 1.05;
+/** RectAreaLight strength (nits) — light emits from panel face downward */
+export const PANEL_LIGHT_INTENSITY = 7;
+export const LIGHT_POOL_SIZE = 40;
+export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf5f0c8;
 export const WALL_COLOR = 0xffffff;

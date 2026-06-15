@@ -6,6 +6,8 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
+  PANEL_W,
+  PANEL_H,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -42,7 +44,7 @@ function addCeilingPanels(group, room, lightMat, h) {
   const onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
   for (const panel of room.panels) {
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.42), lightMat.clone());
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PANEL_W, PANEL_H), lightMat.clone());
     if (panel.on) {
       mesh.material.color.copy(onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
     } else {
