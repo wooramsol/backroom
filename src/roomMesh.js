@@ -3,6 +3,8 @@ import { CHUNK } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
+  BASEBOARD_H,
+  CROWN_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
   FLUORESCENT_LIGHT_COLOR,
@@ -44,6 +46,62 @@ function fract(n) {
   return n - Math.floor(n);
 }
 
+function addBaseboard(group, mat, axis, linePos, a0, a1, face) {
+  const len = a1 - a0;
+  if (len < 0.1) return;
+  const bh = BASEBOARD_H;
+  const d = 0.055;
+  const geo =
+    axis === "z"
+      ? new THREE.BoxGeometry(len, bh, d)
+      : new THREE.BoxGeometry(d, bh, len);
+  const mesh = new THREE.Mesh(geo, mat);
+  const mid = (a0 + a1) / 2;
+  const offset = face * (d / 2 + WALL_T / 2 + 0.01);
+  if (axis === "z") mesh.position.set(mid, bh / 2, linePos + offset);
+  else mesh.position.set(linePos + offset, bh / 2, mid);
+  group.add(mesh);
+}
+
+function addCrown(group, mat, h, axis, linePos, a0, a1, face) {
+  const len = a1 - a0;
+  if (len < 0.1) return;
+  const ch = CROWN_H;
+  const d = 0.048;
+  const geo =
+    axis === "z"
+      ? new THREE.BoxGeometry(len, ch, d)
+      : new THREE.BoxGeometry(d, ch, len);
+  const mesh = new THREE.Mesh(geo, mat);
+  const mid = (a0 + a1) / 2;
+  const y = h - ch / 2;
+  const offset = face * (d / 2 + WALL_T / 2 + 0.01);
+  if (axis === "z") mesh.position.set(mid, y, linePos + offset);
+  else mesh.position.set(linePos + offset, y, mid);
+  group.add(mesh);
+}
+
+function addWallTrim(group, materials, h, axis, linePos, a0, a1, faces) {
+  for (const face of faces) {
+    addBaseboard(group, materials.baseboard, axis, linePos, a0, a1, face);
+    addCrown(group, materials.crown, h, axis, linePos, a0, a1, face);
+  }
+}
+
+function addRoomTrim(group, room, h, materials) {
+  addWallTrim(group, materials, h, "z", 0, 0, CHUNK, [1]);
+  addWallTrim(group, materials, h, "z", CHUNK, 0, CHUNK, [-1]);
+  addWallTrim(group, materials, h, "x", 0, 0, CHUNK, [1]);
+  addWallTrim(group, materials, h, "x", CHUNK, 0, CHUNK, [-1]);
+
+  if (room.doors.innerWest) {
+    addWallTrim(group, materials, h, "x", room.westOff, room.northOff, CHUNK, [-1, 1]);
+  }
+  if (room.doors.innerNorth) {
+    addWallTrim(group, materials, h, "z", room.northOff, room.westOff, CHUNK, [-1, 1]);
+  }
+}
+
 function addCeilingLights(group, room, lightMat, time) {
   const h = room.height;
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
@@ -62,7 +120,7 @@ function addCeilingLights(group, room, lightMat, time) {
       panel.material.color.copy(panelColor).multiplyScalar(bright);
       panel.userData.fluorescent = true;
       panel.rotation.x = Math.PI / 2;
-      panel.position.set(x, h - 0.05, z);
+      panel.position.set(x, h - 0.02, z);
       group.add(panel);
 
       const bulb = new THREE.PointLight(
@@ -112,6 +170,8 @@ export function buildRoomMesh(room, materials, time = 0) {
   if (room.doors.innerNorth) {
     wallSeg(group, wt, h, "z", room.northOff, room.westOff, CHUNK, room.doors.innerNorth);
   }
+
+  addRoomTrim(group, room, h, materials);
 
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   group.userData.room = room;

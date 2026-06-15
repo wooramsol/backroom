@@ -45,37 +45,38 @@ export function tiled(tex, tileM, w, h) {
   return t;
 }
 
-/** Damp office carpet — muddy tan under sickly fluorescents */
+/** Damp office carpet — darker muddy tan for floor/wall contrast */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {
-    ctx.fillStyle = "#b8a068";
+    ctx.fillStyle = "#9a8048";
     ctx.fillRect(0, 0, size, size);
     for (let y = 0; y < size; y += 3) {
       for (let x = 0; x < size; x += 3) {
-        const v = 158 + ((x * 17 + y * 31) % 24);
-        ctx.fillStyle = `rgb(${v + 8},${v - 2},${v - 22})`;
+        const v = 138 + ((x * 17 + y * 31) % 26);
+        ctx.fillStyle = `rgb(${v + 6},${v - 4},${v - 26})`;
         ctx.fillRect(x, y, 2, 2);
       }
     }
-    for (let i = 0; i < 180; i++) {
+    for (let i = 0; i < 160; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.fillStyle = `rgba(75,65,40,${0.03 + Math.random() * 0.06})`;
+      ctx.fillStyle = `rgba(55,45,28,${0.04 + Math.random() * 0.07})`;
       ctx.fillRect(x, y, 4 + Math.random() * 6, 3 + Math.random() * 5);
     }
   });
 }
 
-/** Acoustic drop-ceiling — pale desaturated yellow */
+/** Acoustic drop-ceiling — lighter pale yellow, visible tile grid */
 export function createCeilingTexture() {
   return canvasTex((ctx, size) => {
     const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 218 + ((x + y) % 9);
-        ctx.fillStyle = `rgb(${v},${v - 4},${v - 16})`;
+        const v = 228 + ((x + y) % 8);
+        ctx.fillStyle = `rgb(${v},${v - 3},${v - 14})`;
         ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(155,148,120,0.32)";
+        ctx.strokeStyle = "rgba(130,122,98,0.45)";
+        ctx.lineWidth = 1;
         ctx.strokeRect(x, y, tile, tile);
       }
     }

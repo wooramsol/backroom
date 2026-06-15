@@ -10,7 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_DENSITY, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_DENSITY, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR, BASEBOARD_COLOR, CROWN_COLOR } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -49,13 +49,13 @@ async function init() {
     carpet: new THREE.MeshLambertMaterial({
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
-      side: THREE.DoubleSide,
     }),
     ceiling: new THREE.MeshLambertMaterial({
       map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
       color: CEILING_COLOR,
-      side: THREE.DoubleSide,
     }),
+    baseboard: new THREE.MeshLambertMaterial({ color: BASEBOARD_COLOR }),
+    crown: new THREE.MeshLambertMaterial({ color: CROWN_COLOR }),
     lightPanel: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),
