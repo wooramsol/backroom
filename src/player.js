@@ -49,19 +49,29 @@ export class Player {
 
   setColliders(colliders) {
     this.colliders = colliders;
+    const out = this._pushOut(this.position.x, this.position.z);
+    this.position.x = out.px;
+    this.position.z = out.pz;
   }
 
   _unstuck() {
     this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
+    const out = this._pushOut(this.position.x, this.position.z);
+    this.position.x = out.px;
+    this.position.z = out.pz;
+  }
+
+  _activeColliders() {
+    const y = this.position.y;
+    return this.colliders.filter((c) => y >= c.minY - 0.2 && y <= c.maxY + 0.2);
   }
 
   _pushOut(px, pz) {
     const r = PLAYER_R;
-    const y = this.position.y;
-    for (let n = 0; n < 10; n++) {
+    const walls = this._activeColliders();
+    for (let n = 0; n < 12; n++) {
       let hit = false;
-      for (const c of this.colliders) {
-        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      for (const c of walls) {
         if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
           continue;
         }
@@ -81,6 +91,12 @@ export class Player {
     return { px, pz };
   }
 
+  _tryMove(px, pz) {
+    const outX = this._pushOut(px, this.position.z);
+    const outZ = this._pushOut(outX.px, pz);
+    return outZ;
+  }
+
   update(dt) {
     const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
@@ -96,12 +112,10 @@ export class Player {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(move.length() / 0.08));
+      const steps = Math.max(1, Math.ceil(move.length() / 0.06));
       const step = move.clone().divideScalar(steps);
       for (let i = 0; i < steps; i++) {
-        let px = this.position.x + step.x;
-        let pz = this.position.z + step.z;
-        const out = this._pushOut(px, pz);
+        const out = this._tryMove(this.position.x + step.x, this.position.z + step.z);
         this.position.x = out.px;
         this.position.z = out.pz;
       }
@@ -110,8 +124,7 @@ export class Player {
       this.bob *= 0.85;
     }
 
-    const bobY = Math.sin(this.bob) * BOB_AMOUNT;
-    this.position.y = EYE_H + bobY;
+    this.position.y = EYE_H + Math.sin(this.bob) * BOB_AMOUNT;
 
     this.camera.position.copy(this.position);
     this.camera.rotation.order = "YXZ";

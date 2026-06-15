@@ -44,10 +44,10 @@ export class World {
   }
 
   update(playerPos) {
-    const cx = Math.floor((playerPos.x + CHUNK / 2) / CHUNK);
-    const cz = Math.floor((playerPos.z + CHUNK / 2) / CHUNK);
+    const cx = Math.floor(playerPos.x / CHUNK);
+    const cz = Math.floor(playerPos.z / CHUNK);
 
-    if (cx === this.cell.x && cz === this.cell.z) return;
+    if (cx === this.cell.x && cz === this.cell.z) return false;
     this.cell = { x: cx, z: cz };
 
     const need = new Set();
@@ -76,6 +76,7 @@ export class World {
     }
 
     if (this.dirty) this.rebuildColliders();
+    return true;
   }
 
   tick(dt) {

@@ -64,6 +64,7 @@ async function init() {
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
+  player.setColliders(world.getColliders());
 
   let started = false;
 
@@ -88,8 +89,8 @@ async function init() {
 
     if (started) {
       world.tick(dt);
-      world.update(player.position);
-      player.setColliders(world.getColliders());
+      const collidersDirty = world.update(player.position);
+      if (collidersDirty) player.setColliders(world.getColliders());
       player.update(dt);
       hum.tick(lightT);
 
