@@ -25,11 +25,13 @@ export const FOG_COLOR = 0xc9b87a;
 export const AMBIENT_COLOR = 0x9a8a68;
 export const AMBIENT_INTENSITY = 0.52;
 export const HEMI_SKY = 0xfff0c8;
-export const HEMI_GROUND = 0x5a4a30;
+export const HEMI_GROUND = 0x7a6a50;
 export const HEMI_INTENSITY = 0.34;
 export const LIGHT_PANEL_COLOR = 0xfff4d0;
 export const LIGHT_PANEL_INTENSITY = 0.88;
 export const TONE_MAPPING_EXPOSURE = 1.02;
+export const CARPET_COLOR = 0xf0e4d0;
+export const CEILING_COLOR = 0xfaf8f2;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

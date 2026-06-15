@@ -35,19 +35,19 @@ export function tiled(tex, tileM, w, h) {
 /** Damp moist office carpet — Level 0 */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {
-    ctx.fillStyle = "#6d5a42";
+    ctx.fillStyle = "#9a8468";
     ctx.fillRect(0, 0, size, size);
     for (let y = 0; y < size; y += 3) {
       for (let x = 0; x < size; x += 3) {
-        const v = 85 + ((x * 17 + y * 31) % 40);
-        ctx.fillStyle = `rgb(${v + 8},${v},${v - 14})`;
+        const v = 118 + ((x * 17 + y * 31) % 36);
+        ctx.fillStyle = `rgb(${v + 10},${v + 4},${v - 8})`;
         ctx.fillRect(x, y, 2, 2);
       }
     }
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 280; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.fillStyle = `rgba(45,55,40,${0.05 + Math.random() * 0.12})`;
+      ctx.fillStyle = `rgba(70,80,55,${0.03 + Math.random() * 0.07})`;
       ctx.fillRect(x, y, 4 + Math.random() * 8, 3 + Math.random() * 6);
     }
   });
@@ -59,10 +59,10 @@ export function createCeilingTexture() {
     const tile = 28;
     for (let y = 0; y < size; y += tile) {
       for (let x = 0; x < size; x += tile) {
-        const v = 182 + ((x + y) % 14);
-        ctx.fillStyle = `rgb(${v},${v},${v - 6})`;
+        const v = 210 + ((x + y) % 12);
+        ctx.fillStyle = `rgb(${v},${v},${v - 4})`;
         ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-        ctx.strokeStyle = "rgba(120,120,115,0.5)";
+        ctx.strokeStyle = "rgba(150,150,145,0.35)";
         ctx.strokeRect(x, y, tile, tile);
       }
     }
