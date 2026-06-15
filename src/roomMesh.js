@@ -4,6 +4,7 @@ import {
   WALL_T,
   DOOR_H,
   BASEBOARD_H,
+  WAINSCOT_H,
   CROWN_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
@@ -33,12 +34,14 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
     group.add(m);
   };
 
+  const topH = h - WAINSCOT_H;
+
   if (door) {
     add(a0, mid - dw, DOOR_H, 0);
     add(mid + dw, a1, DOOR_H, 0);
-    add(a0, a1, h - DOOR_H, DOOR_H);
-  } else {
-    add(a0, a1, h, 0);
+    if (h - DOOR_H > 0.1) add(a0, a1, h - DOOR_H, DOOR_H);
+  } else if (topH > 0.1) {
+    add(a0, a1, topH, WAINSCOT_H);
   }
 }
 
@@ -50,16 +53,51 @@ function addBaseboard(group, mat, axis, linePos, a0, a1, face) {
   const len = a1 - a0;
   if (len < 0.1) return;
   const bh = BASEBOARD_H;
-  const d = 0.055;
+  const d = 0.085;
   const geo =
     axis === "z"
       ? new THREE.BoxGeometry(len, bh, d)
       : new THREE.BoxGeometry(d, bh, len);
   const mesh = new THREE.Mesh(geo, mat);
   const mid = (a0 + a1) / 2;
-  const offset = face * (d / 2 + WALL_T / 2 + 0.01);
+  const offset = face * (d / 2 + WALL_T / 2 + 0.015);
   if (axis === "z") mesh.position.set(mid, bh / 2, linePos + offset);
   else mesh.position.set(linePos + offset, bh / 2, mid);
+  group.add(mesh);
+}
+
+function addWainscot(group, mat, axis, linePos, a0, a1, face) {
+  const len = a1 - a0;
+  if (len < 0.1) return;
+  const wh = WAINSCOT_H - BASEBOARD_H;
+  const d = 0.05;
+  const geo =
+    axis === "z"
+      ? new THREE.BoxGeometry(len, wh, d)
+      : new THREE.BoxGeometry(d, wh, len);
+  const mesh = new THREE.Mesh(geo, mat);
+  const mid = (a0 + a1) / 2;
+  const y = BASEBOARD_H + wh / 2;
+  const offset = face * (d / 2 + WALL_T / 2 + 0.018);
+  if (axis === "z") mesh.position.set(mid, y, linePos + offset);
+  else mesh.position.set(linePos + offset, y, mid);
+  group.add(mesh);
+}
+
+function addFloorShadow(group, mat, axis, linePos, a0, a1, face) {
+  const len = a1 - a0;
+  if (len < 0.1) return;
+  const sh = 0.08;
+  const depth = 0.45;
+  const geo =
+    axis === "z"
+      ? new THREE.BoxGeometry(len, sh, depth)
+      : new THREE.BoxGeometry(depth, sh, len);
+  const mesh = new THREE.Mesh(geo, mat);
+  const mid = (a0 + a1) / 2;
+  const offset = face * (depth / 2 + 0.04);
+  if (axis === "z") mesh.position.set(mid, sh / 2, linePos + offset);
+  else mesh.position.set(linePos + offset, sh / 2, mid);
   group.add(mesh);
 }
 
@@ -67,7 +105,7 @@ function addCrown(group, mat, h, axis, linePos, a0, a1, face) {
   const len = a1 - a0;
   if (len < 0.1) return;
   const ch = CROWN_H;
-  const d = 0.048;
+  const d = 0.07;
   const geo =
     axis === "z"
       ? new THREE.BoxGeometry(len, ch, d)
@@ -83,7 +121,9 @@ function addCrown(group, mat, h, axis, linePos, a0, a1, face) {
 
 function addWallTrim(group, materials, h, axis, linePos, a0, a1, faces) {
   for (const face of faces) {
+    addFloorShadow(group, materials.floorShadow, axis, linePos, a0, a1, face);
     addBaseboard(group, materials.baseboard, axis, linePos, a0, a1, face);
+    addWainscot(group, materials.wainscot, axis, linePos, a0, a1, face);
     addCrown(group, materials.crown, h, axis, linePos, a0, a1, face);
   }
 }

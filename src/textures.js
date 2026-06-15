@@ -45,22 +45,22 @@ export function tiled(tex, tileM, w, h) {
   return t;
 }
 
-/** Damp office carpet — darker muddy tan for floor/wall contrast */
+/** Damp office carpet — dark muddy tan, clearly darker than walls */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {
-    ctx.fillStyle = "#9a8048";
+    ctx.fillStyle = "#6e5428";
     ctx.fillRect(0, 0, size, size);
     for (let y = 0; y < size; y += 3) {
       for (let x = 0; x < size; x += 3) {
-        const v = 138 + ((x * 17 + y * 31) % 26);
-        ctx.fillStyle = `rgb(${v + 6},${v - 4},${v - 26})`;
+        const v = 108 + ((x * 17 + y * 31) % 28);
+        ctx.fillStyle = `rgb(${v + 4},${v - 6},${v - 30})`;
         ctx.fillRect(x, y, 2, 2);
       }
     }
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < 140; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.fillStyle = `rgba(55,45,28,${0.04 + Math.random() * 0.07})`;
+      ctx.fillStyle = `rgba(35,28,16,${0.05 + Math.random() * 0.08})`;
       ctx.fillRect(x, y, 4 + Math.random() * 6, 3 + Math.random() * 5);
     }
   });

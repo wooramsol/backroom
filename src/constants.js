@@ -21,27 +21,32 @@ export const MOUSE_SENS = 0.0022;
 export const PITCH_LIMIT = 1.18;
 /** Hazy yellow-green liminal atmosphere */
 export const FOG_COLOR = 0xe8e6c4;
-export const FOG_DENSITY = 0.022;
+export const FOG_DENSITY = 0.014;
 export const AMBIENT_COLOR = 0xf0f5cf;
-export const AMBIENT_INTENSITY = 0.32;
-export const HEMI_SKY = 0xf4f2e4;
-export const HEMI_GROUND = 0x7a6848;
-export const HEMI_INTENSITY = 0.28;
+export const AMBIENT_INTENSITY = 0.34;
+export const HEMI_SKY = 0xf6f4ea;
+export const HEMI_GROUND = 0x5c4a30;
+export const HEMI_INTENSITY = 0.34;
 export const LIGHT_PANEL_COLOR = 0xfffae8;
-export const LIGHT_PANEL_INTENSITY = 0.78;
+export const LIGHT_PANEL_INTENSITY = 0.8;
 export const FLUORESCENT_LIGHT_COLOR = 0xfff6dc;
-export const FLUORESCENT_LIGHT_INTENSITY = 0.62;
-export const FLUORESCENT_LIGHT_DISTANCE = 6.5;
+export const FLUORESCENT_LIGHT_INTENSITY = 0.7;
+export const FLUORESCENT_LIGHT_DISTANCE = 7;
 export const FLUORESCENT_LIGHT_DECAY = 2;
-export const TONE_MAPPING_EXPOSURE = 0.92;
-/** Stronger separation: darker floor, lighter ceiling, cream walls */
-export const CARPET_COLOR = 0xa08850;
-export const CEILING_COLOR = 0xf2eee0;
+export const TONE_MAPPING_EXPOSURE = 0.95;
+/** High contrast surfaces + dark trim at every edge */
+export const CARPET_COLOR = 0x7a6038;
+export const CEILING_COLOR = 0xf8f5ea;
 export const WALL_COLOR = 0xf8f6e8;
-export const BASEBOARD_COLOR = 0x4a3a28;
-export const BASEBOARD_H = 0.1;
-export const CROWN_COLOR = 0x5c4c38;
-export const CROWN_H = 0.07;
+export const BASEBOARD_COLOR = 0x1e1610;
+export const BASEBOARD_H = 0.14;
+export const WAINSCOT_COLOR = 0x8a7858;
+export const WAINSCOT_H = 0.38;
+export const CROWN_COLOR = 0x2e2418;
+export const CROWN_H = 0.09;
+export const FLOOR_SHADOW_COLOR = 0x141008;
+/** Shown in HUD so deploy version is verifiable */
+export const BUILD_TAG = "062515b";
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

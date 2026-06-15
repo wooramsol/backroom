@@ -10,7 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { CHUNK, EYE_H, FOG_COLOR, FOG_DENSITY, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR, BASEBOARD_COLOR, CROWN_COLOR } from "./constants.js";
+import { CHUNK, EYE_H, FOG_COLOR, FOG_DENSITY, AMBIENT_COLOR, AMBIENT_INTENSITY, HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY, LIGHT_PANEL_COLOR, LIGHT_PANEL_INTENSITY, TONE_MAPPING_EXPOSURE, CAMERA_FOV, CARPET_COLOR, CEILING_COLOR, BASEBOARD_COLOR, CROWN_COLOR, WAINSCOT_COLOR, FLOOR_SHADOW_COLOR, BUILD_TAG } from "./constants.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -55,7 +55,9 @@ async function init() {
       color: CEILING_COLOR,
     }),
     baseboard: new THREE.MeshLambertMaterial({ color: BASEBOARD_COLOR }),
+    wainscot: new THREE.MeshLambertMaterial({ color: WAINSCOT_COLOR }),
     crown: new THREE.MeshLambertMaterial({ color: CROWN_COLOR }),
+    floorShadow: new THREE.MeshLambertMaterial({ color: FLOOR_SHADOW_COLOR }),
     lightPanel: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),
@@ -75,6 +77,7 @@ async function init() {
       started = true;
       overlay.classList.add("hidden");
       hud.classList.add("visible");
+      hud.textContent = `LEVEL 0 · ${BUILD_TAG}`;
       vignette.classList.add("visible");
       grade.classList.add("visible");
       hum.start();
