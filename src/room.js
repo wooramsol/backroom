@@ -5,6 +5,7 @@ import {
   DOOR_H,
   DOOR_JAMB_INSET,
   MIN_DOOR_WIDTH,
+  MIN_PASSAGE_SPAN,
   ROOM_H,
   PANEL_ON_CHANCE,
   PANEL_EDGE_INSET,
@@ -90,9 +91,13 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   };
 }
 
+function narrowSpan(rng, lo, hi) {
+  return Math.max(MIN_PASSAGE_SPAN + 0.35, rng.range(lo, hi));
+}
+
 function hallEW(rng, forceWide = false) {
   const wide = forceWide || rng.chance(0.38);
-  const depth = wide ? rng.range(7.8, 12.2) : rng.range(3.0, 6.2);
+  const depth = wide ? rng.range(7.8, 12.2) : narrowSpan(rng, 3.4, 5.8);
   const z0 = rng.range(0.25, CHUNK - depth - 0.25);
   return {
     kind: wide ? "wide-hall" : "hall",
@@ -106,7 +111,7 @@ function hallEW(rng, forceWide = false) {
 
 function hallNS(rng, forceWide = false) {
   const wide = forceWide || rng.chance(0.38);
-  const width = wide ? rng.range(7.8, 12.2) : rng.range(3.0, 6.2);
+  const width = wide ? rng.range(7.8, 12.2) : narrowSpan(rng, 3.4, 5.8);
   const x0 = rng.range(0.25, CHUNK - width - 0.25);
   return {
     kind: wide ? "wide-hall" : "hall",
@@ -236,7 +241,7 @@ function offsetSlab(rng) {
 
 function tShape(rng, stem) {
   const bar = rng.range(9.5, 13.2);
-  const stemW = rng.range(3.2, 6.2);
+  const stemW = narrowSpan(rng, 3.6, 6.2);
   const stemX0 = (CHUNK - stemW) / 2;
   const stemX1 = stemX0 + stemW;
   const barZ = rng.range(9, 12.5);
@@ -325,18 +330,175 @@ function twinZone(rng) {
   };
 }
 
+function tripleSplit(rng) {
+  if (rng.chance(0.5)) {
+    const x1 = rng.range(4.0, 5.6);
+    const x2 = rng.range(8.4, 10.0);
+    return {
+      kind: "triple",
+      zones: [
+        { x0: 0, z0: 0, x1: x1, z1: CHUNK },
+        { x0: x1, z0: 0, x1: x2, z1: CHUNK },
+        { x0: x2, z0: 0, x1: CHUNK, z1: CHUNK },
+      ],
+      innerWalls: [
+        { axis: "x", pos: x1, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+        { axis: "x", pos: x2, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      ],
+    };
+  }
+
+  const z1 = rng.range(4.0, 5.6);
+  const z2 = rng.range(8.4, 10.0);
+  return {
+    kind: "triple",
+    zones: [
+      { x0: 0, z0: 0, x1: CHUNK, z1: z1 },
+      { x0: 0, z0: z1, x1: CHUNK, z1: z2 },
+      { x0: 0, z0: z2, x1: CHUNK, z1: CHUNK },
+    ],
+    innerWalls: [
+      { axis: "z", pos: z1, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      { axis: "z", pos: z2, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+    ],
+  };
+}
+
+function uShape(rng) {
+  const leg = rng.range(3.8, 5.8);
+  const open = rng.range(4.8, 7.2);
+  return {
+    kind: "U",
+    zones: [
+      { x0: 0, z0: 0, x1: leg, z1: CHUNK },
+      { x0: CHUNK - leg, z0: 0, x1: CHUNK, z1: CHUNK },
+      { x0: 0, z0: CHUNK - open, x1: CHUNK, z1: CHUNK },
+    ],
+    innerWalls: [
+      { axis: "x", pos: leg, span0: 0, span1: CHUNK - open, door: doorSpec(rng, CHUNK - open) },
+      { axis: "x", pos: CHUNK - leg, span0: 0, span1: CHUNK - open, door: doorSpec(rng, CHUNK - open) },
+    ],
+  };
+}
+
+function hubRoom(rng) {
+  const margin = rng.range(2.8, 4.2);
+  const cx0 = margin;
+  const cz0 = margin;
+  const cx1 = CHUNK - margin;
+  const cz1 = CHUNK - margin;
+  return {
+    kind: "hub",
+    zones: [
+      { x0: 0, z0: 0, x1: CHUNK, z1: cz0 },
+      { x0: 0, z0: cz1, x1: CHUNK, z1: CHUNK },
+      { x0: 0, z0: cz0, x1: cx0, z1: cz1 },
+      { x0: cx1, z0: cz0, x1: CHUNK, z1: cz1 },
+      { x0: cx0, z0: cz0, x1: cx1, z1: cz1 },
+    ],
+    innerWalls: [
+      { axis: "z", pos: cz0, span0: cx0, span1: cx1, door: doorSpec(rng, cx1 - cx0) },
+      { axis: "z", pos: cz1, span0: cx0, span1: cx1, door: doorSpec(rng, cx1 - cx0) },
+      { axis: "x", pos: cx0, span0: cz0, span1: cz1, door: doorSpec(rng, cz1 - cz0) },
+      { axis: "x", pos: cx1, span0: cz0, span1: cz1, door: doorSpec(rng, cz1 - cz0) },
+    ],
+  };
+}
+
+function zigzag(rng) {
+  const mid = rng.range(5.5, 8.5);
+  const thick = narrowSpan(rng, 3.6, 5.4);
+  if (rng.chance(0.5)) {
+    return {
+      kind: "zigzag",
+      zones: [
+        { x0: 0, z0: 0, x1: mid, z1: thick },
+        { x0: mid, z0: 0, x1: CHUNK, z1: CHUNK },
+        { x0: 0, z0: thick, x1: mid, z1: CHUNK },
+      ],
+      innerWalls: [
+        { axis: "z", pos: thick, span0: 0, span1: mid, door: null },
+        { axis: "x", pos: mid, span0: thick, span1: CHUNK, door: doorSpec(rng, CHUNK - thick) },
+      ],
+    };
+  }
+
+  return {
+    kind: "zigzag",
+    zones: [
+      { x0: 0, z0: 0, x1: thick, z1: mid },
+      { x0: 0, z0: mid, x1: CHUNK, z1: CHUNK },
+      { x0: thick, z0: 0, x1: CHUNK, z1: mid },
+    ],
+    innerWalls: [
+      { axis: "x", pos: thick, span0: 0, span1: mid, door: null },
+      { axis: "z", pos: mid, span0: thick, span1: CHUNK, door: doorSpec(rng, CHUNK - thick) },
+    ],
+  };
+}
+
+function hallWithPockets(rng) {
+  const thick = narrowSpan(rng, 3.6, 5.2);
+  const z0 = rng.range(0.3, CHUNK - thick - 0.3);
+  const pocket = rng.range(3.2, 5.2);
+  const side = rng.pick(["left", "right"]);
+  const zones = [{ x0: 0, z0, x1: CHUNK, z1: z0 + thick }];
+  const walls = [
+    { axis: "z", pos: z0, span0: 0, span1: CHUNK, door: null },
+    { axis: "z", pos: z0 + thick, span0: 0, span1: CHUNK, door: null },
+  ];
+
+  if (side === "left") {
+    zones.push({ x0: 0, z0: z0 + thick, x1: pocket, z1: CHUNK });
+    walls.push({ axis: "x", pos: pocket, span0: z0 + thick, span1: CHUNK, door: doorSpec(rng, CHUNK - z0 - thick) });
+  } else {
+    zones.push({ x0: CHUNK - pocket, z0: z0 + thick, x1: CHUNK, z1: CHUNK });
+    walls.push({ axis: "x", pos: CHUNK - pocket, span0: z0 + thick, span1: CHUNK, door: doorSpec(rng, CHUNK - z0 - thick) });
+  }
+
+  return { kind: "hall-pockets", zones, innerWalls: walls };
+}
+
+function compoundLT(rng) {
+  const l = lShape(rng, rng.pick(["nw", "ne", "sw", "se"]));
+  const pocket = rng.range(3.0, 4.8);
+  const corner = rng.pick(["nw", "ne", "sw", "se"]);
+  const pockets = {
+    nw: { x0: 0, z0: 0, x1: pocket, z1: pocket },
+    ne: { x0: CHUNK - pocket, z0: 0, x1: CHUNK, z1: pocket },
+    sw: { x0: 0, z0: CHUNK - pocket, x1: pocket, z1: CHUNK },
+    se: { x0: CHUNK - pocket, z0: CHUNK - pocket, x1: CHUNK, z1: CHUNK },
+  };
+  const p = pockets[corner];
+  l.zones.push(p);
+  if (p.x1 < CHUNK - 0.2) {
+    l.innerWalls.push({ axis: "x", pos: p.x1, span0: p.z0, span1: p.z1, door: doorSpec(rng, p.z1 - p.z0) });
+  }
+  if (p.z1 < CHUNK - 0.2) {
+    l.innerWalls.push({ axis: "z", pos: p.z1, span0: p.x0, span1: p.x1, door: doorSpec(rng, p.x1 - p.x0) });
+  }
+  l.kind = "compound";
+  return l;
+}
+
 function pickShape(rng) {
   const kind = rng.pickWeighted([
-    ["full", 10],
-    ["hall-ew", 16],
-    ["hall-ns", 16],
-    ["wide-hall-ew", 6],
-    ["wide-hall-ns", 6],
-    ["alcove", 14],
-    ["L", 18],
-    ["elongated", 12],
-    ["T", 8],
-    ["twin", 6],
+    ["full", 3],
+    ["hall-ew", 10],
+    ["hall-ns", 10],
+    ["wide-hall-ew", 5],
+    ["wide-hall-ns", 5],
+    ["alcove", 12],
+    ["L", 14],
+    ["elongated", 8],
+    ["T", 10],
+    ["twin", 10],
+    ["triple", 9],
+    ["U", 8],
+    ["hub", 9],
+    ["zigzag", 8],
+    ["hall-pockets", 10],
+    ["compound", 9],
   ]);
 
   switch (kind) {
@@ -360,6 +522,18 @@ function pickShape(rng) {
       return tShape(rng, rng.pick(["north", "south", "east", "west"]));
     case "twin":
       return twinZone(rng);
+    case "triple":
+      return tripleSplit(rng);
+    case "U":
+      return uShape(rng);
+    case "hub":
+      return hubRoom(rng);
+    case "zigzag":
+      return zigzag(rng);
+    case "hall-pockets":
+      return hallWithPockets(rng);
+    case "compound":
+      return compoundLT(rng);
     default:
       return { kind: "full", zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }], innerWalls: [] };
   }

@@ -22,7 +22,9 @@ export const PLAYER_R = 0.41;
 /** Body depth (front–back) for corner collision samples */
 export const PLAYER_DEPTH = 0.28;
 /** Extra radius on body samples when pushing away from walls */
-export const BODY_WALL_CLEAR = 0.065;
+export const BODY_WALL_CLEAR = 0.035;
+/** Minimum walkable span (corridor width / depth) — must fit the body */
+export const MIN_PASSAGE_SPAN = 2 * (PLAYER_R * 0.98 + BODY_WALL_CLEAR) + 0.18;
 /** Minimum door width so the player body cannot squeeze through the gap */
 export const MIN_DOOR_WIDTH = 2 * (PLAYER_R + BODY_WALL_CLEAR) + 2 * DOOR_JAMB_INSET + 0.14;
 export const JUMP_V = 4.2;
@@ -32,9 +34,9 @@ export const CAMERA_FOV = 60;
 /** Closer near plane — default 0.08 let walls vanish when hugging them */
 export const CAMERA_NEAR = 0.035;
 /** Keep the eye this far from wall surfaces (near + margin) */
-export const CAMERA_WALL_CLEAR = 0.065;
+export const CAMERA_WALL_CLEAR = 0.04;
 /** Camera may shift slightly off body center to stay out of geometry */
-export const CAMERA_MAX_OFFSET = 0.055;
+export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;

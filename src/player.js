@@ -18,7 +18,7 @@ const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const BODY_HW = PLAYER_R * 0.98;
-const MOVE_STEP = 0.012;
+const MOVE_STEP = 0.008;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 
 const _fwd = new THREE.Vector3();
@@ -27,6 +27,10 @@ const _move = new THREE.Vector3();
 const _camFwd = new THREE.Vector3();
 const _camOff = new THREE.Vector3();
 const _bodyPts = [
+  [0, 0],
+  [0, 0],
+  [0, 0],
+  [0, 0],
   [0, 0],
   [0, 0],
   [0, 0],
@@ -118,6 +122,33 @@ export class Player {
     _bodyPts[6][1] = pz + s * hd;
     _bodyPts[7][0] = px - c * hd;
     _bodyPts[7][1] = pz - s * hd;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      _bodyPts[8 + i][0] = px + c * (hd * 0.55 * ca + 0.01) + s * (hw * sa);
+      _bodyPts[8 + i][1] = pz + s * (hd * 0.55 * ca + 0.01) - c * (hw * sa);
+    }
+  }
+
+  _sampleHitsWall(sx, sz, y, r) {
+    for (const c of this.colliders) {
+      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      if (sx + r > c.minX && sx - r < c.maxX && sz + r > c.minZ && sz - r < c.maxZ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _bodyOverlaps(px, pz) {
+    const y = this.position.y;
+    const r = BODY_WALL_CLEAR;
+    this._fillBodyPoints(px, pz);
+    for (let i = 0; i < 12; i++) {
+      if (this._sampleHitsWall(_bodyPts[i][0], _bodyPts[i][1], y, r)) return true;
+    }
+    return this._sampleHitsWall(px, pz, y, BODY_WALL_CLEAR * 0.5);
   }
 
   _pushSample(sx, sz, px, pz, y, r) {
@@ -148,11 +179,11 @@ export class Player {
     const y = this.position.y;
     const r = BODY_WALL_CLEAR;
 
-    for (let n = 0; n < 40; n++) {
+    for (let n = 0; n < 48; n++) {
       this._fillBodyPoints(px, pz);
       let hit = false;
 
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 12; i++) {
         const out = this._pushSample(_bodyPts[i][0], _bodyPts[i][1], px, pz, y, r);
         px = out.px;
         pz = out.pz;
@@ -165,15 +196,32 @@ export class Player {
     return { px, pz };
   }
 
+  _tryMove(px, pz, dx, dz) {
+    const target = this._pushOut(px + dx, pz + dz);
+    if (!this._bodyOverlaps(target.px, target.pz)) return target;
+
+    const xOnly = this._pushOut(px + dx, pz);
+    if (!this._bodyOverlaps(xOnly.px, xOnly.pz)) {
+      const xz = this._pushOut(xOnly.px, pz + dz);
+      if (!this._bodyOverlaps(xz.px, xz.pz)) return xz;
+      return xOnly;
+    }
+
+    const zOnly = this._pushOut(px, pz + dz);
+    if (!this._bodyOverlaps(zOnly.px, zOnly.pz)) return zOnly;
+
+    return { px, pz };
+  }
+
   _moveSlide(px, pz, dx, dz) {
     const len = Math.hypot(dx, dz);
     const steps = Math.max(1, Math.ceil(len / MOVE_STEP));
     const sx = dx / steps;
     const sz = dz / steps;
     for (let i = 0; i < steps; i++) {
-      const out = this._pushOut(px + sx, pz + sz);
-      px = out.px;
-      pz = out.pz;
+      const next = this._tryMove(px, pz, sx, sz);
+      px = next.px;
+      pz = next.pz;
     }
     return { px, pz };
   }
@@ -252,7 +300,7 @@ export class Player {
     }
 
     this._fillBodyPoints(x, z);
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       const sx = _bodyPts[i][0];
       const sz = _bodyPts[i][1];
       for (const c of this.colliders) {
@@ -284,7 +332,17 @@ export class Player {
   }
 
   resolvePenetration() {
+    const prevX = this.position.x;
+    const prevZ = this.position.z;
     const out = this._pushOut(this.position.x, this.position.z);
+    if (this._bodyOverlaps(out.px, out.pz)) {
+      this.position.x = prevX;
+      this.position.z = prevZ;
+      const safe = this._pushOut(prevX, prevZ);
+      this.position.x = safe.px;
+      this.position.z = safe.pz;
+      return;
+    }
     this.position.x = out.px;
     this.position.z = out.pz;
   }
