@@ -9,7 +9,6 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { PanelLightPool } from "./lightPool.js";
 import {
   CHUNK,
   EYE_H,
@@ -24,6 +23,7 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
+  PANEL_LIGHT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -78,7 +78,6 @@ async function init() {
 
   const world = new World(scene, materials);
   world.init();
-  const panelLights = new PanelLightPool();
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
@@ -112,9 +111,16 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    panelLights.update(player.position, world.chunks, lightT);
-
     for (const { mesh } of world.chunks.values()) {
+      const lights = mesh.userData.panelLights;
+      if (lights) {
+        for (const light of lights) {
+          const panel = light.userData.panel;
+          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+          light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
+        }
+      }
+
       mesh.traverse((obj) => {
         const panel = obj.userData?.panel;
         if (!panel) return;

@@ -6,6 +6,7 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
+  PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
   CEILING_EMISSIVE_INTENSITY,
@@ -41,14 +42,30 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+
 function addCeilingPanels(group, room, lightMat, h) {
   const offColor = new THREE.Color(LIGHT_PANEL_OFF_COLOR);
   const onColor = new THREE.Color(LIGHT_PANEL_COLOR);
+  const y = h - 0.05;
+  const panelLights = [];
 
   for (const panel of room.panels) {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PANEL_W, PANEL_H), lightMat.clone());
     if (panel.on) {
       mesh.material.color.copy(onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
+      const light = new THREE.RectAreaLight(
+        0xfff4d8,
+        PANEL_LIGHT_INTENSITY * panel.bright,
+        PANEL_W,
+        PANEL_H
+      );
+      light.position.set(panel.x, y, panel.z);
+      light.rotation.copy(_down);
+      light.userData.panel = panel;
+      panel.light = light;
+      group.add(light);
+      panelLights.push(light);
     } else {
       mesh.material.color.copy(offColor);
     }
@@ -56,9 +73,11 @@ function addCeilingPanels(group, room, lightMat, h) {
     mesh.userData.panel = panel;
     panel.face = mesh;
     mesh.rotation.x = Math.PI / 2;
-    mesh.position.set(panel.x, h - 0.05, panel.z);
+    mesh.position.set(panel.x, y, panel.z);
     group.add(mesh);
   }
+
+  return panelLights;
 }
 
 export function buildRoomMesh(room, materials) {
@@ -82,7 +101,7 @@ export function buildRoomMesh(room, materials) {
   ceiling.position.y = h;
   group.add(ceiling);
 
-  addCeilingPanels(group, room, materials.lightPanel, h);
+  const panelLights = addCeilingPanels(group, room, materials.lightPanel, h);
 
   const wt = materials.wallTex;
   wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);
@@ -99,5 +118,6 @@ export function buildRoomMesh(room, materials) {
 
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   group.userData.room = room;
+  group.userData.panelLights = panelLights;
   return group;
 }
