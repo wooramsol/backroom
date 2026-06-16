@@ -10,6 +10,7 @@ import {
   PANEL_H,
   CEILING_EMISSIVE_BASE,
   CEILING_EMISSIVE_LIT,
+  CARPET_COLOR,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -70,7 +71,8 @@ export function buildRoomMesh(room, materials) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const ceilingMat = materials.ceiling.clone();
+  const ceilingMat = materials.carpet.clone();
+  ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
   ceilingMat.emissiveIntensity =
     CEILING_EMISSIVE_BASE + strength * CEILING_EMISSIVE_LIT;
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);

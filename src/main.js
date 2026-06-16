@@ -2,11 +2,9 @@ import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
-  createCeilingTexture,
   loadWallpaperOrFallback,
   tiled,
   CARPET_TILE_M,
-  CEILING_TILE_M,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -29,8 +27,6 @@ import {
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
-  CEILING_COLOR,
-  CEILING_EMISSIVE_BASE,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 
@@ -64,9 +60,6 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
-  const ceilingTex = createCeilingTexture();
-  const ceilingMap = tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK);
-  ceilingMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
   const materials = {
     wallTex: wallpaper,
@@ -74,15 +67,6 @@ async function init() {
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
       roughness: 0.94,
-      metalness: 0,
-      side: THREE.DoubleSide,
-    }),
-    ceiling: new THREE.MeshStandardMaterial({
-      map: ceilingMap,
-      color: CEILING_COLOR,
-      emissive: CEILING_COLOR,
-      emissiveIntensity: CEILING_EMISSIVE_BASE,
-      roughness: 0.96,
       metalness: 0,
       side: THREE.DoubleSide,
     }),
