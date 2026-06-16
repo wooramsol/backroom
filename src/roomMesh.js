@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { CHUNK } from "./room.js";
 import {
   WALL_T,
-  WALL_FLOOR_OVERLAP,
   DOOR_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
@@ -10,15 +9,12 @@ import {
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
-  PANEL_LIGHT_SPAN_W,
-  PANEL_LIGHT_SPAN_D,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
-const _glowGeo = new THREE.PlaneGeometry(PANEL_LIGHT_SPAN_W, PANEL_LIGHT_SPAN_D);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
@@ -30,17 +26,14 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
     const slen = s1 - s0;
     if (slen < 0.1) return;
     const smid = (s0 + s1) / 2;
-    const extendBot = segY <= 0.001 ? WALL_FLOOR_OVERLAP : 0;
-    const totalH = segH + extendBot;
-    const centerY = segY + segH / 2 - extendBot / 2;
     const geo =
       axis === "z"
-        ? new THREE.BoxGeometry(slen, totalH, WALL_T)
-        : new THREE.BoxGeometry(WALL_T, totalH, slen);
-    const mat = createTiledMaterial(wallTex, slen, totalH);
+        ? new THREE.BoxGeometry(slen, segH, WALL_T)
+        : new THREE.BoxGeometry(WALL_T, segH, slen);
+    const mat = createTiledMaterial(wallTex, slen, segH);
     const m = new THREE.Mesh(geo, mat);
-    if (axis === "z") m.position.set(smid, centerY, pos);
-    else m.position.set(pos, centerY, smid);
+    if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
+    else m.position.set(pos, segY + segH / 2, smid);
     group.add(m);
   };
 
@@ -71,13 +64,13 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** Lit panel = bright rectangle + matching RectAreaLight */
+/** Lit panel = bright rectangle + matching RectAreaLight at the same spot */
 function addOnePanel(group, materials, h, panel, fixtures) {
   const y = h - 0.012;
   const gotLight = panel.on && claimPanelLight();
   const face = new THREE.Mesh(
     _panelGeo,
-    gotLight ? materials.lightPanelOn.clone() : materials.lightPanelOff,
+    gotLight ? materials.lightPanelOn.clone() : materials.lightPanelOff
   );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
@@ -90,27 +83,17 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const floorLight = new THREE.RectAreaLight(
+  const light = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_LIGHT_SPAN_W,
-    PANEL_LIGHT_SPAN_D,
+    PANEL_W,
+    PANEL_H
   );
-  floorLight.position.set(panel.x, y, panel.z);
-  floorLight.rotation.copy(_down);
-  group.add(floorLight);
-  panel.light = floorLight;
-
-  const glowMat = materials.ceilingGlow.clone();
-  glowMat.opacity = panel.bright;
-  const glow = new THREE.Mesh(_glowGeo, glowMat);
-  glow.rotation.x = Math.PI / 2;
-  glow.position.set(panel.x, h - 0.008, panel.z);
-  glow.renderOrder = 1;
-  group.add(glow);
-  panel.glow = glow;
-
-  fixtures.push({ light: floorLight, glow, panel, face });
+  light.position.set(panel.x, y, panel.z);
+  light.rotation.copy(_down);
+  group.add(light);
+  panel.light = light;
+  fixtures.push({ light, panel, face });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -139,7 +122,8 @@ export function buildRoomShell(state) {
   group.add(floor);
 
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
-  const ceiling = new THREE.Mesh(_chunkPlane, createCarpetSurfaceMaterial(ceilingMap));
+  const ceilingMat = createCarpetSurfaceMaterial(ceilingMap);
+  const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
   group.add(ceiling);
@@ -157,7 +141,7 @@ export function buildPanelBatch(state, maxPanels) {
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
     addOnePanel(group, materials, h, panel, state.fixtures);
-    if (panel.light) state.lightCount += 1;
+    if (panel.light) state.lightCount++;
     state.panelIdx++;
     added++;
   }
@@ -173,6 +157,7 @@ export function finalizeRoomBuild(state) {
   return group;
 }
 
+/** Synchronous full build — startup chunk only */
 export function buildRoomMesh(room, materials) {
   const state = createRoomBuildState(room, materials);
   buildRoomShell(state);

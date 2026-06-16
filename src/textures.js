@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CARPET_COLOR, PANEL_LIGHT_COLOR } from "./constants.js";
+import { CARPET_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -65,35 +65,6 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   const frac = (n) => ((n % 1) + 1) % 1;
   t.offset.set(frac(worldX / tileM), frac(worldZ / tileM));
   return t;
-}
-
-/** Soft radial pool — ceiling glow decal (mirror of floor RectAreaLight span) */
-let _ceilingGlowTex;
-export function createCeilingGlowTexture() {
-  if (_ceilingGlowTex) return _ceilingGlowTex;
-  _ceilingGlowTex = canvasTex((ctx, size) => {
-    const c = size / 2;
-    const g = ctx.createRadialGradient(c, c, 0, c, c, c);
-    g.addColorStop(0, "rgba(255, 248, 220, 1)");
-    g.addColorStop(0.38, "rgba(255, 244, 216, 0.5)");
-    g.addColorStop(0.72, "rgba(255, 240, 200, 0.1)");
-    g.addColorStop(1, "rgba(255, 240, 200, 0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, size, size);
-  }, 256);
-  return _ceilingGlowTex;
-}
-
-export function createCeilingGlowMaterial(map = createCeilingGlowTexture()) {
-  return new THREE.MeshBasicMaterial({
-    map,
-    color: PANEL_LIGHT_COLOR,
-    transparent: true,
-    opacity: 1,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-  });
 }
 
 /** Carpet — floor and ceiling share the same Standard material */

@@ -7,8 +7,6 @@ export const MAX_ROOM_W = 14;
 export const MIN_ROOM_D = 3;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
-/** Walls sink slightly below floor (same width — not visible molding) to seal the edge gap */
-export const WALL_FLOOR_OVERLAP = 0.08;
 export const DOOR_H = 2.2;
 /** Collision jambs sit this much inside the visible opening on each side */
 export const DOOR_JAMB_INSET = 0.05;
@@ -66,17 +64,12 @@ export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
-/** RectAreaLight emitter — wider than panel; ceiling mirrors span with glow decals */
-export const PANEL_LIGHT_SPAN_W = 4.2;
-export const PANEL_LIGHT_SPAN_D = 3.6;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight — down onto floor; ceiling uses additive glow decals */
+/** RectAreaLight — same rectangle as panel face, points down */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
-export const PANEL_LIGHT_INTENSITY = 15;
-/** Additive ceiling pool — mirror of floor light span, softer than RectAreaLight */
-export const PANEL_CEILING_GLOW_OPACITY = 0.26;
+export const PANEL_LIGHT_INTENSITY = 16;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
 export const BLOOM_STRENGTH = 0.32;
 export const BLOOM_RADIUS = 0.3;

@@ -44,8 +44,7 @@ function generatePanels(rng, room) {
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
   const panels = [];
 
-  for (let zi = 0; zi < room.zones.length; zi++) {
-    const zone = room.zones[zi];
+  for (const zone of room.zones) {
     const inset = zoneInset(zone);
     const xLo = zone.x0 + inset;
     const xHi = zone.x1 - inset;
@@ -65,7 +64,6 @@ function generatePanels(rng, room) {
         panels.push({
           x,
           z,
-          zoneIdx: zi,
           on: rng.chance(narrow ? PANEL_ON_CHANCE * 0.92 : PANEL_ON_CHANCE),
           phase: rng.range(0, Math.PI * 2),
           bright: 0.9 + hash(z + zone.z0) * 0.14,
