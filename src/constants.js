@@ -45,9 +45,9 @@ export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
 /** Low warm fill — lit rooms come from ceiling fixtures */
 export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.04;
+export const AMBIENT_INTENSITY = 0.055;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
-export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
+export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 /** Lit rectangle emissive look on the panel face */
 export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
@@ -65,6 +65,8 @@ export const BLOOM_THRESHOLD = 0.85;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
+/** Self-lit floor for ceiling carpet — gaps between panels stay dim, not black */
+export const CEILING_EMISSIVE_INTENSITY = 0.22;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;

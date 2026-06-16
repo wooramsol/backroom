@@ -9,6 +9,8 @@ import {
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
+  CARPET_COLOR,
+  CEILING_EMISSIVE_INTENSITY,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
@@ -124,6 +126,8 @@ export function buildRoomShell(state) {
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceilingMat = materials.carpet.clone();
   ceilingMat.map = ceilingMap;
+  ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
+  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY;
   const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
