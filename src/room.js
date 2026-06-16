@@ -3,6 +3,8 @@ import {
   CHUNK,
   WALL_T,
   DOOR_H,
+  DOOR_JAMB_INSET,
+  MIN_DOOR_WIDTH,
   ROOM_H,
   MIN_ROOM_W,
   MAX_ROOM_W,
@@ -54,7 +56,7 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const bx = Math.max(cx0, cx1);
   const bz = Math.max(cz0, cz1);
   const rng = createRng(ax, az, bx, bz, 42);
-  const width = rng.pick([2.0, 2.4, 2.8, 3.2]);
+  const width = Math.max(MIN_DOOR_WIDTH, rng.pick([2.0, 2.4, 2.8, 3.2]));
   const maxOff = Math.max(0, CHUNK / 2 - width / 2 - 0.5);
   const centerClear = width / 2 + 0.38;
   const cap = Math.min(maxOff, centerClear);
@@ -72,9 +74,12 @@ export function generateRoom(cx, cz) {
   const northOff = CHUNK - depth;
 
   const innerDoor = (span) => {
-    const w = rng.pick([1.4, 1.8, 2.2, 2.6]);
-    const maxOff = Math.max(0, span / 2 - w / 2 - 0.35);
-    return { width: Math.min(w, span * 0.5), offset: rng.range(-maxOff, maxOff) };
+    const maxW = span - 0.8;
+    if (maxW < MIN_DOOR_WIDTH) return null;
+    const w = Math.max(MIN_DOOR_WIDTH, rng.pick([1.6, 2.0, 2.4, 2.8]));
+    const width = Math.min(w, maxW);
+    const maxOff = Math.max(0, span / 2 - width / 2 - 0.35);
+    return { width, offset: rng.range(-maxOff, maxOff) };
   };
 
   const room = {
@@ -108,30 +113,36 @@ export function roomLitStrength(room) {
 }
 
 function addBox(out, minX, maxX, minZ, maxZ, minY, maxY) {
-  if (maxX - minX < 0.04 || maxZ - minZ < 0.04 || maxY - minY < 0.04) return;
+  if (maxX - minX < 0.02 || maxZ - minZ < 0.02 || maxY - minY < 0.02) return;
   out.push({ minX, maxX, minZ, maxZ, minY, maxY });
+}
+
+/** Collision opening is slightly narrower than the visible mesh on each side */
+function doorCollideHalf(door) {
+  return door.width * 0.5 - DOOR_JAMB_INSET;
 }
 
 function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const t = WALL_T;
   const mid = (x0 + x1) / 2 + door.offset;
-  // Match visible mesh opening — DOOR_CLEAR was only for offset RNG, not gap size
-  const half = door.width / 2 + 0.02;
+  const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x0, lo, z - t, z + t, y0, y0 + DOOR_H);
-  addBox(boxes, hi, x1, z - t, z + t, y0, y0 + DOOR_H);
+  const jambTop = y0 + DOOR_H + 0.08;
+  addBox(boxes, x0, lo, z - t, z + t, y0, jambTop);
+  addBox(boxes, hi, x1, z - t, z + t, y0, jambTop);
   addBox(boxes, x0, x1, z - t, z + t, y0 + DOOR_H, yTop);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const t = WALL_T;
   const mid = (z0 + z1) / 2 + door.offset;
-  const half = door.width / 2 + 0.02;
+  const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x - t, x + t, z0, lo, y0, y0 + DOOR_H);
-  addBox(boxes, x - t, x + t, hi, z1, y0, y0 + DOOR_H);
+  const jambTop = y0 + DOOR_H + 0.08;
+  addBox(boxes, x - t, x + t, z0, lo, y0, jambTop);
+  addBox(boxes, x - t, x + t, hi, z1, y0, jambTop);
   addBox(boxes, x - t, x + t, z0, z1, y0 + DOOR_H, yTop);
 }
 

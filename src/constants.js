@@ -7,7 +7,9 @@ export const MIN_ROOM_D = 9;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
 export const DOOR_H = 2.2;
-/** Legacy — door offset RNG only; collision gap matches visual mesh width */
+/** Collision jambs sit this much inside the visible opening on each side */
+export const DOOR_JAMB_INSET = 0.05;
+/** Legacy — door offset RNG only */
 export const DOOR_CLEAR = 0.48;
 /** Fixed ceiling height */
 export const ROOM_H = 2.7;
@@ -18,6 +20,8 @@ export const EYE_H = 1.62;
 export const PLAYER_R = 0.41;
 /** Body depth (front–back) for corner collision samples */
 export const PLAYER_DEPTH = 0.28;
+/** Minimum door width so the player body cannot squeeze through the gap */
+export const MIN_DOOR_WIDTH = 2 * (PLAYER_R + 0.13) + 2 * DOOR_JAMB_INSET + 0.14;
 export const JUMP_V = 4.2;
 export const GRAVITY = 14;
 /** Narrower FOV — 72° caused heavy edge distortion that felt tilted */

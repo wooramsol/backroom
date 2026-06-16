@@ -17,14 +17,13 @@ const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CORNER_R = 0.13;
-const BODY_HW = PLAYER_R;
-const MOVE_STEP = 0.02;
+const BODY_HW = PLAYER_R * 0.98;
+const MOVE_STEP = 0.012;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 
 const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _move = new THREE.Vector3();
-const _step = new THREE.Vector3();
 const _camFwd = new THREE.Vector3();
 const _camOff = new THREE.Vector3();
 const _bodyPts = [
@@ -166,37 +165,17 @@ export class Player {
     return { px, pz };
   }
 
-  _bodyPenetrates(px, pz) {
-    const y = this.position.y;
-    const r = CORNER_R * 0.85;
-    this._fillBodyPoints(px, pz);
-
-    for (let i = 0; i < 8; i++) {
-      const sx = _bodyPts[i][0];
-      const sz = _bodyPts[i][1];
-      for (const c of this.colliders) {
-        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
-        if (sx + r > c.minX && sx - r < c.maxX && sz + r > c.minZ && sz - r < c.maxZ) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
   _moveSlide(px, pz, dx, dz) {
-    const direct = this._pushOut(px + dx, pz + dz);
-    if (!this._bodyPenetrates(direct.px, direct.pz)) return direct;
-
-    const xSlide = this._pushOut(px + dx, pz);
-    const xzSlide = this._pushOut(xSlide.px, pz + dz);
-    if (!this._bodyPenetrates(xzSlide.px, xzSlide.pz)) return xzSlide;
-
-    const zSlide = this._pushOut(px, pz + dz);
-    const zxSlide = this._pushOut(zSlide.px + dx, zSlide.pz);
-    if (!this._bodyPenetrates(zxSlide.px, zxSlide.pz)) return zxSlide;
-
-    return xSlide;
+    const len = Math.hypot(dx, dz);
+    const steps = Math.max(1, Math.ceil(len / MOVE_STEP));
+    const sx = dx / steps;
+    const sz = dz / steps;
+    for (let i = 0; i < steps; i++) {
+      const out = this._pushOut(px + sx, pz + sz);
+      px = out.px;
+      pz = out.pz;
+    }
+    return { px, pz };
   }
 
   _pointInsideCollider(x, y, z, pad = 0) {
@@ -325,13 +304,9 @@ export class Player {
 
     if (_move.lengthSq() > 0) {
       _move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(_move.length() / MOVE_STEP));
-      _step.copy(_move).divideScalar(steps);
-      for (let i = 0; i < steps; i++) {
-        const out = this._moveSlide(this.position.x, this.position.z, _step.x, _step.z);
-        this.position.x = out.px;
-        this.position.z = out.pz;
-      }
+      const out = this._moveSlide(this.position.x, this.position.z, _move.x, _move.z);
+      this.position.x = out.px;
+      this.position.z = out.pz;
       if (this.grounded) this.bob += dt * BOB_SPEED * (running ? 1.3 : 1);
     } else if (this.grounded) {
       this.bob *= 0.85;
