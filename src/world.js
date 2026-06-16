@@ -1,5 +1,11 @@
 import { CHUNK, generateRoom, appendRoomWalls } from "./room.js";
 import {
+  GRID_RADIUS,
+  PRELOAD_RADIUS,
+  PREFETCH_RADIUS,
+  EDGE_PREFETCH,
+} from "./constants.js";
+import {
   createRoomBuildState,
   buildRoomShell,
   buildPanelBatch,
@@ -8,10 +14,8 @@ import {
 } from "./roomMesh.js";
 import { releasePanelLights, resetPanelLightBudget } from "./lightBudget.js";
 
-/** 3×3 loaded rooms — keeps per-panel RectAreaLights within GPU cap */
-const GRID_RADIUS = 1;
 const PANELS_PER_FRAME = 2;
-const EDGE_PREFETCH = 0.48;
+const PRELOAD_BATCH = 2;
 
 export class World {
   constructor(scene, materials) {
@@ -50,25 +54,33 @@ export class World {
     return lx > t || lx < CHUNK - t || lz > t || lz < CHUNK - t;
   }
 
-  computeNeed(cx, cz, playerPos) {
+  ringKeys(ccx, ccz, radius) {
     const need = new Set();
-
-    const addRing = (ccx, ccz) => {
-      for (let z = ccz - GRID_RADIUS; z <= ccz + GRID_RADIUS; z++) {
-        for (let x = ccx - GRID_RADIUS; x <= ccx + GRID_RADIUS; x++) {
-          need.add(this.key(x, z));
-        }
+    for (let z = ccz - radius; z <= ccz + radius; z++) {
+      for (let x = ccx - radius; x <= ccx + radius; x++) {
+        need.add(this.key(x, z));
       }
-    };
+    }
+    return need;
+  }
 
-    addRing(cx, cz);
+  computeNeed(cx, cz, playerPos, radius = PREFETCH_RADIUS) {
+    const need = this.ringKeys(cx, cz, radius);
 
     const lx = playerPos.x - cx * CHUNK;
     const lz = playerPos.z - cz * CHUNK;
-    if (lx > CHUNK * EDGE_PREFETCH) addRing(cx + 1, cz);
-    if (lx < CHUNK * (1 - EDGE_PREFETCH)) addRing(cx - 1, cz);
-    if (lz > CHUNK * EDGE_PREFETCH) addRing(cx, cz + 1);
-    if (lz < CHUNK * (1 - EDGE_PREFETCH)) addRing(cx, cz - 1);
+    if (lx > CHUNK * EDGE_PREFETCH) {
+      for (const k of this.ringKeys(cx + 1, cz, radius)) need.add(k);
+    }
+    if (lx < CHUNK * (1 - EDGE_PREFETCH)) {
+      for (const k of this.ringKeys(cx - 1, cz, radius)) need.add(k);
+    }
+    if (lz > CHUNK * EDGE_PREFETCH) {
+      for (const k of this.ringKeys(cx, cz + 1, radius)) need.add(k);
+    }
+    if (lz < CHUNK * (1 - EDGE_PREFETCH)) {
+      for (const k of this.ringKeys(cx, cz - 1, radius)) need.add(k);
+    }
 
     return need;
   }
@@ -166,13 +178,6 @@ export class World {
     this.cellCz = cz;
     this.lastPrefetchEdge = this.nearPrefetchEdge(playerPos, cx, cz);
     this.spawnComplete(cx, cz);
-
-    const need = this.computeNeed(cx, cz, playerPos);
-    for (const k of need) {
-      if (this.chunks.has(k)) continue;
-      const [x, z] = k.split(",").map(Number);
-      this.enqueue(x, z, playerPos);
-    }
   }
 
   update(playerPos) {
@@ -218,6 +223,33 @@ export class World {
     }
   }
 
+  _isPrefetchOnly(cx, cz, playerPos) {
+    const pcx = Math.floor(playerPos.x / CHUNK);
+    const pcz = Math.floor(playerPos.z / CHUNK);
+    return Math.max(Math.abs(cx - pcx), Math.abs(cz - pcz)) > GRID_RADIUS;
+  }
+
+  _finishPrefetchJob(job) {
+    const k = this.key(job.cx, job.cz);
+    if (job.build?.group) {
+      this.removeFixtures(job.build.group);
+      releasePanelLights(job.build.group.userData.lightCount || 0);
+      this.scene.remove(job.build.group);
+      job.build.group.traverse((o) => o.geometry?.dispose());
+    }
+    this.chunks.delete(k);
+
+    const room = job.room || generateRoom(job.cx, job.cz);
+    if (!job.room) this.addCollidersForRoom(room);
+    const mesh = buildRoomMesh(room, this.materials);
+    this.scene.add(mesh);
+    this.chunks.set(k, { mesh, room });
+    this.addFixtures(mesh);
+    this.loadQueue.shift();
+    this.pendingKeys.delete(k);
+    this.pendingColliderRebuild = true;
+  }
+
   processLoadQueue(playerPos, budgetMs = 6, opts = {}) {
     const panelsPerFrame =
       opts.panelsPerFrame ?? (budgetMs >= 12 ? 999 : PANELS_PER_FRAME);
@@ -236,6 +268,11 @@ export class World {
     while (this.loadQueue.length && !overBudget()) {
       const job = this.loadQueue[0];
       const k = this.key(job.cx, job.cz);
+
+      if (this._isPrefetchOnly(job.cx, job.cz, playerPos) && (!job.build || !job.build.shellDone)) {
+        this._finishPrefetchJob(job);
+        continue;
+      }
 
       if (!job.room) {
         job.room = generateRoom(job.cx, job.cz);
@@ -294,26 +331,35 @@ export class World {
     this.pendingKeys.delete(k);
   }
 
-  /** Fully build every chunk in the initial ring before gameplay. */
+  /** Fully build the visible preload square before gameplay. */
   async preloadAround(playerPos, onProgress) {
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
-    const need = this.computeNeed(cx, cz, playerPos);
-    for (const k of need) {
-      if (!this.chunks.has(k)) {
-        const [x, z] = k.split(",").map(Number);
-        this.enqueue(x, z, playerPos);
+    const toBuild = [];
+    for (let z = cz - PRELOAD_RADIUS; z <= cz + PRELOAD_RADIUS; z++) {
+      for (let x = cx - PRELOAD_RADIUS; x <= cx + PRELOAD_RADIUS; x++) {
+        if (!this.chunks.has(this.key(x, z))) toBuild.push({ cx: x, cz: z });
       }
     }
+    toBuild.sort(
+      (a, b) =>
+        this.distToPlayer(a.cx, a.cz, playerPos) - this.distToPlayer(b.cx, b.cz, playerPos),
+    );
 
     this.preloading = true;
-    const jobs = this.loadQueue.splice(0);
-    const total = jobs.length;
+    this.loadQueue.length = 0;
+    this.pendingKeys.clear();
 
-    for (let i = 0; i < jobs.length; i++) {
-      const { cx, cz } = jobs[i];
-      this._spawnChunkComplete(cx, cz);
-      onProgress?.(i + 1, total || 1);
+    const total = toBuild.length;
+    let done = 0;
+    for (let i = 0; i < toBuild.length; i += PRELOAD_BATCH) {
+      const end = Math.min(i + PRELOAD_BATCH, toBuild.length);
+      for (let j = i; j < end; j++) {
+        const { cx: x, cz: z } = toBuild[j];
+        this._spawnChunkComplete(x, z);
+        done++;
+      }
+      onProgress?.(done, total || 1);
       await new Promise((r) => requestAnimationFrame(r));
     }
 

@@ -89,13 +89,13 @@ async function init() {
   const defaultHint =
     "클릭하여 시작<br />WASD · 이동 &nbsp; Shift · 달리기 &nbsp; Space · 점프 &nbsp; 마우스 · 시야";
 
-  if (hint) hint.textContent = "주변 공간 생성 중…";
+  if (hint) hint.textContent = "주변 공간 생성 중… (처음 한 번만)";
   overlay.style.cursor = "wait";
 
   world
     .preloadAround(player.position, (done, total) => {
       if (hint && !ready) {
-        hint.innerHTML = `주변 공간 생성 중… ${done}/${total}<br/>잠시만 기다려 주세요`;
+        hint.innerHTML = `주변 공간 생성 중… ${done}/${total}<br/>시야 거리만큼 미리 만들고 있습니다`;
       }
     })
     .then(() => {

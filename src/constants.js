@@ -43,6 +43,14 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 10;
 export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
+/** Loaded cells around player — ~3 chunks matches FOG_FAR so distant fog is already built */
+export const GRID_RADIUS = 3;
+/** Full square synced on the title screen before play */
+export const PRELOAD_RADIUS = 3;
+/** One extra ring built ahead while moving (infinite map — not all preloaded) */
+export const PREFETCH_RADIUS = GRID_RADIUS + 1;
+/** Start loading the next ring when this far into the current cell (0–1) */
+export const EDGE_PREFETCH = 0.55;
 /** Low warm fill — lit rooms come from ceiling fixtures */
 export const AMBIENT_COLOR = 0xa09888;
 export const AMBIENT_INTENSITY = 0.055;
