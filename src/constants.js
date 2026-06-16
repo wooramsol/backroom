@@ -44,6 +44,8 @@ export const BLOOM_RADIUS = 0.35;
 export const BLOOM_THRESHOLD = 0.82;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
+/** Uniform ceiling grain glow — same in every chunk so edges stay seamless */
+export const CEILING_EMISSIVE_INTENSITY = 0.12;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;
