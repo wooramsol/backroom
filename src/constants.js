@@ -42,6 +42,9 @@ export const LIGHT_POOL_SIZE = 40;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 export const CEILING_COLOR = 0xf0e8a8;
+/** Tile glow — same hue everywhere; room litRatio only tweaks intensity */
+export const CEILING_EMISSIVE_BASE = 0.16;
+export const CEILING_EMISSIVE_LIT = 0.14;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;

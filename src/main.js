@@ -30,6 +30,7 @@ import {
   CAMERA_FOV,
   CARPET_COLOR,
   CEILING_COLOR,
+  CEILING_EMISSIVE_BASE,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 
@@ -79,6 +80,8 @@ async function init() {
     ceiling: new THREE.MeshStandardMaterial({
       map: ceilingMap,
       color: CEILING_COLOR,
+      emissive: CEILING_COLOR,
+      emissiveIntensity: CEILING_EMISSIVE_BASE,
       roughness: 0.96,
       metalness: 0,
       side: THREE.DoubleSide,
