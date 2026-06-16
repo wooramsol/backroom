@@ -65,8 +65,6 @@ export const BLOOM_THRESHOLD = 0.85;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
-/** Self-lit floor for ceiling carpet — gaps between panels stay dim, not black */
-export const CEILING_EMISSIVE_INTENSITY = 0.22;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;

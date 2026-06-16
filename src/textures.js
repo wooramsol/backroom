@@ -67,21 +67,15 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Carpet floor/ceiling — same grain; optional emissiveMap keeps texture visible when lit from below */
-export function createCarpetSurfaceMaterial(map, { emissiveIntensity = 0 } = {}) {
-  const mat = new THREE.MeshStandardMaterial({
+/** Carpet floor/ceiling — identical color and response */
+export function createCarpetSurfaceMaterial(map) {
+  return new THREE.MeshStandardMaterial({
     map,
     color: CARPET_COLOR,
     roughness: 0.94,
     metalness: 0,
     side: THREE.DoubleSide,
   });
-  if (emissiveIntensity > 0) {
-    mat.emissiveMap = map;
-    mat.emissive = new THREE.Color(0xffffff);
-    mat.emissiveIntensity = emissiveIntensity;
-  }
-  return mat;
 }
 
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
