@@ -68,37 +68,6 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-function zoneHasOnPanels(room, zoneIdx) {
-  return room.panels.some((p) => (p.zoneIdx ?? 0) === zoneIdx && p.on);
-}
-
-/** Lit zones get a Standard carpet layer that catches RectAreaLight; dark zones keep base only */
-function addLitZoneFloors(group, room, materials, state) {
-  for (let zi = 0; zi < room.zones.length; zi++) {
-    if (!zoneHasOnPanels(room, zi)) continue;
-
-    const zone = room.zones[zi];
-    const w = zone.x1 - zone.x0;
-    const d = zone.z1 - zone.z0;
-    if (w < 0.1 || d < 0.1) continue;
-
-    const cx = (zone.x0 + zone.x1) / 2;
-    const cz = (zone.z0 + zone.z1) / 2;
-    const map = tiledAt(
-      materials.carpetTex,
-      CARPET_TILE_M,
-      w,
-      d,
-      state.worldX + zone.x0,
-      state.worldZ + zone.z0,
-    );
-    const lit = new THREE.Mesh(new THREE.PlaneGeometry(w, d), createCarpetSurfaceMaterial(map));
-    lit.rotation.x = -Math.PI / 2;
-    lit.position.set(cx, 0.004, cz);
-    group.add(lit);
-  }
-}
-
 /** Lit panel = bright rectangle + matching RectAreaLight */
 function addOnePanel(group, materials, h, panel, fixtures) {
   const y = h - 0.012;
@@ -152,11 +121,9 @@ export function buildRoomShell(state) {
   const { room, group, materials } = state;
   const h = room.height;
 
-  const baseFloor = new THREE.Mesh(_chunkPlane, materials.carpetBase);
-  baseFloor.rotation.x = -Math.PI / 2;
-  group.add(baseFloor);
-
-  addLitZoneFloors(group, room, materials, state);
+  const floor = new THREE.Mesh(_chunkPlane, materials.carpet);
+  floor.rotation.x = -Math.PI / 2;
+  group.add(floor);
 
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceiling = new THREE.Mesh(_chunkPlane, createCarpetSurfaceMaterial(ceilingMap));

@@ -26,7 +26,6 @@ import {
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
-  CARPET_COLOR,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -69,8 +68,6 @@ async function init() {
     wallTex: wallpaper,
     carpetTex,
     carpet: createCarpetSurfaceMaterial(floorMap),
-    /** Ambient-only base — RectAreaLight does not affect MeshBasicMaterial */
-    carpetBase: new THREE.MeshBasicMaterial({ map: floorMap, color: CARPET_COLOR }),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),
