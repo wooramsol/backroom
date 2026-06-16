@@ -29,18 +29,19 @@ export const AMBIENT_COLOR = 0xa09888;
 export const AMBIENT_INTENSITY = 0.04;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
-/** Panel emissive visual — the lit rectangle itself */
-export const LIGHT_PANEL_INTENSITY = 0.48;
+/** Glowing fluorescent tile — emissive strength on the fixture face */
+export const LIGHT_PANEL_EMISSIVE = 2.2;
+/** Lit tile size in ceiling grid (metres) — square like reference */
+export const FIXTURE_TILE_SIZE = 1.05;
+/** Soft falloff on the emissive fixture face */
+export const FIXTURE_GLOW_SIZE = 2.15;
+/** RectAreaLight strength — downward wash from each lit tile */
+export const PANEL_LIGHT_INTENSITY = 18;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** PointLight strength at each lit ceiling fixture */
-export const PANEL_LIGHT_INTENSITY = 14;
-/** Falloff range — keeps light local to the fixture */
-export const PANEL_LIGHT_DISTANCE = 13;
-export const PANEL_LIGHT_DECAY = 2;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Fluorescent hum — disabled until re-enabled later */

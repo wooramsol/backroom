@@ -66,6 +66,23 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   return t;
 }
 
+/** Soft radial falloff for integrated ceiling fluorescent tiles */
+export function createFixtureGlowTexture() {
+  return canvasTex((ctx, size) => {
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = size * 0.48;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, "rgba(255, 252, 235, 1)");
+    g.addColorStop(0.22, "rgba(255, 248, 220, 0.95)");
+    g.addColorStop(0.5, "rgba(255, 236, 180, 0.35)");
+    g.addColorStop(0.78, "rgba(255, 220, 140, 0.08)");
+    g.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }, 128);
+}
+
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {

@@ -4,19 +4,19 @@ import {
   WALL_T,
   DOOR_H,
   LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_INTENSITY,
+  LIGHT_PANEL_OFF_COLOR,
+  LIGHT_PANEL_EMISSIVE,
   PANEL_LIGHT_INTENSITY,
-  PANEL_LIGHT_DISTANCE,
-  PANEL_LIGHT_DECAY,
-  PANEL_W,
-  PANEL_H,
+  FIXTURE_TILE_SIZE,
+  FIXTURE_GLOW_SIZE,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
-const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+const _offGeo = new THREE.PlaneGeometry(FIXTURE_TILE_SIZE, FIXTURE_TILE_SIZE);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
-const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
+const _emissiveColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -59,13 +59,22 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-function addOnePanel(group, room, materials, h, panel, fixtures) {
-  const y = h - 0.012;
-  const gotLight = panel.on && claimPanelLight();
-  const face = new THREE.Mesh(
-    _panelGeo,
-    gotLight ? materials.lightPanel.clone() : materials.lightPanelOff
-  );
+function addOnePanel(group, materials, h, panel, fixtures) {
+  const y = h - 0.004;
+
+  if (!(panel.on && claimPanelLight())) {
+    const face = new THREE.Mesh(_offGeo, materials.lightPanelOff);
+    face.rotation.x = Math.PI / 2;
+    face.position.set(panel.x, y, panel.z);
+    face.userData.panel = panel;
+    panel.face = face;
+    group.add(face);
+    return;
+  }
+
+  const mat = materials.lightPanelOn.clone();
+  mat.emissiveIntensity = LIGHT_PANEL_EMISSIVE * panel.bright;
+  const face = new THREE.Mesh(materials.fixtureGlowGeo, mat);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
   face.userData.fluorescent = true;
@@ -73,19 +82,17 @@ function addOnePanel(group, room, materials, h, panel, fixtures) {
   panel.face = face;
   group.add(face);
 
-  if (gotLight) {
-    face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
-    const light = new THREE.PointLight(
-      0xfff4d8,
-      PANEL_LIGHT_INTENSITY * panel.bright,
-      PANEL_LIGHT_DISTANCE,
-      PANEL_LIGHT_DECAY
-    );
-    light.position.set(panel.x, y, panel.z);
-    group.add(light);
-    panel.light = light;
-    fixtures.push({ light, panel, face });
-  }
+  const light = new THREE.RectAreaLight(
+    0xfff4d8,
+    PANEL_LIGHT_INTENSITY * panel.bright,
+    FIXTURE_TILE_SIZE,
+    FIXTURE_TILE_SIZE
+  );
+  light.position.set(panel.x, y, panel.z);
+  light.rotation.copy(_down);
+  group.add(light);
+  panel.light = light;
+  fixtures.push({ light, panel, face });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -133,7 +140,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, room, materials, h, panel, state.fixtures);
+    addOnePanel(group, materials, h, panel, state.fixtures);
     if (panel.light) state.lightCount++;
     state.panelIdx++;
     added++;

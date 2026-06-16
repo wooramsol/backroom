@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
+  createFixtureGlowTexture,
   loadWallpaperOrFallback,
   tiled,
   CARPET_TILE_M,
@@ -18,7 +20,8 @@ import {
   AMBIENT_INTENSITY,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
-  LIGHT_PANEL_INTENSITY,
+  LIGHT_PANEL_EMISSIVE,
+  FIXTURE_GLOW_SIZE,
   PANEL_LIGHT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
@@ -31,6 +34,7 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -55,6 +59,8 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
 
+  const fixtureGlowTex = createFixtureGlowTexture();
+
   const materials = {
     wallTex: wallpaper,
     carpetTex,
@@ -65,11 +71,22 @@ async function init() {
       metalness: 0,
       side: THREE.DoubleSide,
     }),
-    lightPanel: new THREE.MeshBasicMaterial({
-      color: LIGHT_PANEL_COLOR,
+    fixtureGlowGeo: new THREE.PlaneGeometry(FIXTURE_GLOW_SIZE, FIXTURE_GLOW_SIZE),
+    lightPanelOn: new THREE.MeshStandardMaterial({
+      map: fixtureGlowTex,
+      emissiveMap: fixtureGlowTex,
+      emissive: new THREE.Color(LIGHT_PANEL_COLOR),
+      emissiveIntensity: LIGHT_PANEL_EMISSIVE,
+      transparent: true,
+      alphaTest: 0.02,
+      depthWrite: false,
+      roughness: 1,
+      metalness: 0,
     }),
-    lightPanelOff: new THREE.MeshBasicMaterial({
+    lightPanelOff: new THREE.MeshStandardMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
+      roughness: 0.95,
+      metalness: 0,
     }),
   };
 
@@ -93,7 +110,7 @@ async function init() {
 
   const clock = new THREE.Clock();
   let lightT = 0;
-  const _panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
+  const _panelEmissive = new THREE.Color(LIGHT_PANEL_COLOR);
   const TARGET_FRAME_MS = 16.7;
 
   function animate() {
@@ -120,9 +137,9 @@ async function init() {
 
       for (const { light, panel, face } of fixtures) {
         const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-        const scale = LIGHT_PANEL_INTENSITY * panel.bright * flicker;
         light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-        face.material.color.copy(_panelColor).multiplyScalar(scale);
+        face.material.emissive.copy(_panelEmissive);
+        face.material.emissiveIntensity = LIGHT_PANEL_EMISSIVE * panel.bright * flicker;
       }
     }
 
