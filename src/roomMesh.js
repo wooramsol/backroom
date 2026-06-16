@@ -4,7 +4,6 @@ import {
   WALL_T,
   DOOR_H,
   LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
@@ -16,6 +15,7 @@ import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -45,14 +45,17 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function addCeilingPanels(group, room, lightMat, h) {
-  const offColor = new THREE.Color(LIGHT_PANEL_OFF_COLOR);
+function addCeilingPanels(group, room, materials, h) {
   const onColor = new THREE.Color(LIGHT_PANEL_COLOR);
   const y = h - 0.05;
   const fixtures = [];
 
   for (const panel of room.panels) {
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(PANEL_W, PANEL_H), lightMat.clone());
+    const gotLight = panel.on && claimPanelLight();
+    const face = new THREE.Mesh(
+      _panelGeo,
+      gotLight ? materials.lightPanel.clone() : materials.lightPanelOff
+    );
     face.rotation.x = Math.PI / 2;
     face.position.set(panel.x, y, panel.z);
     face.userData.fluorescent = true;
@@ -60,7 +63,7 @@ function addCeilingPanels(group, room, lightMat, h) {
     panel.face = face;
     group.add(face);
 
-    if (panel.on && claimPanelLight()) {
+    if (gotLight) {
       face.material.color.copy(onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
       const light = new THREE.RectAreaLight(
         0xfff4d8,
@@ -73,8 +76,6 @@ function addCeilingPanels(group, room, lightMat, h) {
       light.rotation.copy(_down);
       panel.light = light;
       fixtures.push({ light, panel });
-    } else {
-      face.material.color.copy(offColor);
     }
   }
 
@@ -102,7 +103,7 @@ export function buildRoomMesh(room, materials) {
   ceiling.position.y = h;
   group.add(ceiling);
 
-  const fixtures = addCeilingPanels(group, room, materials.lightPanel, h);
+  const fixtures = addCeilingPanels(group, room, materials, h);
 
   const wt = materials.wallTex;
   wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);

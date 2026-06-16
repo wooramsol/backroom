@@ -136,7 +136,7 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
 }
 
 /** Outer + inner walls — all visible walls block movement */
-export function registerRoomWalls(map, room) {
+export function appendRoomWalls(map, room) {
   const ox = room.cx * CHUNK;
   const oz = room.cz * CHUNK;
   const y0 = 0;
@@ -145,9 +145,13 @@ export function registerRoomWalls(map, room) {
   const x1 = ox + CHUNK;
   const z0 = oz;
   const z1 = oz + CHUNK;
+  const added = [];
 
   const put = (key, fn) => {
-    if (!map.has(key)) map.set(key, fn());
+    if (map.has(key)) return;
+    const boxes = fn();
+    map.set(key, boxes);
+    added.push(...boxes);
   };
 
   put(`ex,${room.cx + 1},${room.cz}`, () => {
@@ -186,6 +190,12 @@ export function registerRoomWalls(map, room) {
       return b;
     });
   }
+
+  return added;
+}
+
+export function registerRoomWalls(map, room) {
+  appendRoomWalls(map, room);
 }
 
 export function collidersFromMap(map) {

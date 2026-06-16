@@ -70,12 +70,14 @@ async function init() {
     lightPanel: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),
+    lightPanelOff: new THREE.MeshBasicMaterial({
+      color: LIGHT_PANEL_OFF_COLOR,
+    }),
   };
 
   const world = new World(scene, materials);
-  world.init();
-
   const player = new Player(camera, renderer.domElement);
+  world.init(player.position);
   player.connect();
 
   let started = false;
@@ -101,6 +103,7 @@ async function init() {
 
     world.tick(dt);
     world.update(player.position);
+    world.processLoadQueue(player.position);
     player.setColliders(world.getColliders());
     if (world.consumeColliderRebuild()) {
       player.resolvePenetration();
