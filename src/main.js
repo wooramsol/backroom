@@ -40,7 +40,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
-renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1";
+renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden";
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -85,8 +85,36 @@ async function init() {
   const { composer, bloom } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
+  let ready = false;
+  const hint = document.querySelector("#overlay .hint");
+  const defaultHint =
+    "클릭하여 시작<br />WASD · 이동 &nbsp; Shift · 달리기 &nbsp; Space · 점프 &nbsp; 마우스 · 시야";
+
+  if (hint) hint.textContent = "주변 공간 생성 중…";
+  overlay.style.cursor = "wait";
+
+  world
+    .preloadAround(player.position, (done, total) => {
+      if (hint && !ready) {
+        hint.innerHTML = `주변 공간 생성 중… ${done}/${total}<br/>잠시만 기다려 주세요`;
+      }
+    })
+    .then(() => {
+      ready = true;
+      renderer.domElement.style.visibility = "visible";
+      overlay.style.cursor = "pointer";
+      if (hint) hint.innerHTML = defaultHint;
+    })
+    .catch((err) => {
+      console.error(err);
+      ready = true;
+      renderer.domElement.style.visibility = "visible";
+      overlay.style.cursor = "pointer";
+      if (hint) hint.textContent = "로딩 오류 — 새로고침 해주세요.";
+    });
 
   overlay.addEventListener("click", () => {
+    if (!ready) return;
     player.requestLock();
     if (!started) {
       started = true;
@@ -131,7 +159,10 @@ async function init() {
     composer.render();
 
     const elapsed = performance.now() - frameStart;
-    const loadBudget = Math.max(3, Math.min(8, TARGET_FRAME_MS - elapsed));
+    let loadBudget = Math.max(3, Math.min(8, TARGET_FRAME_MS - elapsed));
+    if (world.hasPendingLoads()) {
+      loadBudget = Math.max(loadBudget, 14);
+    }
     world.processLoadQueue(player.position, loadBudget);
   }
 

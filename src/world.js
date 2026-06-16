@@ -11,7 +11,7 @@ import { releasePanelLights, resetPanelLightBudget } from "./lightBudget.js";
 /** 3×3 loaded rooms — keeps per-panel RectAreaLights within GPU cap */
 const GRID_RADIUS = 1;
 const PANELS_PER_FRAME = 2;
-const EDGE_PREFETCH = 0.38;
+const EDGE_PREFETCH = 0.48;
 
 export class World {
   constructor(scene, materials) {
@@ -215,9 +215,10 @@ export class World {
     }
   }
 
-  processLoadQueue(playerPos, budgetMs = 6) {
+  processLoadQueue(playerPos, budgetMs = 6, opts = {}) {
+    const panelsPerFrame = opts.panelsPerFrame ?? PANELS_PER_FRAME;
     const t0 = performance.now();
-    const overBudget = () => performance.now() - t0 >= budgetMs;
+    const overBudget = () => budgetMs < 1e8 && performance.now() - t0 >= budgetMs;
 
     if (this.disposeQueue.length && !overBudget()) {
       const mesh = this.disposeQueue.shift();
@@ -250,7 +251,7 @@ export class World {
         continue;
       }
 
-      const panelsDone = buildPanelBatch(job.build, PANELS_PER_FRAME);
+      const panelsDone = buildPanelBatch(job.build, panelsPerFrame);
       if (panelsDone) {
         this.attachChunk(job.cx, job.cz, job.room, job.build);
         this.loadQueue.shift();
@@ -275,5 +276,32 @@ export class World {
 
   getFixtures() {
     return this.fixtures;
+  }
+
+  /** Fully build every chunk in the initial 3×3 ring (and edge prefetch). */
+  async preloadAround(playerPos, onProgress) {
+    this.update(playerPos);
+    const total = this.loadQueue.length;
+    let built = 0;
+
+    const tick = () => {
+      if (this.pendingColliderRebuild) this.rebuildColliders();
+      const before = this.loadQueue.length;
+      this.processLoadQueue(playerPos, 1e9, { panelsPerFrame: 24 });
+      built += Math.max(0, before - this.loadQueue.length);
+      onProgress?.(Math.min(built, total || 1), total || 1);
+    };
+
+    while (this.loadQueue.length > 0 || this.pendingColliderRebuild) {
+      tick();
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+
+    this.flushColliders();
+    onProgress?.(total || 1, total || 1);
+  }
+
+  hasPendingLoads() {
+    return this.loadQueue.length > 0 || this.pendingColliderRebuild;
   }
 }
