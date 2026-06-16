@@ -8,16 +8,13 @@ import {
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
-  CEILING_WASH_W,
-  CEILING_WASH_H,
-  CEILING_WASH_OPACITY,
+  CEILING_EMISSIVE_INTENSITY,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
-import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
+import { createTiledMaterial, tiledAt, createCeilingEmissiveMap, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
-const _washGeo = new THREE.PlaneGeometry(CEILING_WASH_W, CEILING_WASH_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
@@ -62,8 +59,22 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
+function applyCeilingEmissive(ceilingMat, fixtures, worldX, worldZ) {
+  if (!fixtures.length) return;
+  ceilingMat.emissive = new THREE.Color(0xfff4d8);
+  ceilingMat.emissiveMap = createCeilingEmissiveMap(
+    fixtures,
+    worldX,
+    worldZ,
+    CARPET_TILE_M,
+    CHUNK
+  );
+  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY;
+  ceilingMat.needsUpdate = true;
+}
+
 function addOnePanel(group, room, materials, h, panel, fixtures) {
-  const y = h - 0.05;
+  const y = h - 0.012;
   const gotLight = panel.on && claimPanelLight();
   const face = new THREE.Mesh(
     _panelGeo,
@@ -78,14 +89,6 @@ function addOnePanel(group, room, materials, h, panel, fixtures) {
 
   if (gotLight) {
     face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
-    const washMat = materials.ceilingWash.clone();
-    washMat.opacity = CEILING_WASH_OPACITY * panel.bright;
-    const wash = new THREE.Mesh(_washGeo, washMat);
-    wash.rotation.x = Math.PI / 2;
-    wash.position.set(panel.x, h - 0.04, panel.z);
-    wash.renderOrder = 1;
-    group.add(wash);
-
     const light = new THREE.RectAreaLight(
       0xfff4d8,
       PANEL_LIGHT_INTENSITY * panel.bright,
@@ -96,7 +99,7 @@ function addOnePanel(group, room, materials, h, panel, fixtures) {
     light.position.set(panel.x, y, panel.z);
     light.rotation.copy(_down);
     panel.light = light;
-    fixtures.push({ light, panel, face, wash });
+    fixtures.push({ light, panel, face });
   }
 }
 
@@ -111,6 +114,9 @@ export function createRoomBuildState(room, materials) {
     shellDone: false,
     fixtures: [],
     lightCount: 0,
+    ceilingMat: null,
+    worldX: room.cx * CHUNK,
+    worldZ: room.cz * CHUNK,
   };
 }
 
@@ -123,18 +129,16 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const worldX = room.cx * CHUNK;
-  const worldZ = room.cz * CHUNK;
-  const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, worldX, worldZ);
+  const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceilingMat = materials.carpet.clone();
   ceilingMat.map = ceilingMap;
-  // No per-chunk emissive — avoids brightness seams at chunk edges; darkness from fixtures only
   ceilingMat.emissive.setHex(0x000000);
   ceilingMat.emissiveIntensity = 0;
   const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
   group.add(ceiling);
+  state.ceilingMat = ceilingMat;
 
   addWalls(group, room, materials.wallTex, h);
   state.shellDone = true;
@@ -158,10 +162,12 @@ export function buildPanelBatch(state, maxPanels) {
 }
 
 export function finalizeRoomBuild(state) {
-  const { group, room, fixtures, lightCount } = state;
+  const { group, room, fixtures, lightCount, ceilingMat, worldX, worldZ } = state;
+  if (ceilingMat) applyCeilingEmissive(ceilingMat, fixtures, worldX, worldZ);
   group.userData.room = room;
   group.userData.fixtures = fixtures;
   group.userData.lightCount = lightCount;
+  group.userData.ceilingMat = ceilingMat;
   return group;
 }
 

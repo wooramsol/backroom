@@ -33,10 +33,10 @@ export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
-/** Soft glow on ceiling around each lit fixture — local, not per-chunk */
-export const CEILING_WASH_W = PANEL_W * 2.6;
-export const CEILING_WASH_H = PANEL_H * 3.8;
-export const CEILING_WASH_OPACITY = 0.44;
+/** Uniform scale for ceiling emissive map — same in every chunk to avoid seams */
+export const CEILING_EMISSIVE_INTENSITY = 0.55;
+/** Soft falloff radius on ceiling emissive map (metres) */
+export const CEILING_GLOW_RADIUS = 2.4;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
