@@ -7,6 +7,10 @@ export const MAX_ROOM_W = 14;
 export const MIN_ROOM_D = 3;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
+/** Walls sink slightly below floor (same width — not visible molding) to seal the edge gap */
+export const WALL_FLOOR_OVERLAP = 0.08;
+/** Pull zone light floors slightly away from walls so pools do not kiss the seam */
+export const FLOOR_LIGHT_INSET = 0.06;
 export const DOOR_H = 2.2;
 /** Collision jambs sit this much inside the visible opening on each side */
 export const DOOR_JAMB_INSET = 0.05;
