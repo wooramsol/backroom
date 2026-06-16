@@ -54,6 +54,7 @@ function addCeilingPanels(group, room, lightMat, h) {
     }
     mesh.userData.fluorescent = true;
     mesh.userData.panel = panel;
+    panel.face = mesh;
     mesh.rotation.x = Math.PI / 2;
     mesh.position.set(panel.x, h - 0.05, panel.z);
     group.add(mesh);

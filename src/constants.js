@@ -38,6 +38,8 @@ export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
 /** RectAreaLight strength (nits) — light emits from panel face downward */
 export const PANEL_LIGHT_INTENSITY = 7;
+/** Spread lights across neighbor rooms when pool has spare slots */
+export const PANEL_LIGHTS_PER_ROOM = 4;
 export const LIGHT_POOL_SIZE = 40;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;

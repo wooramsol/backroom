@@ -78,7 +78,7 @@ async function init() {
 
   const world = new World(scene, materials);
   world.init();
-  const panelLights = new PanelLightPool(scene);
+  const panelLights = new PanelLightPool();
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
