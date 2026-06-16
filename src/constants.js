@@ -7,10 +7,6 @@ export const MAX_ROOM_W = 14;
 export const MIN_ROOM_D = 3;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
-/** Walls extend below the floor plane so light cannot leak through the base gap */
-export const WALL_FLOOR_OVERLAP = 0.12;
-/** Walls extend into the ceiling plane to seal the top edge */
-export const WALL_CEILING_OVERLAP = 0.04;
 export const DOOR_H = 2.2;
 /** Collision jambs sit this much inside the visible opening on each side */
 export const DOOR_JAMB_INSET = 0.05;

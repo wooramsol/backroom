@@ -20,3 +20,17 @@ export function releasePanelLights(count) {
 export function activePanelLightCount() {
   return active;
 }
+
+/** Unique layer bit per zone — RectAreaLights only hit matching receivers */
+export function zoneLightBit(cx, cz, zoneIdx) {
+  const h = (cx * 374761393 + cz * 668265263 + zoneIdx * 1274126177) | 0;
+  return 1 + ((h >>> 0) % 29);
+}
+
+/** Layer 0 (ambient) + zone bit (fixture light) */
+export function applyZoneLayers(mesh, cx, cz, zoneIdx) {
+  const bit = zoneLightBit(cx, cz, zoneIdx);
+  mesh.layers.enable(0);
+  mesh.layers.enable(bit);
+  return bit;
+}
