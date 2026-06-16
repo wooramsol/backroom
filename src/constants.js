@@ -33,15 +33,14 @@ export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
-/** Uniform scale for ceiling emissive map — same in every chunk to avoid seams */
-export const CEILING_EMISSIVE_INTENSITY = 0.55;
-/** Soft falloff radius on ceiling emissive map (metres) */
-export const CEILING_GLOW_RADIUS = 2.4;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — emitted downward from each lit fixture */
-export const PANEL_LIGHT_INTENSITY = 16;
+/** PointLight strength at each lit ceiling fixture */
+export const PANEL_LIGHT_INTENSITY = 14;
+/** Falloff range — keeps light local to the fixture */
+export const PANEL_LIGHT_DISTANCE = 13;
+export const PANEL_LIGHT_DECAY = 2;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Fluorescent hum — disabled until re-enabled later */

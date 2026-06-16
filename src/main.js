@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   loadWallpaperOrFallback,
@@ -21,7 +20,6 @@ import {
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
-  CEILING_EMISSIVE_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -33,7 +31,6 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -119,20 +116,13 @@ async function init() {
 
     for (const { mesh } of world.chunks.values()) {
       const fixtures = mesh.userData.fixtures;
-      const ceilingMat = mesh.userData.ceilingMat;
       if (!fixtures?.length) continue;
 
-      let flickerSum = 0;
       for (const { light, panel, face } of fixtures) {
         const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-        flickerSum += flicker;
         const scale = LIGHT_PANEL_INTENSITY * panel.bright * flicker;
         light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
         face.material.color.copy(_panelColor).multiplyScalar(scale);
-      }
-      if (ceilingMat) {
-        ceilingMat.emissiveIntensity =
-          CEILING_EMISSIVE_INTENSITY * (flickerSum / fixtures.length);
       }
     }
 

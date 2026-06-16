@@ -8,7 +8,7 @@ import {
 } from "./roomMesh.js";
 import { releasePanelLights, resetPanelLightBudget } from "./lightBudget.js";
 
-/** 3×3 loaded rooms — keeps per-panel RectAreaLights within GPU cap */
+/** 3×3 loaded rooms — keeps per-panel PointLights within GPU cap */
 const GRID_RADIUS = 1;
 const PANELS_PER_FRAME = 3;
 const EDGE_PREFETCH = 0.38;

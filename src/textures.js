@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { CEILING_GLOW_RADIUS } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -65,36 +64,6 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   const frac = (n) => ((n % 1) + 1) % 1;
   t.offset.set(frac(worldX / tileM), frac(worldZ / tileM));
   return t;
-}
-
-/** Soft ceiling glow painted at each lit fixture — baked into emissiveMap, no extra geometry */
-export function createCeilingEmissiveMap(fixtures, worldX, worldZ, tileM, chunkM) {
-  const size = 512;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(0, 0, size, size);
-
-  for (const { panel } of fixtures) {
-    const px = (panel.x / chunkM) * size;
-    const py = (panel.z / chunkM) * size;
-    const r = (CEILING_GLOW_RADIUS / chunkM) * size;
-    const g = ctx.createRadialGradient(px, py, 0, px, py, r);
-    const peak = 0.55 + panel.bright * 0.35;
-    g.addColorStop(0, `rgba(255, 244, 216, ${peak})`);
-    g.addColorStop(0.35, `rgba(255, 236, 190, ${peak * 0.45})`);
-    g.addColorStop(0.7, `rgba(255, 220, 150, ${peak * 0.12})`);
-    g.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(px - r, py - r, r * 2, r * 2);
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-  return tiledAt(tex, tileM, chunkM, chunkM, worldX, worldZ);
 }
 
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
