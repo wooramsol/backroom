@@ -10,7 +10,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { claimPanelLight, applyZoneLayers, zoneLightBit } from "./lightBudget.js";
+import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
@@ -64,26 +64,8 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** Thin per-zone floor slice — catches RectAreaLight without splitting visible carpet */
-function addZoneLightReceivers(group, room, materials) {
-  for (let zi = 0; zi < room.zones.length; zi++) {
-    const zone = room.zones[zi];
-    const w = zone.x1 - zone.x0;
-    const d = zone.z1 - zone.z0;
-    if (w < 0.08 || d < 0.08) continue;
-
-    const cx = (zone.x0 + zone.x1) / 2;
-    const cz = (zone.z0 + zone.z1) / 2;
-    const slice = new THREE.Mesh(new THREE.PlaneGeometry(w, d), materials.carpet);
-    slice.rotation.x = -Math.PI / 2;
-    slice.position.set(cx, 0.004, cz);
-    applyZoneLayers(slice, room.cx, room.cz, zi);
-    group.add(slice);
-  }
-}
-
-/** Lit panel = emissive face + zone-scoped RectAreaLight */
-function addOnePanel(group, materials, h, panel, fixtures, room) {
+/** Lit panel = bright rectangle + matching RectAreaLight at the same spot */
+function addOnePanel(group, materials, h, panel, fixtures) {
   const y = h - 0.012;
   const gotLight = panel.on && claimPanelLight();
   const face = new THREE.Mesh(
@@ -101,7 +83,6 @@ function addOnePanel(group, materials, h, panel, fixtures, room) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const zoneBit = zoneLightBit(room.cx, room.cz, panel.zoneIdx ?? 0);
   const light = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
@@ -110,7 +91,6 @@ function addOnePanel(group, materials, h, panel, fixtures, room) {
   );
   light.position.set(panel.x, y, panel.z);
   light.rotation.copy(_down);
-  light.layers.set(zoneBit);
   group.add(light);
   panel.light = light;
   fixtures.push({ light, panel, face });
@@ -141,8 +121,6 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  addZoneLightReceivers(group, room, materials);
-
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceiling = new THREE.Mesh(_chunkPlane, createCarpetSurfaceMaterial(ceilingMap));
   ceiling.rotation.x = Math.PI / 2;
@@ -161,7 +139,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel, state.fixtures, room);
+    addOnePanel(group, materials, h, panel, state.fixtures);
     if (panel.light) state.lightCount++;
     state.panelIdx++;
     added++;

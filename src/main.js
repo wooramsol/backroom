@@ -53,12 +53,8 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
-const ambient = new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY);
-ambient.layers.enableAll();
-scene.add(ambient);
-const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
-hemi.layers.enableAll();
-scene.add(hemi);
+scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
+scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
 
 const hum = new FluorescentHum();
 
