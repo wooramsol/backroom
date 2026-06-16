@@ -15,6 +15,10 @@ export const MAX_ROOM_H = ROOM_H;
 export const EYE_H = 1.62;
 /** ~41 cm radius — adult torso / shoulder width */
 export const PLAYER_R = 0.41;
+/** Body depth (front–back) for corner collision samples */
+export const PLAYER_DEPTH = 0.28;
+export const JUMP_V = 4.2;
+export const GRAVITY = 14;
 /** Narrower FOV — 72° caused heavy edge distortion that felt tilted */
 export const CAMERA_FOV = 60;
 export const MOUSE_SENS = 0.0022;

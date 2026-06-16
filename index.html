@@ -36,25 +36,6 @@
         opacity: 0;
         pointer-events: none;
       }
-      #overlay h1 {
-        font-size: 2rem;
-        font-weight: 300;
-        letter-spacing: 0.35em;
-        margin-bottom: 0.4rem;
-      }
-      #overlay .sub {
-        font-size: 0.85rem;
-        opacity: 0.55;
-        letter-spacing: 0.2em;
-        margin-bottom: 2rem;
-      }
-      #overlay .hint {
-        font-size: 0.75rem;
-        opacity: 0.45;
-        line-height: 2;
-        text-align: center;
-        max-width: 22rem;
-      }
       #hud {
         position: fixed;
         bottom: 1.2rem;
@@ -90,15 +71,7 @@
     </style>
   </head>
   <body>
-    <div id="overlay">
-      <h1>BACKROOMS</h1>
-      <p class="sub">LEVEL 0 — THE LOBBY</p>
-      <div class="hint">
-        클릭하여 시작<br />
-        WASD · 이동 &nbsp; Shift · 달리기 &nbsp; 마우스 · 시야<br /><br />
-        <em>노란 벽지, 축축한 카펫, 형광등의 웅웅거림…<br />끝없는 빈 방들.</em>
-      </div>
-    </div>
+    <div id="overlay"></div>
     <div id="hud">LEVEL 0</div>
     <div id="vignette"></div>
     <script type="module" src="/src/main.js"></script>
