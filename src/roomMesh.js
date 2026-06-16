@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK, roomLitStrength } from "./room.js";
+import { CHUNK } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
@@ -8,8 +8,6 @@ import {
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
-  CEILING_EMISSIVE_INTENSITY,
-  CARPET_COLOR,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
@@ -118,9 +116,9 @@ export function buildRoomShell(state) {
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   const ceilingMat = materials.carpet.clone();
   ceilingMat.map = ceilingMap;
-  ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
-  ceilingMat.emissiveMap = ceilingMap;
-  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY * roomLitStrength(room);
+  // No per-chunk emissive — avoids brightness seams at chunk edges; darkness from fixtures only
+  ceilingMat.emissive.setHex(0x000000);
+  ceilingMat.emissiveIntensity = 0;
   const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
