@@ -21,6 +21,7 @@ import {
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
+  CEILING_WASH_OPACITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -73,6 +74,13 @@ async function init() {
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
     }),
+    ceilingWash: new THREE.MeshBasicMaterial({
+      color: LIGHT_PANEL_COLOR,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
   };
 
   const world = new World(scene, materials);
@@ -116,11 +124,12 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    for (const { light, panel, face } of world.getFixtures()) {
+    for (const { light, panel, face, wash } of world.getFixtures()) {
       const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
       const scale = LIGHT_PANEL_INTENSITY * panel.bright * flicker;
       light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
       face.material.color.copy(_panelColor).multiplyScalar(scale);
+      if (wash) wash.material.opacity = CEILING_WASH_OPACITY * panel.bright * flicker;
     }
 
     renderer.render(scene, camera);

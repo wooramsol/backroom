@@ -8,12 +8,16 @@ import {
   PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
+  CEILING_WASH_W,
+  CEILING_WASH_H,
+  CEILING_WASH_OPACITY,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _washGeo = new THREE.PlaneGeometry(CEILING_WASH_W, CEILING_WASH_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
@@ -74,6 +78,14 @@ function addOnePanel(group, room, materials, h, panel, fixtures) {
 
   if (gotLight) {
     face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
+    const washMat = materials.ceilingWash.clone();
+    washMat.opacity = CEILING_WASH_OPACITY * panel.bright;
+    const wash = new THREE.Mesh(_washGeo, washMat);
+    wash.rotation.x = Math.PI / 2;
+    wash.position.set(panel.x, h - 0.04, panel.z);
+    wash.renderOrder = 1;
+    group.add(wash);
+
     const light = new THREE.RectAreaLight(
       0xfff4d8,
       PANEL_LIGHT_INTENSITY * panel.bright,
@@ -84,7 +96,7 @@ function addOnePanel(group, room, materials, h, panel, fixtures) {
     light.position.set(panel.x, y, panel.z);
     light.rotation.copy(_down);
     panel.light = light;
-    fixtures.push({ light, panel, face });
+    fixtures.push({ light, panel, face, wash });
   }
 }
 
