@@ -21,9 +21,16 @@ export function activePanelLightCount() {
   return active;
 }
 
-/** Unique render layer per room zone — RectAreaLights only hit matching floor/ceiling */
-export function zoneLightLayer(cx, cz, zoneIdx) {
+/** Layer index 1–29 — unique per room zone */
+export function zoneLightBit(cx, cz, zoneIdx) {
   const h = (cx * 374761393 + cz * 668265263 + zoneIdx * 1274126177) | 0;
-  const bit = 1 + ((h >>> 0) % 29);
-  return 1 << bit;
+  return 1 + ((h >>> 0) % 29);
+}
+
+/** Enable ambient (0) + zone bit so floors keep carpet tone under RectAreaLights */
+export function applyZoneLayers(mesh, cx, cz, zoneIdx) {
+  const bit = zoneLightBit(cx, cz, zoneIdx);
+  mesh.layers.enable(0);
+  mesh.layers.enable(bit);
+  return bit;
 }

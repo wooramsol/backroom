@@ -47,6 +47,7 @@ function generatePanels(rng, room) {
   for (let zi = 0; zi < room.zones.length; zi++) {
     const zone = room.zones[zi];
     const inset = zoneInset(zone);
+    const xLo = zone.x0 + inset;
     const xHi = zone.x1 - inset;
     const zLo = zone.z0 + inset;
     const zHi = zone.z1 - inset;

@@ -12,7 +12,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { claimPanelLight, zoneLightLayer } from "./lightBudget.js";
+import { claimPanelLight, applyZoneLayers, zoneLightBit } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
@@ -78,12 +78,11 @@ function addZoneSurfaces(group, room, materials, state) {
 
     const cx = (zone.x0 + zone.x1) / 2;
     const cz = (zone.z0 + zone.z1) / 2;
-    const layer = zoneLightLayer(room.cx, room.cz, zi);
 
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), materials.carpet);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(cx, 0.003, cz);
-    floor.layers.set(layer);
+    applyZoneLayers(floor, room.cx, room.cz, zi);
     group.add(floor);
 
     const ceilingMap = tiledAt(
@@ -100,7 +99,7 @@ function addZoneSurfaces(group, room, materials, state) {
     );
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(cx, room.height, cz);
-    ceiling.layers.set(layer);
+    applyZoneLayers(ceiling, room.cx, room.cz, zi);
     group.add(ceiling);
   }
 }
@@ -109,14 +108,15 @@ function addZoneSurfaces(group, room, materials, state) {
 function addOnePanel(group, materials, h, panel, fixtures, room) {
   const y = h - 0.012;
   const gotLight = panel.on && claimPanelLight();
-  const layer = zoneLightLayer(room.cx, room.cz, panel.zoneIdx ?? 0);
+  const zoneBit = zoneLightBit(room.cx, room.cz, panel.zoneIdx ?? 0);
   const face = new THREE.Mesh(
     _panelGeo,
     gotLight ? materials.lightPanelOn.clone() : materials.lightPanelOff
   );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
-  face.layers.set(layer);
+  face.layers.enable(0);
+  face.layers.enable(zoneBit);
   face.userData.panel = panel;
   panel.face = face;
   group.add(face);
@@ -134,7 +134,7 @@ function addOnePanel(group, materials, h, panel, fixtures, room) {
   );
   light.position.set(panel.x, y, panel.z);
   light.rotation.copy(_down);
-  light.layers.set(layer);
+  light.layers.set(zoneBit);
   group.add(light);
   panel.light = light;
   fixtures.push({ light, panel, face });
