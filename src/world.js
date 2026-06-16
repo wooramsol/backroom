@@ -1,13 +1,14 @@
 import { CHUNK, generateRoom, registerRoomWalls, collidersFromMap } from "./room.js";
 import { buildRoomMesh } from "./roomMesh.js";
+import { releasePanelLights } from "./lightBudget.js";
 
-const GRID_RADIUS = 2;
+/** 3×3 loaded rooms — keeps per-panel RectAreaLights within GPU cap */
+const GRID_RADIUS = 1;
 
 export class World {
-  constructor(scene, materials, panelLights) {
+  constructor(scene, materials) {
     this.scene = scene;
     this.materials = materials;
-    this.panelLights = panelLights;
     this.chunks = new Map();
     this.cell = { x: 0, z: 0 };
     this.colliders = [];
@@ -22,7 +23,6 @@ export class World {
   spawn(cx, cz) {
     const room = generateRoom(cx, cz);
     const mesh = buildRoomMesh(room, this.materials);
-    this.panelLights.attachRoom(room, mesh);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
   }
@@ -37,18 +37,10 @@ export class World {
   }
 
   init() {
-    const batch = [];
     for (let z = -GRID_RADIUS; z <= GRID_RADIUS; z++) {
       for (let x = -GRID_RADIUS; x <= GRID_RADIUS; x++) {
-        const room = generateRoom(x, z);
-        const mesh = buildRoomMesh(room, this.materials);
-        batch.push({ room, mesh });
-        this.chunks.set(this.key(x, z), { mesh, room });
+        this.spawn(x, z);
       }
-    }
-    this.panelLights.distributeFair(batch);
-    for (const { mesh } of batch) {
-      this.scene.add(mesh);
     }
     this.rebuildColliders();
   }
@@ -69,8 +61,8 @@ export class World {
 
     for (const k of [...this.chunks.keys()]) {
       if (!need.has(k)) {
-        const { mesh, room } = this.chunks.get(k);
-        this.panelLights.detachRoom(room);
+        const { mesh } = this.chunks.get(k);
+        releasePanelLights(mesh.userData.lightCount || 0);
         this.scene.remove(mesh);
         mesh.traverse((o) => o.geometry?.dispose());
         this.chunks.delete(k);

@@ -27,7 +27,7 @@ function generatePanels(rng, room) {
 
   for (let x = room.westOff + spacing / 2; x < CHUNK; x += spacing) {
     for (let z = room.northOff + spacing / 2; z < CHUNK; z += spacing) {
-      if (hash(x * 3.1 + z) < 0.1) continue;
+      if (hash(x * 3.1 + z) < 0.28) continue;
       panels.push({
         x,
         z,
@@ -86,7 +86,7 @@ export function generateRoom(cx, cz) {
       innerNorth: northOff > 0.5 ? innerDoor(CHUNK - westOff) : null,
     },
     lightSeed: rng.int(0, 99999),
-    lightSpacing: rng.pick([2.2, 2.5, 2.8]),
+    lightSpacing: rng.pick([3.8, 4.2, 4.6]),
   };
   room.panels = generatePanels(rng, room);
   room.litRatio =

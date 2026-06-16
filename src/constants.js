@@ -36,10 +36,8 @@ export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — light emits from panel face downward */
-export const PANEL_LIGHT_INTENSITY = 14;
-/** Max RectAreaLights — above this walls fail to render on many GPUs */
-export const LIGHT_POOL_SIZE = 40;
+/** RectAreaLight strength (nits) — emitted from each ceiling panel fixture */
+export const PANEL_LIGHT_INTENSITY = 12;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Uniform ceiling glow — same in every room so chunk edges stay invisible */
