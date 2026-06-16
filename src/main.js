@@ -63,6 +63,7 @@ async function init() {
 
   const materials = {
     wallTex: wallpaper,
+    carpetTex,
     carpet: new THREE.MeshStandardMaterial({
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,

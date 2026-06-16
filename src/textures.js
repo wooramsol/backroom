@@ -50,6 +50,14 @@ export function tiled(tex, tileM, w, h) {
   return t;
 }
 
+/** Tile aligned to world origin so adjacent room chunks share one continuous pattern */
+export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
+  const t = tiled(tex, tileM, w, h);
+  const frac = (n) => ((n % 1) + 1) % 1;
+  t.offset.set(frac(worldX / tileM), frac(worldZ / tileM));
+  return t;
+}
+
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {

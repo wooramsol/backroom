@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK, roomLitStrength } from "./room.js";
+import { CHUNK } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
@@ -8,11 +8,10 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_W,
   PANEL_H,
-  CEILING_EMISSIVE_BASE,
-  CEILING_EMISSIVE_LIT,
+  CEILING_EMISSIVE_INTENSITY,
   CARPET_COLOR,
 } from "./constants.js";
-import { createTiledMaterial } from "./textures.js";
+import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -65,18 +64,18 @@ export function buildRoomMesh(room, materials) {
   const group = new THREE.Group();
   const h = room.height;
 
-  const strength = roomLitStrength(room);
-
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.carpet.clone());
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
+  const worldX = room.cx * CHUNK;
+  const worldZ = room.cz * CHUNK;
+  const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   const ceilingMat = materials.carpet.clone();
-  // Tint emissive like floor (color × map); white emissive washed out the yellow tone.
+  ceilingMat.map = ceilingMap;
   ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
-  ceilingMat.emissiveMap = ceilingMat.map;
-  ceilingMat.emissiveIntensity =
-    CEILING_EMISSIVE_BASE + strength * CEILING_EMISSIVE_LIT;
+  ceilingMat.emissiveMap = ceilingMap;
+  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY;
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
