@@ -1,4 +1,4 @@
-/** GPU-safe cap — per-panel RectAreaLights above this break wall rendering */
+/** Count of on-panels per chunk — used when despawning */
 export const MAX_PANEL_LIGHTS = 40;
 
 let active = 0;

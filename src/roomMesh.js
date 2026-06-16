@@ -6,16 +6,15 @@ import {
   DOOR_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_LIGHT_COLOR,
-  PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
+  PANEL_POOL_SIZE,
+  PANEL_POOL_OPACITY,
 } from "./constants.js";
-import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
-const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _poolGeo = new THREE.PlaneGeometry(PANEL_POOL_SIZE, PANEL_POOL_SIZE);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
@@ -68,13 +67,12 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** Lit panel = bright rectangle + matching RectAreaLight at the same spot */
+/** Emissive ceiling panel + local floor glow (no RectAreaLight — cannot pass through walls) */
 function addOnePanel(group, materials, h, panel, fixtures) {
   const y = h - 0.012;
-  const gotLight = panel.on && claimPanelLight();
   const face = new THREE.Mesh(
     _panelGeo,
-    gotLight ? materials.lightPanelOn.clone() : materials.lightPanelOff,
+    panel.on ? materials.lightPanelOn.clone() : materials.lightPanelOff,
   );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
@@ -82,22 +80,19 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   panel.face = face;
   group.add(face);
 
-  if (!gotLight) return;
+  if (!panel.on) return;
 
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const light = new THREE.RectAreaLight(
-    PANEL_LIGHT_COLOR,
-    PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_W,
-    PANEL_H,
-  );
-  light.position.set(panel.x, y, panel.z);
-  light.rotation.copy(_down);
-  group.add(light);
-  panel.light = light;
-  fixtures.push({ light, panel, face });
+  const pool = new THREE.Mesh(_poolGeo, materials.floorPool.clone());
+  pool.material.opacity = PANEL_POOL_OPACITY * panel.bright;
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(panel.x, 0.01, panel.z);
+  pool.renderOrder = 1;
+  group.add(pool);
+  panel.pool = pool;
+  fixtures.push({ panel, face, pool });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -144,7 +139,7 @@ export function buildPanelBatch(state, maxPanels) {
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
     addOnePanel(group, materials, h, panel, state.fixtures);
-    if (panel.light) state.lightCount++;
+    if (panel.on) state.lightCount++;
     state.panelIdx++;
     added++;
   }
