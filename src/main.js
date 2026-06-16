@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   createCeilingTexture,
@@ -11,7 +10,6 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { PanelLightPool } from "./lightPool.js";
 import {
   CHUNK,
   EYE_H,
@@ -26,6 +24,7 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
+  PANEL_POINT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CARPET_COLOR,
@@ -38,8 +37,7 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -64,23 +62,17 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
   const ceilingTex = createCeilingTexture();
-  const ceilingMap = tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK);
-  ceilingMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
   const materials = {
     wallTex: wallpaper,
-    carpet: new THREE.MeshStandardMaterial({
+    carpet: new THREE.MeshLambertMaterial({
       map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
       color: CARPET_COLOR,
-      roughness: 0.94,
-      metalness: 0,
       side: THREE.DoubleSide,
     }),
-    ceiling: new THREE.MeshStandardMaterial({
-      map: ceilingMap,
-      color: 0xffffff,
-      roughness: 0.96,
-      metalness: 0,
+    ceiling: new THREE.MeshLambertMaterial({
+      map: tiled(ceilingTex, CEILING_TILE_M, CHUNK, CHUNK),
+      color: CEILING_COLOR,
       side: THREE.DoubleSide,
     }),
     lightPanel: new THREE.MeshBasicMaterial({
@@ -90,7 +82,6 @@ async function init() {
 
   const world = new World(scene, materials);
   world.init();
-  const panelLights = new PanelLightPool(scene);
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
@@ -124,19 +115,30 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    panelLights.update(player.position, world.chunks, lightT);
-
     for (const { mesh } of world.chunks.values()) {
-      mesh.traverse((obj) => {
-        const panel = obj.userData?.panel;
-        if (!panel) return;
+      const panels = mesh.userData.panels;
+      const lights = mesh.userData.panelLights;
+      if (!panels) continue;
+
+      for (let i = 0; i < panels.length; i++) {
+        const face = panels[i];
+        const panel = face.userData.panel;
+        const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
         if (panel.on) {
-          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
+          face.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
         } else {
-          obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
+          face.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
         }
-      });
+      }
+
+      if (lights) {
+        for (let i = 0; i < lights.length; i++) {
+          const light = lights[i];
+          const panel = light.userData.panel;
+          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+          light.intensity = PANEL_POINT_INTENSITY * panel.bright * flicker;
+        }
+      }
     }
 
     renderer.render(scene, camera);

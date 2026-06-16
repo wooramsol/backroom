@@ -36,16 +36,12 @@ export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — light emits from panel face downward */
-export const PANEL_LIGHT_INTENSITY = 7;
-export const LIGHT_POOL_SIZE = 40;
+/** Fixed PointLight on each ON panel — no distance-based pool */
+export const PANEL_POINT_INTENSITY = 11;
+export const PANEL_POINT_DISTANCE = 5.2;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
-/** Reference Level 0 — pale yellow cream ceiling tiles */
-export const CEILING_COLOR = 0xf5f0c8;
-/** Keep low — high emissive washes out ceiling tile texture */
-export const CEILING_EMISSIVE_MIN = 0;
-export const CEILING_EMISSIVE_MAX = 0.06;
+export const CEILING_COLOR = 0xf0e8a8;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;
