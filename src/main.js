@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   loadWallpaperOrFallback,
@@ -9,7 +8,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { createBloomPipeline } from "./postfx.js";
+import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
   EYE_H,
@@ -33,7 +32,6 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -119,22 +117,18 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    for (const { mesh } of world.chunks.values()) {
-      const fixtures = mesh.userData.fixtures;
-      if (!fixtures?.length) continue;
-
-      for (const { light, panel, face } of fixtures) {
-        const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-        light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-        face.material.color
-          .copy(_panelColor)
-          .multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
-      }
+    for (const { light, panel, face } of world.getFixtures()) {
+      const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+      light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
+      face.material.color
+        .copy(_panelColor)
+        .multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
     }
 
     composer.render();
 
-    const loadBudget = Math.max(4, TARGET_FRAME_MS - (performance.now() - frameStart));
+    const elapsed = performance.now() - frameStart;
+    const loadBudget = Math.max(3, Math.min(8, TARGET_FRAME_MS - elapsed));
     world.processLoadQueue(player.position, loadBudget);
   }
 
@@ -145,9 +139,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-    composer.setSize(w, h);
-    bloom.resolution.set(w, h);
+    resizeBloomPipeline(renderer, composer, bloom, w, h);
   });
 }
 

@@ -35,17 +35,18 @@ export const PANEL_H = 0.42;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight — same rectangle as panel face, points down */
+/** PointLight at each panel — lights ceiling, walls, and floor */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
 export const PANEL_LIGHT_INTENSITY = 16;
-/** Subtle bloom on bright rectangular panels */
-export const BLOOM_STRENGTH = 0.38;
-export const BLOOM_RADIUS = 0.35;
-export const BLOOM_THRESHOLD = 0.82;
+export const PANEL_LIGHT_DISTANCE = 11;
+export const PANEL_LIGHT_DECAY = 2;
+/** Subtle bloom on bright rectangular panels (half-res for perf) */
+export const BLOOM_STRENGTH = 0.32;
+export const BLOOM_RADIUS = 0.3;
+export const BLOOM_THRESHOLD = 0.85;
+export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
-/** Uniform ceiling grain glow — same in every chunk so edges stay seamless */
-export const CEILING_EMISSIVE_INTENSITY = 0.12;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 export const WALL_COLOR = 0xffffff;

@@ -7,15 +7,14 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
+  PANEL_LIGHT_DISTANCE,
+  PANEL_LIGHT_DECAY,
   PANEL_W,
   PANEL_H,
-  CARPET_COLOR,
-  CEILING_EMISSIVE_INTENSITY,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
-const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
@@ -80,14 +79,13 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const light = new THREE.RectAreaLight(
+  const light = new THREE.PointLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_W,
-    PANEL_H
+    PANEL_LIGHT_DISTANCE,
+    PANEL_LIGHT_DECAY
   );
   light.position.set(panel.x, y, panel.z);
-  light.rotation.copy(_down);
   group.add(light);
   panel.light = light;
   fixtures.push({ light, panel, face });
@@ -121,9 +119,6 @@ export function buildRoomShell(state) {
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceilingMat = materials.carpet.clone();
   ceilingMat.map = ceilingMap;
-  ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
-  ceilingMat.emissiveMap = ceilingMap;
-  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY;
   const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;

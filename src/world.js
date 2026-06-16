@@ -8,9 +8,9 @@ import {
 } from "./roomMesh.js";
 import { releasePanelLights, resetPanelLightBudget } from "./lightBudget.js";
 
-/** 3×3 loaded rooms — keeps per-panel RectAreaLights within GPU cap */
+/** 3×3 loaded rooms — keeps per-panel PointLights within GPU cap */
 const GRID_RADIUS = 1;
-const PANELS_PER_FRAME = 3;
+const PANELS_PER_FRAME = 2;
 const EDGE_PREFETCH = 0.38;
 
 export class World {
@@ -27,6 +27,9 @@ export class World {
     this.pendingKeys = new Set();
     this.disposeQueue = [];
     this.fixtures = [];
+    this.cellCx = NaN;
+    this.cellCz = NaN;
+    this.lastPrefetchEdge = false;
   }
 
   key(cx, cz) {
@@ -37,6 +40,13 @@ export class World {
     const wx = cx * CHUNK + CHUNK / 2 - playerPos.x;
     const wz = cz * CHUNK + CHUNK / 2 - playerPos.z;
     return wx * wx + wz * wz;
+  }
+
+  nearPrefetchEdge(playerPos, cx, cz) {
+    const lx = playerPos.x - cx * CHUNK;
+    const lz = playerPos.z - cz * CHUNK;
+    const t = CHUNK * EDGE_PREFETCH;
+    return lx > t || lx < CHUNK - t || lz > t || lz < CHUNK - t;
   }
 
   computeNeed(cx, cz, playerPos) {
@@ -92,12 +102,16 @@ export class World {
     this.pendingColliderRebuild = false;
   }
 
-  rebuildFixtureList() {
-    this.fixtures = [];
-    for (const { mesh } of this.chunks.values()) {
-      const f = mesh.userData.fixtures;
-      if (f?.length) this.fixtures.push(...f);
-    }
+  addFixtures(mesh) {
+    const f = mesh.userData.fixtures;
+    if (f?.length) this.fixtures.push(...f);
+  }
+
+  removeFixtures(mesh) {
+    const f = mesh.userData.fixtures;
+    if (!f?.length) return;
+    const drop = new Set(f);
+    this.fixtures = this.fixtures.filter((item) => !drop.has(item));
   }
 
   consumeColliderRebuild() {
@@ -110,7 +124,7 @@ export class World {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     this.chunks.set(k, { mesh: build.group, room });
-    this.rebuildFixtureList();
+    this.addFixtures(build.group);
   }
 
   spawnComplete(cx, cz) {
@@ -119,7 +133,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
-    this.rebuildFixtureList();
+    this.addFixtures(mesh);
   }
 
   despawn(k) {
@@ -127,13 +141,13 @@ export class World {
     if (!entry) return;
     const { mesh } = entry;
     if (mesh) {
+      this.removeFixtures(mesh);
       releasePanelLights(mesh.userData.lightCount || 0);
       this.scene.remove(mesh);
       this.disposeQueue.push(mesh);
     }
     this.chunks.delete(k);
     this.pendingColliderRebuild = true;
-    this.rebuildFixtureList();
   }
 
   enqueue(cx, cz, playerPos) {
@@ -147,6 +161,9 @@ export class World {
     resetPanelLightBudget();
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
+    this.cellCx = cx;
+    this.cellCz = cz;
+    this.lastPrefetchEdge = this.nearPrefetchEdge(playerPos, cx, cz);
     this.spawnComplete(cx, cz);
 
     const need = this.computeNeed(cx, cz, playerPos);
@@ -160,6 +177,22 @@ export class World {
   update(playerPos) {
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
+    const atEdge = this.nearPrefetchEdge(playerPos, cx, cz);
+
+    if (
+      cx === this.cellCx &&
+      cz === this.cellCz &&
+      atEdge === this.lastPrefetchEdge &&
+      !this.loadQueue.length &&
+      !this.pendingColliderRebuild
+    ) {
+      return;
+    }
+
+    this.cellCx = cx;
+    this.cellCz = cz;
+    this.lastPrefetchEdge = atEdge;
+
     const need = this.computeNeed(cx, cz, playerPos);
     const prevQueueLen = this.loadQueue.length;
 
@@ -182,7 +215,7 @@ export class World {
     }
   }
 
-  processLoadQueue(playerPos, budgetMs = 8) {
+  processLoadQueue(playerPos, budgetMs = 6) {
     const t0 = performance.now();
     const overBudget = () => performance.now() - t0 >= budgetMs;
 
