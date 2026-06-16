@@ -11,6 +11,7 @@ export class World {
     this.cell = { x: 0, z: 0 };
     this.colliders = [];
     this.dirty = true;
+    this.lightsDirty = true;
     this.time = 0;
   }
 
@@ -64,6 +65,7 @@ export class World {
         mesh.traverse((o) => o.geometry?.dispose());
         this.chunks.delete(k);
         this.dirty = true;
+        this.lightsDirty = true;
       }
     }
 
@@ -72,6 +74,7 @@ export class World {
         const [x, z] = k.split(",").map(Number);
         this.spawn(x, z);
         this.dirty = true;
+        this.lightsDirty = true;
       }
     }
 
