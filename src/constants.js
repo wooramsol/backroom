@@ -8,7 +8,7 @@ export const MIN_ROOM_D = 3;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
 /** Walls extend below the floor plane so light cannot leak through the base gap */
-export const WALL_FLOOR_OVERLAP = 0.06;
+export const WALL_FLOOR_OVERLAP = 0.12;
 /** Walls extend into the ceiling plane to seal the top edge */
 export const WALL_CEILING_OVERLAP = 0.04;
 export const DOOR_H = 2.2;
@@ -56,12 +56,12 @@ export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
 /** Low warm fill — lit rooms come from ceiling fixtures */
-export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.055;
-/** Hemisphere — sky tints floor, ground tints ceiling (down-facing carpet) */
-export const HEMI_SKY_COLOR = 0x6a6250;
-export const HEMI_GROUND_COLOR = 0x9a9470;
-export const HEMI_INTENSITY = 0.4;
+export const AMBIENT_COLOR = 0xb8b0a0;
+export const AMBIENT_INTENSITY = 0.1;
+/** Hemisphere — tuned to carpet yellow-beige, not muddy brown */
+export const HEMI_SKY_COLOR = 0x8a8470;
+export const HEMI_GROUND_COLOR = 0xd8d0a0;
+export const HEMI_INTENSITY = 0.42;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 /** Lit rectangle emissive look on the panel face */
@@ -71,12 +71,15 @@ export const PANEL_H = 0.42;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight — same rectangle as panel face, points down */
+/** Downward SpotLight — walls cast shadows to block cross-room bleed */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
-export const PANEL_LIGHT_INTENSITY = 16;
+export const PANEL_LIGHT_INTENSITY = 48;
+export const PANEL_LIGHT_DISTANCE = 6.5;
+export const PANEL_LIGHT_ANGLE = Math.PI / 2.2;
+export const PANEL_LIGHT_PENUMBRA = 0.45;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
-export const BLOOM_STRENGTH = 0.32;
-export const BLOOM_RADIUS = 0.3;
+export const BLOOM_STRENGTH = 0.22;
+export const BLOOM_RADIUS = 0.22;
 export const BLOOM_THRESHOLD = 0.85;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.78;

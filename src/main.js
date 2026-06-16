@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   loadWallpaperOrFallback,
@@ -37,7 +36,8 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -51,14 +51,11 @@ scene.background = new THREE.Color(FOG_COLOR);
 scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
-camera.layers.enableAll();
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 const ambient = new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY);
-ambient.layers.enableAll();
 scene.add(ambient);
 const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
-hemi.layers.enableAll();
 scene.add(hemi);
 
 const hum = new FluorescentHum();
