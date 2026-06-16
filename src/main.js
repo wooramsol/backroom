@@ -115,13 +115,14 @@ async function init() {
       const lights = mesh.userData.panelLights;
       if (lights) {
         for (const light of lights) {
-          const panel = light.userData.panel;
+          const panel = light.userData.panelRef;
           const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
           light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
         }
       }
 
       mesh.traverse((obj) => {
+        if (!obj.isMesh) return;
         const panel = obj.userData?.panel;
         if (!panel) return;
         if (panel.on) {

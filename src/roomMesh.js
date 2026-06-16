@@ -62,7 +62,7 @@ function addCeilingPanels(group, room, lightMat, h) {
       );
       light.position.set(panel.x, y, panel.z);
       light.rotation.copy(_down);
-      light.userData.panel = panel;
+      light.userData.panelRef = panel;
       panel.light = light;
       group.add(light);
       panelLights.push(light);
