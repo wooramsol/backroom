@@ -67,13 +67,25 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Carpet floor/ceiling — identical color and response */
+/** Carpet floor — lit by ceiling panels */
 export function createCarpetSurfaceMaterial(map) {
   return new THREE.MeshStandardMaterial({
     map,
     color: CARPET_COLOR,
     roughness: 0.94,
     metalness: 0,
+    side: THREE.DoubleSide,
+  });
+}
+
+/**
+ * Ceiling carpet — same map/color as floor.
+ * Basic material: panels only shine down, so StandardMaterial goes pitch black here.
+ */
+export function createCarpetCeilingMaterial(map) {
+  return new THREE.MeshBasicMaterial({
+    map,
+    color: CARPET_COLOR,
     side: THREE.DoubleSide,
   });
 }

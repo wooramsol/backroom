@@ -11,7 +11,7 @@ import {
   PANEL_H,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
-import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
+import { createCarpetSurfaceMaterial, createCarpetCeilingMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -122,7 +122,7 @@ export function buildRoomShell(state) {
   group.add(floor);
 
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
-  const ceilingMat = createCarpetSurfaceMaterial(ceilingMap);
+  const ceilingMat = createCarpetCeilingMaterial(ceilingMap);
   const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
