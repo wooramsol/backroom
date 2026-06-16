@@ -30,6 +30,7 @@ export class World {
     this.cellCx = NaN;
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
+    this.preloading = false;
   }
 
   key(cx, cz) {
@@ -175,6 +176,8 @@ export class World {
   }
 
   update(playerPos) {
+    if (this.preloading) return;
+
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
     const atEdge = this.nearPrefetchEdge(playerPos, cx, cz);
@@ -216,7 +219,8 @@ export class World {
   }
 
   processLoadQueue(playerPos, budgetMs = 6, opts = {}) {
-    const panelsPerFrame = opts.panelsPerFrame ?? PANELS_PER_FRAME;
+    const panelsPerFrame =
+      opts.panelsPerFrame ?? (budgetMs >= 12 ? 999 : PANELS_PER_FRAME);
     const t0 = performance.now();
     const overBudget = () => budgetMs < 1e8 && performance.now() - t0 >= budgetMs;
 
@@ -278,30 +282,49 @@ export class World {
     return this.fixtures;
   }
 
-  /** Fully build every chunk in the initial 3×3 ring (and edge prefetch). */
+  /** Sync full build — used during title-screen preload to avoid in-game hitches */
+  _spawnChunkComplete(cx, cz) {
+    const k = this.key(cx, cz);
+    const room = generateRoom(cx, cz);
+    this.addCollidersForRoom(room);
+    const mesh = buildRoomMesh(room, this.materials);
+    this.scene.add(mesh);
+    this.chunks.set(k, { mesh, room });
+    this.addFixtures(mesh);
+    this.pendingKeys.delete(k);
+  }
+
+  /** Fully build every chunk in the initial ring before gameplay. */
   async preloadAround(playerPos, onProgress) {
-    this.update(playerPos);
-    const total = this.loadQueue.length;
-    let built = 0;
+    const cx = Math.floor(playerPos.x / CHUNK);
+    const cz = Math.floor(playerPos.z / CHUNK);
+    const need = this.computeNeed(cx, cz, playerPos);
+    for (const k of need) {
+      if (!this.chunks.has(k)) {
+        const [x, z] = k.split(",").map(Number);
+        this.enqueue(x, z, playerPos);
+      }
+    }
 
-    const tick = () => {
-      if (this.pendingColliderRebuild) this.rebuildColliders();
-      const before = this.loadQueue.length;
-      this.processLoadQueue(playerPos, 1e9, { panelsPerFrame: 24 });
-      built += Math.max(0, before - this.loadQueue.length);
-      onProgress?.(Math.min(built, total || 1), total || 1);
-    };
+    this.preloading = true;
+    const jobs = this.loadQueue.splice(0);
+    const total = jobs.length;
 
-    while (this.loadQueue.length > 0 || this.pendingColliderRebuild) {
-      tick();
+    for (let i = 0; i < jobs.length; i++) {
+      const { cx, cz } = jobs[i];
+      this._spawnChunkComplete(cx, cz);
+      onProgress?.(i + 1, total || 1);
       await new Promise((r) => requestAnimationFrame(r));
     }
 
-    this.flushColliders();
+    if (this.pendingColliderRebuild) this.rebuildColliders();
+    else this.flushColliders();
+
+    this.preloading = false;
     onProgress?.(total || 1, total || 1);
   }
 
   hasPendingLoads() {
-    return this.loadQueue.length > 0 || this.pendingColliderRebuild;
+    return !this.preloading && (this.loadQueue.length > 0 || this.pendingColliderRebuild);
   }
 }

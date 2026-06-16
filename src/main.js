@@ -99,6 +99,8 @@ async function init() {
       }
     })
     .then(() => {
+      for (let i = 0; i < 5; i++) composer.render();
+      player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
@@ -136,8 +138,10 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-    world.update(player.position);
-    world.flushColliders();
+    if (!world.preloading) {
+      world.update(player.position);
+      world.flushColliders();
+    }
     player.setColliders(world.getColliders());
     if (world.consumeColliderRebuild()) {
       player.resolvePenetration();
@@ -157,12 +161,14 @@ async function init() {
 
     composer.render();
 
-    const elapsed = performance.now() - frameStart;
-    let loadBudget = Math.max(3, Math.min(8, TARGET_FRAME_MS - elapsed));
-    if (world.hasPendingLoads()) {
-      loadBudget = Math.max(loadBudget, 14);
+    if (!world.preloading) {
+      const elapsed = performance.now() - frameStart;
+      let loadBudget = Math.max(3, Math.min(8, TARGET_FRAME_MS - elapsed));
+      if (world.hasPendingLoads()) {
+        loadBudget = Math.max(loadBudget, 14);
+      }
+      world.processLoadQueue(player.position, loadBudget);
     }
-    world.processLoadQueue(player.position, loadBudget);
   }
 
   animate();
