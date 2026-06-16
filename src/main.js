@@ -4,6 +4,7 @@ import {
   createCarpetTexture,
   loadWallpaperOrFallback,
   tiled,
+  createCarpetSurfaceMaterial,
   CARPET_TILE_M,
 } from "./textures.js";
 import { World } from "./world.js";
@@ -25,7 +26,6 @@ import {
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
-  CARPET_COLOR,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 
@@ -58,17 +58,12 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
+  const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
 
   const materials = {
     wallTex: wallpaper,
     carpetTex,
-    carpet: new THREE.MeshStandardMaterial({
-      map: tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK),
-      color: CARPET_COLOR,
-      roughness: 0.94,
-      metalness: 0,
-      side: THREE.DoubleSide,
-    }),
+    carpet: createCarpetSurfaceMaterial(floorMap),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),

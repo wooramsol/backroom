@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { CARPET_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -64,6 +65,23 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   const frac = (n) => ((n % 1) + 1) % 1;
   t.offset.set(frac(worldX / tileM), frac(worldZ / tileM));
   return t;
+}
+
+/** Carpet floor/ceiling — same grain; optional emissiveMap keeps texture visible when lit from below */
+export function createCarpetSurfaceMaterial(map, { emissiveIntensity = 0 } = {}) {
+  const mat = new THREE.MeshStandardMaterial({
+    map,
+    color: CARPET_COLOR,
+    roughness: 0.94,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  });
+  if (emissiveIntensity > 0) {
+    mat.emissiveMap = map;
+    mat.emissive = new THREE.Color(0xffffff);
+    mat.emissiveIntensity = emissiveIntensity;
+  }
+  return mat;
 }
 
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
