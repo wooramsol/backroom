@@ -29,12 +29,15 @@ function releaseSlot(slot) {
   slot.light.visible = false;
 }
 
-/** RectAreaLights parented to ceiling panel meshes — fixed to each fixture, not walls. */
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+
+/** RectAreaLights on ceiling panel positions — emit downward into the room. */
 export class PanelLightPool {
   constructor() {
     this.slots = [];
     for (let i = 0; i < LIGHT_POOL_SIZE; i++) {
       const light = new THREE.RectAreaLight(0xfff4d8, 0, PANEL_W, PANEL_H);
+      light.rotation.copy(_down);
       light.visible = false;
       this.slots.push({ light, panel: null, roomMesh: null });
     }
@@ -105,10 +108,11 @@ export class PanelLightPool {
 
     for (let i = 0; i < free.length && i < need.length; i++) {
       const slot = free[i];
-      const { panel, mesh } = need[i];
-      panel.face.add(slot.light);
-      slot.light.position.set(0, 0, 0);
-      slot.light.rotation.set(0, 0, 0);
+      const { panel, mesh, room } = need[i];
+      const y = room.height - 0.05;
+      mesh.add(slot.light);
+      slot.light.position.set(panel.x, y, panel.z);
+      slot.light.rotation.copy(_down);
       slot.panel = panel;
       slot.roomMesh = mesh;
       panel.light = slot.light;
