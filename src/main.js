@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   loadWallpaperOrFallback,
@@ -24,8 +25,8 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_POOL_COLOR,
-  PANEL_POOL_OPACITY,
+  PANEL_LIGHT_INTENSITY,
+  CARPET_COLOR,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -37,6 +38,7 @@ const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -67,18 +69,13 @@ async function init() {
     wallTex: wallpaper,
     carpetTex,
     carpet: createCarpetSurfaceMaterial(floorMap),
+    /** Ambient-only base — RectAreaLight does not affect MeshBasicMaterial */
+    carpetBase: new THREE.MeshBasicMaterial({ map: floorMap, color: CARPET_COLOR }),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_COLOR,
     }),
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
-    }),
-    floorPool: new THREE.MeshBasicMaterial({
-      color: PANEL_POOL_COLOR,
-      transparent: true,
-      opacity: PANEL_POOL_OPACITY,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
     }),
   };
 
@@ -157,11 +154,12 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    for (const { panel, face, pool } of world.getFixtures()) {
+    for (const { light, panel, face } of world.getFixtures()) {
       const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-      const k = LIGHT_PANEL_INTENSITY * panel.bright * flicker;
-      face.material.color.copy(_panelColor).multiplyScalar(k);
-      if (pool) pool.material.opacity = PANEL_POOL_OPACITY * panel.bright * flicker;
+      light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
+      face.material.color
+        .copy(_panelColor)
+        .multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
     }
 
     composer.render();
