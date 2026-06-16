@@ -21,6 +21,12 @@ export const JUMP_V = 4.2;
 export const GRAVITY = 14;
 /** Narrower FOV — 72° caused heavy edge distortion that felt tilted */
 export const CAMERA_FOV = 60;
+/** Closer near plane — default 0.08 let walls vanish when hugging them */
+export const CAMERA_NEAR = 0.035;
+/** Keep the eye this far from wall surfaces (near + margin) */
+export const CAMERA_WALL_CLEAR = 0.13;
+/** Camera may shift slightly off body center to stay out of geometry */
+export const CAMERA_MAX_OFFSET = 0.11;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
