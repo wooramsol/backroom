@@ -8,6 +8,7 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
+  PANEL_CEILING_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
@@ -15,6 +16,7 @@ import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+const _up = new THREE.Euler(Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
@@ -87,17 +89,32 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const light = new THREE.RectAreaLight(
+  const floorLight = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
     PANEL_W,
     PANEL_H,
   );
-  light.position.set(panel.x, y, panel.z);
-  light.rotation.copy(_down);
-  group.add(light);
-  panel.light = light;
-  fixtures.push({ light, panel, face });
+  floorLight.position.set(panel.x, y, panel.z);
+  floorLight.rotation.copy(_down);
+  group.add(floorLight);
+  panel.light = floorLight;
+
+  let ceilingLight = null;
+  if (claimPanelLight()) {
+    ceilingLight = new THREE.RectAreaLight(
+      PANEL_LIGHT_COLOR,
+      PANEL_CEILING_LIGHT_INTENSITY * panel.bright,
+      PANEL_W,
+      PANEL_H,
+    );
+    ceilingLight.position.set(panel.x, y, panel.z);
+    ceilingLight.rotation.copy(_up);
+    group.add(ceilingLight);
+    panel.lightUp = ceilingLight;
+  }
+
+  fixtures.push({ light: floorLight, lightUp: ceilingLight, panel, face });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -144,7 +161,7 @@ export function buildPanelBatch(state, maxPanels) {
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
     addOnePanel(group, materials, h, panel, state.fixtures);
-    if (panel.light) state.lightCount++;
+    if (panel.light) state.lightCount += panel.lightUp ? 2 : 1;
     state.panelIdx++;
     added++;
   }

@@ -1,5 +1,5 @@
-/** GPU-safe cap — per-panel RectAreaLights above this break wall rendering */
-export const MAX_PANEL_LIGHTS = 40;
+/** GPU-safe cap — two RectAreaLights per panel (floor + ceiling) */
+export const MAX_PANEL_LIGHTS = 80;
 
 let active = 0;
 

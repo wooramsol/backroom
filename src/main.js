@@ -26,6 +26,7 @@ import {
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
+  PANEL_CEILING_LIGHT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -151,12 +152,12 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    for (const { light, panel, face } of world.getFixtures()) {
+    for (const { light, lightUp, panel, face } of world.getFixtures()) {
       const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-      light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-      face.material.color
-        .copy(_panelColor)
-        .multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
+      const k = panel.bright * flicker;
+      light.intensity = PANEL_LIGHT_INTENSITY * k;
+      if (lightUp) lightUp.intensity = PANEL_CEILING_LIGHT_INTENSITY * k;
+      face.material.color.copy(_panelColor).multiplyScalar(LIGHT_PANEL_INTENSITY * k);
     }
 
     composer.render();
