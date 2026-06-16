@@ -3,7 +3,6 @@ import { CHUNK } from "./room.js";
 import {
   WALL_T,
   WALL_FLOOR_OVERLAP,
-  FLOOR_LIGHT_INSET,
   DOOR_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
@@ -12,7 +11,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { claimPanelLight, applyZoneLayers, zoneLightBit } from "./lightBudget.js";
+import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
@@ -69,28 +68,8 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** Per-zone carpet slice — catches RectAreaLight; base floor underneath keeps ambient tone */
-function addZoneLitFloors(group, room, materials) {
-  for (let zi = 0; zi < room.zones.length; zi++) {
-    const zone = room.zones[zi];
-    const x0 = zone.x0 + FLOOR_LIGHT_INSET;
-    const x1 = zone.x1 - FLOOR_LIGHT_INSET;
-    const z0 = zone.z0 + FLOOR_LIGHT_INSET;
-    const z1 = zone.z1 - FLOOR_LIGHT_INSET;
-    const w = x1 - x0;
-    const d = z1 - z0;
-    if (w < 0.5 || d < 0.5) continue;
-
-    const lit = new THREE.Mesh(new THREE.PlaneGeometry(w, d), materials.carpet);
-    lit.rotation.x = -Math.PI / 2;
-    lit.position.set((x0 + x1) / 2, 0.006, (z0 + z1) / 2);
-    applyZoneLayers(lit, room.cx, room.cz, zi);
-    group.add(lit);
-  }
-}
-
-/** Lit panel = bright rectangle + zone-scoped RectAreaLight */
-function addOnePanel(group, materials, h, panel, fixtures, room) {
+/** Lit panel = bright rectangle + matching RectAreaLight at the same spot */
+function addOnePanel(group, materials, h, panel, fixtures) {
   const y = h - 0.012;
   const gotLight = panel.on && claimPanelLight();
   const face = new THREE.Mesh(
@@ -108,7 +87,6 @@ function addOnePanel(group, materials, h, panel, fixtures, room) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const zoneBit = zoneLightBit(room.cx, room.cz, panel.zoneIdx ?? 0);
   const light = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
@@ -117,7 +95,6 @@ function addOnePanel(group, materials, h, panel, fixtures, room) {
   );
   light.position.set(panel.x, y, panel.z);
   light.rotation.copy(_down);
-  light.layers.set(zoneBit);
   group.add(light);
   panel.light = light;
   fixtures.push({ light, panel, face });
@@ -148,8 +125,6 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  addZoneLitFloors(group, room, materials);
-
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceiling = new THREE.Mesh(_chunkPlane, createCarpetSurfaceMaterial(ceilingMap));
   ceiling.rotation.x = Math.PI / 2;
@@ -168,7 +143,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel, state.fixtures, room);
+    addOnePanel(group, materials, h, panel, state.fixtures);
     if (panel.light) state.lightCount++;
     state.panelIdx++;
     added++;
