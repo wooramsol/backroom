@@ -71,12 +71,9 @@ export const PANEL_H = 0.42;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** Downward SpotLight — walls cast shadows to block cross-room bleed */
+/** Downward RectAreaLight — also reaches walls; SpotLight left walls black */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
-export const PANEL_LIGHT_INTENSITY = 48;
-export const PANEL_LIGHT_DISTANCE = 6.5;
-export const PANEL_LIGHT_ANGLE = Math.PI / 2.2;
-export const PANEL_LIGHT_PENUMBRA = 0.45;
+export const PANEL_LIGHT_INTENSITY = 14;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
 export const BLOOM_STRENGTH = 0.22;
 export const BLOOM_RADIUS = 0.22;

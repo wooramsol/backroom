@@ -1,5 +1,5 @@
-/** GPU-safe cap — shadow-casting panel SpotLights */
-export const MAX_PANEL_LIGHTS = 24;
+/** GPU-safe cap — per-panel RectAreaLights above this break wall rendering */
+export const MAX_PANEL_LIGHTS = 40;
 
 let active = 0;
 

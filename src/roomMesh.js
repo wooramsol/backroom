@@ -5,24 +5,20 @@ import {
   WALL_FLOOR_OVERLAP,
   WALL_CEILING_OVERLAP,
   DOOR_H,
-  ROOM_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
-  PANEL_LIGHT_DISTANCE,
-  PANEL_LIGHT_ANGLE,
-  PANEL_LIGHT_PENUMBRA,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
-const _shadowMap = 192;
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -44,8 +40,6 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
     const m = new THREE.Mesh(geo, mat);
     if (axis === "z") m.position.set(smid, centerY, pos);
     else m.position.set(pos, centerY, smid);
-    m.castShadow = true;
-    m.receiveShadow = true;
     group.add(m);
 
     if (extendBot > 0) {
@@ -57,8 +51,6 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
       const kickY = kickH / 2 - WALL_FLOOR_OVERLAP;
       if (axis === "z") kick.position.set(smid, kickY, pos);
       else kick.position.set(pos, kickY, smid);
-      kick.castShadow = true;
-      kick.receiveShadow = true;
       group.add(kick);
     }
   };
@@ -90,7 +82,7 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** Lit panel = emissive face + downward SpotLight with shadows (walls block bleed) */
+/** Lit panel = emissive face + matching RectAreaLight */
 function addOnePanel(group, materials, h, panel, fixtures) {
   const y = h - 0.012;
   const gotLight = panel.on && claimPanelLight();
@@ -109,24 +101,15 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const light = new THREE.SpotLight(
+  const light = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_LIGHT_DISTANCE,
-    PANEL_LIGHT_ANGLE,
-    PANEL_LIGHT_PENUMBRA,
-    1.2,
+    PANEL_W,
+    PANEL_H,
   );
   light.position.set(panel.x, y, panel.z);
-  light.target.position.set(panel.x, 0.4, panel.z);
-  light.castShadow = true;
-  light.shadow.mapSize.set(_shadowMap, _shadowMap);
-  light.shadow.camera.near = 0.15;
-  light.shadow.camera.far = ROOM_H + 0.6;
-  light.shadow.bias = -0.0008;
-  light.shadow.normalBias = 0.025;
+  light.rotation.copy(_down);
   group.add(light);
-  group.add(light.target);
   panel.light = light;
   fixtures.push({ light, panel, face });
 }
@@ -154,14 +137,12 @@ export function buildRoomShell(state) {
 
   const floor = new THREE.Mesh(_chunkPlane, materials.carpet);
   floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
   group.add(floor);
 
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceiling = new THREE.Mesh(_chunkPlane, createCarpetSurfaceMaterial(ceilingMap));
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
-  ceiling.receiveShadow = true;
   group.add(ceiling);
 
   addWalls(group, room, materials.wallTex, h);
