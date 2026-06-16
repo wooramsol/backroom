@@ -13,6 +13,7 @@ export class World {
     this.cell = { x: 0, z: 0 };
     this.colliders = [];
     this.dirty = true;
+    this.collidersDirty = false;
     this.time = 0;
   }
 
@@ -34,6 +35,13 @@ export class World {
     }
     this.colliders = collidersFromMap(map);
     this.dirty = false;
+    this.collidersDirty = true;
+  }
+
+  consumeColliderRebuild() {
+    const v = this.collidersDirty;
+    this.collidersDirty = false;
+    return v;
   }
 
   init() {

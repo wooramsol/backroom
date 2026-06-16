@@ -59,7 +59,7 @@ export class Player {
   _pushOut(px, pz) {
     const r = PLAYER_R;
     const y = this.position.y;
-    for (let n = 0; n < 14; n++) {
+    for (let n = 0; n < 24; n++) {
       let hit = false;
       for (const c of this.colliders) {
         if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
@@ -80,6 +80,12 @@ export class Player {
       if (!hit) break;
     }
     return { px, pz };
+  }
+
+  resolvePenetration() {
+    const out = this._pushOut(this.position.x, this.position.z);
+    this.position.x = out.px;
+    this.position.z = out.pz;
   }
 
   update(dt) {
@@ -118,5 +124,7 @@ export class Player {
     this.camera.up.set(0, 1, 0);
     _lookEuler.set(this.pitch, this.yaw, 0);
     this.camera.quaternion.setFromEuler(_lookEuler);
+
+    this.resolvePenetration();
   }
 }

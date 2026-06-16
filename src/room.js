@@ -10,6 +10,9 @@ import {
   MIN_ROOM_D,
   MAX_ROOM_D,
   PANEL_ON_CHANCE,
+  PANEL_EDGE_INSET,
+  PANEL_W,
+  PANEL_H,
 } from "./constants.js";
 
 export { CHUNK };
@@ -25,8 +28,14 @@ function generatePanels(rng, room) {
   const spacing = room.lightSpacing;
   const panels = [];
 
-  for (let x = room.westOff + spacing / 2; x < CHUNK; x += spacing) {
-    for (let z = room.northOff + spacing / 2; z < CHUNK; z += spacing) {
+  const xLo = room.westOff + PANEL_EDGE_INSET;
+  const xHi = CHUNK - PANEL_EDGE_INSET;
+  const zLo = room.northOff + PANEL_EDGE_INSET;
+  const zHi = CHUNK - PANEL_EDGE_INSET;
+  if (xHi - xLo < PANEL_W || zHi - zLo < PANEL_H) return panels;
+
+  for (let x = xLo + spacing / 2; x < xHi; x += spacing) {
+    for (let z = zLo + spacing / 2; z < zHi; z += spacing) {
       if (hash(x * 3.1 + z) < 0.28) continue;
       panels.push({
         x,

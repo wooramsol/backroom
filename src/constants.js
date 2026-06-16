@@ -33,6 +33,8 @@ export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
+/** Keep fixtures off walls — only on open ceiling area */
+export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
 /** RectAreaLight strength (nits) — emitted downward from each lit fixture */
 export const PANEL_LIGHT_INTENSITY = 16;

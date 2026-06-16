@@ -102,6 +102,9 @@ async function init() {
     world.tick(dt);
     world.update(player.position);
     player.setColliders(world.getColliders());
+    if (world.consumeColliderRebuild()) {
+      player.resolvePenetration();
+    }
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
