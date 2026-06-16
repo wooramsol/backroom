@@ -1,9 +1,10 @@
 /** Level 0 grid — one chunk = one connectable room cell */
 export const CHUNK = 14;
 export const CHUNK_HW = CHUNK / 2;
-export const MIN_ROOM_W = 9;
+/** Legacy room size hints — shapes now use zones + inner walls */
+export const MIN_ROOM_W = 3;
 export const MAX_ROOM_W = 14;
-export const MIN_ROOM_D = 9;
+export const MIN_ROOM_D = 3;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
 export const DOOR_H = 2.2;

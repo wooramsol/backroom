@@ -20,5 +20,14 @@ export function createRng(...seeds) {
     chance(p) {
       return next() < p;
     },
+    pickWeighted(entries) {
+      const total = entries.reduce((s, [, w]) => s + w, 0);
+      let r = next() * total;
+      for (const [val, w] of entries) {
+        r -= w;
+        if (r <= 0) return val;
+      }
+      return entries[entries.length - 1][0];
+    },
   };
 }

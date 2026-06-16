@@ -46,16 +46,21 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
+function addInnerWall(group, wallTex, h, wall) {
+  if (wall.axis === "x") {
+    wallSeg(group, wallTex, h, "x", wall.pos, wall.span0, wall.span1, wall.door);
+  } else {
+    wallSeg(group, wallTex, h, "z", wall.pos, wall.span0, wall.span1, wall.door);
+  }
+}
+
 function addWalls(group, room, wallTex, h) {
   wallSeg(group, wallTex, h, "z", 0, 0, CHUNK, room.doors.north);
   wallSeg(group, wallTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
   wallSeg(group, wallTex, h, "x", 0, 0, CHUNK, room.doors.west);
   wallSeg(group, wallTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
-  if (room.doors.innerWest) {
-    wallSeg(group, wallTex, h, "x", room.westOff, room.northOff, CHUNK, room.doors.innerWest);
-  }
-  if (room.doors.innerNorth) {
-    wallSeg(group, wallTex, h, "z", room.northOff, room.westOff, CHUNK, room.doors.innerNorth);
+  for (const wall of room.innerWalls) {
+    addInnerWall(group, wallTex, h, wall);
   }
 }
 
