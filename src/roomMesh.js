@@ -4,11 +4,10 @@ import {
   WALL_T,
   DOOR_H,
   LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_OFF_COLOR,
-  LIGHT_PANEL_EMISSIVE,
+  LIGHT_PANEL_BRIGHTNESS,
+  PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
   FIXTURE_TILE_SIZE,
-  FIXTURE_GLOW_SIZE,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
@@ -16,7 +15,7 @@ import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _offGeo = new THREE.PlaneGeometry(FIXTURE_TILE_SIZE, FIXTURE_TILE_SIZE);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
-const _emissiveColor = new THREE.Color(LIGHT_PANEL_COLOR);
+const _panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -73,7 +72,9 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   }
 
   const mat = materials.lightPanelOn.clone();
-  mat.emissiveIntensity = LIGHT_PANEL_EMISSIVE * panel.bright;
+  _panelColor.set(LIGHT_PANEL_COLOR);
+  _panelColor.multiplyScalar(LIGHT_PANEL_BRIGHTNESS * panel.bright);
+  mat.color.copy(_panelColor);
   const face = new THREE.Mesh(materials.fixtureGlowGeo, mat);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
@@ -83,7 +84,7 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   group.add(face);
 
   const light = new THREE.RectAreaLight(
-    0xfff4d8,
+    PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
     FIXTURE_TILE_SIZE,
     FIXTURE_TILE_SIZE

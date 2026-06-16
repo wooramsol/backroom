@@ -10,6 +10,7 @@ import {
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
+import { createBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
   EYE_H,
@@ -19,8 +20,7 @@ import {
   AMBIENT_COLOR,
   AMBIENT_INTENSITY,
   LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_OFF_COLOR,
-  LIGHT_PANEL_EMISSIVE,
+  LIGHT_PANEL_BRIGHTNESS,
   FIXTURE_GLOW_SIZE,
   PANEL_LIGHT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
@@ -58,7 +58,6 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
-
   const fixtureGlowTex = createFixtureGlowTexture();
 
   const materials = {
@@ -72,20 +71,16 @@ async function init() {
       side: THREE.DoubleSide,
     }),
     fixtureGlowGeo: new THREE.PlaneGeometry(FIXTURE_GLOW_SIZE, FIXTURE_GLOW_SIZE),
-    lightPanelOn: new THREE.MeshStandardMaterial({
+    lightPanelOn: new THREE.MeshBasicMaterial({
       map: fixtureGlowTex,
-      emissiveMap: fixtureGlowTex,
-      emissive: new THREE.Color(LIGHT_PANEL_COLOR),
-      emissiveIntensity: LIGHT_PANEL_EMISSIVE,
+      color: LIGHT_PANEL_COLOR,
       transparent: true,
-      alphaTest: 0.02,
       depthWrite: false,
-      roughness: 1,
-      metalness: 0,
+      toneMapped: true,
     }),
     lightPanelOff: new THREE.MeshStandardMaterial({
-      color: LIGHT_PANEL_OFF_COLOR,
-      roughness: 0.95,
+      color: 0x1e1c18,
+      roughness: 0.96,
       metalness: 0,
     }),
   };
@@ -94,6 +89,8 @@ async function init() {
   const player = new Player(camera, renderer.domElement);
   world.init(player.position);
   player.connect();
+
+  const { composer, bloom } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
 
@@ -110,7 +107,7 @@ async function init() {
 
   const clock = new THREE.Clock();
   let lightT = 0;
-  const _panelEmissive = new THREE.Color(LIGHT_PANEL_COLOR);
+  const _panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
   const TARGET_FRAME_MS = 16.7;
 
   function animate() {
@@ -138,12 +135,13 @@ async function init() {
       for (const { light, panel, face } of fixtures) {
         const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
         light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-        face.material.emissive.copy(_panelEmissive);
-        face.material.emissiveIntensity = LIGHT_PANEL_EMISSIVE * panel.bright * flicker;
+        _panelColor.set(LIGHT_PANEL_COLOR);
+        _panelColor.multiplyScalar(LIGHT_PANEL_BRIGHTNESS * panel.bright * flicker);
+        face.material.color.copy(_panelColor);
       }
     }
 
-    renderer.render(scene, camera);
+    composer.render();
 
     const loadBudget = Math.max(4, TARGET_FRAME_MS - (performance.now() - frameStart));
     world.processLoadQueue(player.position, loadBudget);
@@ -152,9 +150,13 @@ async function init() {
   animate();
 
   window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(w, h);
+    composer.setSize(w, h);
+    bloom.resolution.set(w, h);
   });
 }
 
