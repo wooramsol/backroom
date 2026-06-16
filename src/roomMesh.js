@@ -7,14 +7,13 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
-  PANEL_LIGHT_DISTANCE,
-  PANEL_LIGHT_DECAY,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
@@ -79,13 +78,14 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const light = new THREE.PointLight(
+  const light = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_LIGHT_DISTANCE,
-    PANEL_LIGHT_DECAY
+    PANEL_W,
+    PANEL_H
   );
   light.position.set(panel.x, y, panel.z);
+  light.rotation.copy(_down);
   group.add(light);
   panel.light = light;
   fixtures.push({ light, panel, face });

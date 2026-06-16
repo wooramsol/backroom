@@ -35,11 +35,9 @@ export const PANEL_H = 0.42;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** PointLight at each panel — lights ceiling, walls, and floor */
+/** RectAreaLight — same rectangle as panel face, points down */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
 export const PANEL_LIGHT_INTENSITY = 16;
-export const PANEL_LIGHT_DISTANCE = 11;
-export const PANEL_LIGHT_DECAY = 2;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
 export const BLOOM_STRENGTH = 0.32;
 export const BLOOM_RADIUS = 0.3;
