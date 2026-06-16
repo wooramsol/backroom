@@ -3,7 +3,6 @@ import {
   CHUNK,
   WALL_T,
   DOOR_H,
-  DOOR_CLEAR,
   ROOM_H,
   MIN_ROOM_W,
   MAX_ROOM_W,
@@ -57,7 +56,7 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const rng = createRng(ax, az, bx, bz, 42);
   const width = rng.pick([2.0, 2.4, 2.8, 3.2]);
   const maxOff = Math.max(0, CHUNK / 2 - width / 2 - 0.5);
-  const centerClear = width / 2 + DOOR_CLEAR - 0.1;
+  const centerClear = width / 2 + 0.38;
   const cap = Math.min(maxOff, centerClear);
   return {
     width,
@@ -116,7 +115,8 @@ function addBox(out, minX, maxX, minZ, maxZ, minY, maxY) {
 function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const t = WALL_T;
   const mid = (x0 + x1) / 2 + door.offset;
-  const half = door.width / 2 + DOOR_CLEAR;
+  // Match visible mesh opening — DOOR_CLEAR was only for offset RNG, not gap size
+  const half = door.width / 2 + 0.02;
   const lo = mid - half;
   const hi = mid + half;
   addBox(boxes, x0, lo, z - t, z + t, y0, y0 + DOOR_H);
@@ -127,7 +127,7 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const t = WALL_T;
   const mid = (z0 + z1) / 2 + door.offset;
-  const half = door.width / 2 + DOOR_CLEAR;
+  const half = door.width / 2 + 0.02;
   const lo = mid - half;
   const hi = mid + half;
   addBox(boxes, x - t, x + t, z0, lo, y0, y0 + DOOR_H);

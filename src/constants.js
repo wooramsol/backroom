@@ -7,6 +7,7 @@ export const MIN_ROOM_D = 9;
 export const MAX_ROOM_D = 14;
 export const WALL_T = 0.16;
 export const DOOR_H = 2.2;
+/** Legacy — door offset RNG only; collision gap matches visual mesh width */
 export const DOOR_CLEAR = 0.48;
 /** Fixed ceiling height */
 export const ROOM_H = 2.7;

@@ -16,8 +16,9 @@ const WALK = 3.2;
 const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
-const CORNER_R = 0.12;
-const BODY_HW = PLAYER_R * 0.95;
+const CORNER_R = 0.13;
+const BODY_HW = PLAYER_R;
+const MOVE_STEP = 0.02;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 
 const _fwd = new THREE.Vector3();
@@ -27,6 +28,8 @@ const _step = new THREE.Vector3();
 const _camFwd = new THREE.Vector3();
 const _camOff = new THREE.Vector3();
 const _bodyPts = [
+  [0, 0],
+  [0, 0],
   [0, 0],
   [0, 0],
   [0, 0],
@@ -100,7 +103,6 @@ export class Player {
     const s = Math.sin(this.yaw);
     const hw = BODY_HW;
     const hd = PLAYER_DEPTH;
-    // Front-left, front-right, back-left, back-right — virtual torso width
     _bodyPts[0][0] = px + c * hd + s * hw;
     _bodyPts[0][1] = pz + s * hd - c * hw;
     _bodyPts[1][0] = px + c * hd - s * hw;
@@ -109,59 +111,92 @@ export class Player {
     _bodyPts[2][1] = pz - s * hd - c * hw;
     _bodyPts[3][0] = px - c * hd - s * hw;
     _bodyPts[3][1] = pz - s * hd + c * hw;
-    // Mid-shoulder samples — catch door jambs when center still fits the gap
     _bodyPts[4][0] = px + s * hw;
     _bodyPts[4][1] = pz - c * hw;
     _bodyPts[5][0] = px - s * hw;
     _bodyPts[5][1] = pz + c * hw;
+    _bodyPts[6][0] = px + c * hd;
+    _bodyPts[6][1] = pz + s * hd;
+    _bodyPts[7][0] = px - c * hd;
+    _bodyPts[7][1] = pz - s * hd;
+  }
+
+  _pushSample(sx, sz, px, pz, y, r) {
+    let hit = false;
+    for (const c of this.colliders) {
+      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      if (sx + r <= c.minX || sx - r >= c.maxX || sz + r <= c.minZ || sz - r >= c.maxZ) {
+        continue;
+      }
+
+      const oL = sx + r - c.minX;
+      const oR = c.maxX - (sx - r);
+      const oF = sz + r - c.minZ;
+      const oB = c.maxZ - (sz - r);
+      const m = Math.min(oL, oR, oF, oB);
+
+      if (m === oL) px -= oL;
+      else if (m === oR) px += oR;
+      else if (m === oF) pz -= oF;
+      else pz += oB;
+
+      hit = true;
+    }
+    return { px, pz, hit };
   }
 
   _pushOut(px, pz) {
     const y = this.position.y;
     const r = CORNER_R;
 
-    for (let n = 0; n < 32; n++) {
+    for (let n = 0; n < 40; n++) {
       this._fillBodyPoints(px, pz);
       let hit = false;
 
-      for (let i = 0; i < 6; i++) {
-        const sx = _bodyPts[i][0];
-        const sz = _bodyPts[i][1];
-
-        for (const c of this.colliders) {
-          if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
-          if (sx + r <= c.minX || sx - r >= c.maxX || sz + r <= c.minZ || sz - r >= c.maxZ) {
-            continue;
-          }
-
-          const oL = sx + r - c.minX;
-          const oR = c.maxX - (sx - r);
-          const oF = sz + r - c.minZ;
-          const oB = c.maxZ - (sz - r);
-          const m = Math.min(oL, oR, oF, oB);
-
-          if (m === oL) px -= oL;
-          else if (m === oR) px += oR;
-          else if (m === oF) pz -= oF;
-          else pz += oB;
-
-          hit = true;
-          break;
-        }
-        if (hit) break;
+      for (let i = 0; i < 8; i++) {
+        const out = this._pushSample(_bodyPts[i][0], _bodyPts[i][1], px, pz, y, r);
+        px = out.px;
+        pz = out.pz;
+        if (out.hit) hit = true;
       }
+
       if (!hit) break;
     }
 
     return { px, pz };
   }
 
+  _bodyPenetrates(px, pz) {
+    const y = this.position.y;
+    const r = CORNER_R * 0.85;
+    this._fillBodyPoints(px, pz);
+
+    for (let i = 0; i < 8; i++) {
+      const sx = _bodyPts[i][0];
+      const sz = _bodyPts[i][1];
+      for (const c of this.colliders) {
+        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+        if (sx + r > c.minX && sx - r < c.maxX && sz + r > c.minZ && sz - r < c.maxZ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   _moveSlide(px, pz, dx, dz) {
-    let x = px + dx;
-    let out = this._pushOut(x, pz);
-    let z = out.pz + dz;
-    out = this._pushOut(out.px, z);
-    return out;
+    const direct = this._pushOut(px + dx, pz + dz);
+    if (!this._bodyPenetrates(direct.px, direct.pz)) return direct;
+
+    const xSlide = this._pushOut(px + dx, pz);
+    const xzSlide = this._pushOut(xSlide.px, pz + dz);
+    if (!this._bodyPenetrates(xzSlide.px, xzSlide.pz)) return xzSlide;
+
+    const zSlide = this._pushOut(px, pz + dz);
+    const zxSlide = this._pushOut(zSlide.px + dx, zSlide.pz);
+    if (!this._bodyPenetrates(zxSlide.px, zxSlide.pz)) return zxSlide;
+
+    return xSlide;
   }
 
   _pointInsideCollider(x, y, z, pad = 0) {
@@ -237,6 +272,26 @@ export class Player {
       }
     }
 
+    this._fillBodyPoints(x, z);
+    for (let i = 0; i < 8; i++) {
+      const sx = _bodyPts[i][0];
+      const sz = _bodyPts[i][1];
+      for (const c of this.colliders) {
+        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+        const cx = THREE.MathUtils.clamp(sx, c.minX, c.maxX);
+        const cz = THREE.MathUtils.clamp(sz, c.minZ, c.maxZ);
+        const dx = sx - cx;
+        const dz = sz - cz;
+        const distSq = dx * dx + dz * dz;
+        if (distSq >= clear * clear) continue;
+        if (distSq < 1e-8) continue;
+        const dist = Math.sqrt(distSq);
+        const push = (clear - dist) / dist;
+        x += dx * push;
+        z += dz * push;
+      }
+    }
+
     _camOff.set(x - eyeX, y - eyeY, z - eyeZ);
     if (_camOff.lengthSq() > CAMERA_MAX_OFFSET * CAMERA_MAX_OFFSET) {
       _camOff.setLength(CAMERA_MAX_OFFSET);
@@ -270,7 +325,7 @@ export class Player {
 
     if (_move.lengthSq() > 0) {
       _move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(_move.length() / 0.03));
+      const steps = Math.max(1, Math.ceil(_move.length() / MOVE_STEP));
       _step.copy(_move).divideScalar(steps);
       for (let i = 0; i < steps; i++) {
         const out = this._moveSlide(this.position.x, this.position.z, _step.x, _step.z);
