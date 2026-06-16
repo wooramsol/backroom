@@ -5,6 +5,8 @@ import {
   loadWallpaperOrFallback,
   tiled,
   createCarpetSurfaceMaterial,
+  createCeilingGlowTexture,
+  createCeilingGlowMaterial,
   CARPET_TILE_M,
 } from "./textures.js";
 import { World } from "./world.js";
@@ -26,7 +28,7 @@ import {
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
-  PANEL_CEILING_LIGHT_INTENSITY,
+  PANEL_CEILING_GLOW_OPACITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -75,6 +77,7 @@ async function init() {
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
     }),
+    ceilingGlow: createCeilingGlowMaterial(createCeilingGlowTexture()),
   };
 
   const world = new World(scene, materials);
@@ -152,11 +155,11 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    for (const { light, lightUp, panel, face } of world.getFixtures()) {
+    for (const { light, glow, panel, face } of world.getFixtures()) {
       const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
       const k = panel.bright * flicker;
       light.intensity = PANEL_LIGHT_INTENSITY * k;
-      if (lightUp) lightUp.intensity = PANEL_CEILING_LIGHT_INTENSITY * k;
+      if (glow) glow.material.opacity = PANEL_CEILING_GLOW_OPACITY * k;
       face.material.color.copy(_panelColor).multiplyScalar(LIGHT_PANEL_INTENSITY * k);
     }
 

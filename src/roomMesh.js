@@ -8,7 +8,6 @@ import {
   LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
-  PANEL_CEILING_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
   PANEL_LIGHT_SPAN_W,
@@ -18,8 +17,8 @@ import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
-const _up = new THREE.Euler(Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _glowGeo = new THREE.PlaneGeometry(PANEL_LIGHT_SPAN_W, PANEL_LIGHT_SPAN_D);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
@@ -102,21 +101,16 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   group.add(floorLight);
   panel.light = floorLight;
 
-  let ceilingLight = null;
-  if (claimPanelLight()) {
-    ceilingLight = new THREE.RectAreaLight(
-      PANEL_LIGHT_COLOR,
-      PANEL_CEILING_LIGHT_INTENSITY * panel.bright,
-      PANEL_LIGHT_SPAN_W,
-      PANEL_LIGHT_SPAN_D,
-    );
-    ceilingLight.position.set(panel.x, y, panel.z);
-    ceilingLight.rotation.copy(_up);
-    group.add(ceilingLight);
-    panel.lightUp = ceilingLight;
-  }
+  const glowMat = materials.ceilingGlow.clone();
+  glowMat.opacity = panel.bright;
+  const glow = new THREE.Mesh(_glowGeo, glowMat);
+  glow.rotation.x = Math.PI / 2;
+  glow.position.set(panel.x, h - 0.008, panel.z);
+  glow.renderOrder = 1;
+  group.add(glow);
+  panel.glow = glow;
 
-  fixtures.push({ light: floorLight, lightUp: ceilingLight, panel, face });
+  fixtures.push({ light: floorLight, glow, panel, face });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -163,7 +157,7 @@ export function buildPanelBatch(state, maxPanels) {
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
     addOnePanel(group, materials, h, panel, state.fixtures);
-    if (panel.light) state.lightCount += panel.lightUp ? 2 : 1;
+    if (panel.light) state.lightCount += 1;
     state.panelIdx++;
     added++;
   }
