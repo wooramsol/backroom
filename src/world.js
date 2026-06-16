@@ -12,7 +12,7 @@ import {
   finalizeRoomBuild,
   buildRoomMesh,
 } from "./roomMesh.js";
-import { releasePanelLights, resetPanelLightBudget } from "./lightBudget.js";
+import { PanelLightPool } from "./lightPool.js";
 
 const PANELS_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
@@ -35,6 +35,7 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
+    this.lightPool = new PanelLightPool(scene);
   }
 
   key(cx, cz) {
@@ -117,7 +118,10 @@ export class World {
 
   addFixtures(mesh) {
     const f = mesh.userData.fixtures;
-    if (f?.length) this.fixtures.push(...f);
+    if (f?.length) {
+      this.fixtures.push(...f);
+      this.lightPool.markDirty();
+    }
   }
 
   removeFixtures(mesh) {
@@ -125,6 +129,8 @@ export class World {
     if (!f?.length) return;
     const drop = new Set(f);
     this.fixtures = this.fixtures.filter((item) => !drop.has(item));
+    for (const fixture of f) fixture.light = null;
+    this.lightPool.markDirty();
   }
 
   consumeColliderRebuild() {
@@ -155,7 +161,6 @@ export class World {
     const { mesh } = entry;
     if (mesh) {
       this.removeFixtures(mesh);
-      releasePanelLights(mesh.userData.lightCount || 0);
       this.scene.remove(mesh);
       this.disposeQueue.push(mesh);
     }
@@ -171,7 +176,6 @@ export class World {
   }
 
   init(playerPos) {
-    resetPanelLightBudget();
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
     this.cellCx = cx;
@@ -233,7 +237,6 @@ export class World {
     const k = this.key(job.cx, job.cz);
     if (job.build?.group) {
       this.removeFixtures(job.build.group);
-      releasePanelLights(job.build.group.userData.lightCount || 0);
       this.scene.remove(job.build.group);
       job.build.group.traverse((o) => o.geometry?.dispose());
     }
@@ -319,6 +322,10 @@ export class World {
     return this.fixtures;
   }
 
+  updateLights(playerPos) {
+    this.lightPool.update(this.fixtures, playerPos);
+  }
+
   /** Sync full build — used during title-screen preload to avoid in-game hitches */
   _spawnChunkComplete(cx, cz) {
     const k = this.key(cx, cz);
@@ -367,6 +374,8 @@ export class World {
     else this.flushColliders();
 
     this.preloading = false;
+    this.lightPool.markDirty();
+    this.lightPool.update(this.fixtures, playerPos);
     onProgress?.(total || 1, total || 1);
   }
 

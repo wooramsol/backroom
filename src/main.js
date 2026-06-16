@@ -151,12 +151,13 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
+    world.updateLights(player.position);
+
     for (const { light, panel, face } of world.getFixtures()) {
       const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-      light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-      face.material.color
-        .copy(_panelColor)
-        .multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
+      const k = panel.bright * flicker;
+      if (light) light.intensity = PANEL_LIGHT_INTENSITY * k;
+      face.material.color.copy(_panelColor).multiplyScalar(LIGHT_PANEL_INTENSITY * k);
     }
 
     composer.render();

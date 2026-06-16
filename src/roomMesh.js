@@ -5,15 +5,11 @@ import {
   DOOR_H,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_LIGHT_COLOR,
-  PANEL_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
-const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
@@ -64,13 +60,12 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** Lit panel = bright rectangle + matching RectAreaLight at the same spot */
-function addOnePanel(group, materials, h, panel, fixtures) {
+/** On panel = bright rectangle; RectAreaLight comes from the shared pool */
+function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const y = h - 0.012;
-  const gotLight = panel.on && claimPanelLight();
   const face = new THREE.Mesh(
     _panelGeo,
-    gotLight ? materials.lightPanelOn.clone() : materials.lightPanelOff
+    panel.on ? materials.lightPanelOn.clone() : materials.lightPanelOff,
   );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
@@ -78,22 +73,19 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   panel.face = face;
   group.add(face);
 
-  if (!gotLight) return;
+  if (!panel.on) return;
 
   face.userData.fluorescent = true;
   face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
-  const light = new THREE.RectAreaLight(
-    PANEL_LIGHT_COLOR,
-    PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_W,
-    PANEL_H
-  );
-  light.position.set(panel.x, y, panel.z);
-  light.rotation.copy(_down);
-  group.add(light);
-  panel.light = light;
-  fixtures.push({ light, panel, face });
+  fixtures.push({
+    panel,
+    face,
+    light: null,
+    wx: roomCx * CHUNK + panel.x,
+    wy: y,
+    wz: roomCz * CHUNK + panel.z,
+  });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -106,7 +98,6 @@ export function createRoomBuildState(room, materials) {
     panelIdx: 0,
     shellDone: false,
     fixtures: [],
-    lightCount: 0,
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
@@ -140,8 +131,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel, state.fixtures);
-    if (panel.light) state.lightCount++;
+    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz);
     state.panelIdx++;
     added++;
   }
@@ -150,10 +140,9 @@ export function buildPanelBatch(state, maxPanels) {
 }
 
 export function finalizeRoomBuild(state) {
-  const { group, room, fixtures, lightCount } = state;
+  const { group, room, fixtures } = state;
   group.userData.room = room;
   group.userData.fixtures = fixtures;
-  group.userData.lightCount = lightCount;
   return group;
 }
 
