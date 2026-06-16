@@ -16,6 +16,8 @@ import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
+const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -45,48 +47,69 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function addCeilingPanels(group, room, materials, h) {
-  const onColor = new THREE.Color(LIGHT_PANEL_COLOR);
-  const y = h - 0.05;
-  const fixtures = [];
-
-  for (const panel of room.panels) {
-    const gotLight = panel.on && claimPanelLight();
-    const face = new THREE.Mesh(
-      _panelGeo,
-      gotLight ? materials.lightPanel.clone() : materials.lightPanelOff
-    );
-    face.rotation.x = Math.PI / 2;
-    face.position.set(panel.x, y, panel.z);
-    face.userData.fluorescent = true;
-    face.userData.panel = panel;
-    panel.face = face;
-    group.add(face);
-
-    if (gotLight) {
-      face.material.color.copy(onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
-      const light = new THREE.RectAreaLight(
-        0xfff4d8,
-        PANEL_LIGHT_INTENSITY * panel.bright,
-        PANEL_W,
-        PANEL_H
-      );
-      group.add(light);
-      light.position.set(panel.x, y, panel.z);
-      light.rotation.copy(_down);
-      panel.light = light;
-      fixtures.push({ light, panel });
-    }
+function addWalls(group, room, wallTex, h) {
+  wallSeg(group, wallTex, h, "z", 0, 0, CHUNK, room.doors.north);
+  wallSeg(group, wallTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
+  wallSeg(group, wallTex, h, "x", 0, 0, CHUNK, room.doors.west);
+  wallSeg(group, wallTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
+  if (room.doors.innerWest) {
+    wallSeg(group, wallTex, h, "x", room.westOff, room.northOff, CHUNK, room.doors.innerWest);
   }
-
-  return fixtures;
+  if (room.doors.innerNorth) {
+    wallSeg(group, wallTex, h, "z", room.northOff, room.westOff, CHUNK, room.doors.innerNorth);
+  }
 }
 
-export function buildRoomMesh(room, materials) {
+function addOnePanel(group, room, materials, h, panel, fixtures) {
+  const y = h - 0.05;
+  const gotLight = panel.on && claimPanelLight();
+  const face = new THREE.Mesh(
+    _panelGeo,
+    gotLight ? materials.lightPanel.clone() : materials.lightPanelOff
+  );
+  face.rotation.x = Math.PI / 2;
+  face.position.set(panel.x, y, panel.z);
+  face.userData.fluorescent = true;
+  face.userData.panel = panel;
+  panel.face = face;
+  group.add(face);
+
+  if (gotLight) {
+    face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
+    const light = new THREE.RectAreaLight(
+      0xfff4d8,
+      PANEL_LIGHT_INTENSITY * panel.bright,
+      PANEL_W,
+      PANEL_H
+    );
+    group.add(light);
+    light.position.set(panel.x, y, panel.z);
+    light.rotation.copy(_down);
+    panel.light = light;
+    fixtures.push({ light, panel, face });
+  }
+}
+
+export function createRoomBuildState(room, materials) {
   const group = new THREE.Group();
+  group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
+  return {
+    room,
+    group,
+    materials,
+    panelIdx: 0,
+    shellDone: false,
+    fixtures: [],
+    lightCount: 0,
+  };
+}
+
+export function buildRoomShell(state) {
+  if (state.shellDone) return;
+  const { room, group, materials } = state;
   const h = room.height;
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), materials.carpet.clone());
+  const floor = new THREE.Mesh(_chunkPlane, materials.carpet);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
@@ -98,29 +121,44 @@ export function buildRoomMesh(room, materials) {
   ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
   ceilingMat.emissiveMap = ceilingMap;
   ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY;
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
+  const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
   group.add(ceiling);
 
-  const fixtures = addCeilingPanels(group, room, materials, h);
+  addWalls(group, room, materials.wallTex, h);
+  state.shellDone = true;
+}
 
-  const wt = materials.wallTex;
-  wallSeg(group, wt, h, "z", 0, 0, CHUNK, room.doors.north);
-  wallSeg(group, wt, h, "z", CHUNK, 0, CHUNK, room.doors.south);
-  wallSeg(group, wt, h, "x", 0, 0, CHUNK, room.doors.west);
-  wallSeg(group, wt, h, "x", CHUNK, 0, CHUNK, room.doors.east);
+/** @returns whether all panels are built */
+export function buildPanelBatch(state, maxPanels) {
+  const { room, group, materials } = state;
+  const h = room.height;
+  let added = 0;
 
-  if (room.doors.innerWest) {
-    wallSeg(group, wt, h, "x", room.westOff, room.northOff, CHUNK, room.doors.innerWest);
+  while (state.panelIdx < room.panels.length && added < maxPanels) {
+    const panel = room.panels[state.panelIdx];
+    addOnePanel(group, room, materials, h, panel, state.fixtures);
+    if (panel.light) state.lightCount++;
+    state.panelIdx++;
+    added++;
   }
-  if (room.doors.innerNorth) {
-    wallSeg(group, wt, h, "z", room.northOff, room.westOff, CHUNK, room.doors.innerNorth);
-  }
 
-  group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
+  return state.panelIdx >= room.panels.length;
+}
+
+export function finalizeRoomBuild(state) {
+  const { group, room, fixtures, lightCount } = state;
   group.userData.room = room;
   group.userData.fixtures = fixtures;
-  group.userData.lightCount = fixtures.length;
+  group.userData.lightCount = lightCount;
   return group;
+}
+
+/** Synchronous full build — startup chunk only */
+export function buildRoomMesh(room, materials) {
+  const state = createRoomBuildState(room, materials);
+  buildRoomShell(state);
+  buildPanelBatch(state, room.panels.length);
+  return finalizeRoomBuild(state);
 }

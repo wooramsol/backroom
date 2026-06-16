@@ -95,15 +95,18 @@ async function init() {
 
   const clock = new THREE.Clock();
   let lightT = 0;
+  const _panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
+  const TARGET_FRAME_MS = 16.7;
 
   function animate() {
     requestAnimationFrame(animate);
+    const frameStart = performance.now();
     const dt = Math.min(clock.getDelta(), 0.05);
     lightT += dt;
 
     world.tick(dt);
     world.update(player.position);
-    world.processLoadQueue(player.position);
+    world.flushColliders();
     player.setColliders(world.getColliders());
     if (world.consumeColliderRebuild()) {
       player.resolvePenetration();
@@ -113,25 +116,17 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    for (const { mesh } of world.chunks.values()) {
-      const fixtures = mesh.userData.fixtures;
-      if (fixtures) {
-        for (const { light, panel } of fixtures) {
-          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-          light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-        }
-      }
-
-      mesh.traverse((obj) => {
-        if (!obj.isMesh) return;
-        const panel = obj.userData?.panel;
-        if (!panel || !panel.light) return;
-        const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-        obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
-      });
+    for (const { light, panel, face } of world.getFixtures()) {
+      const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+      const scale = LIGHT_PANEL_INTENSITY * panel.bright * flicker;
+      light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
+      face.material.color.copy(_panelColor).multiplyScalar(scale);
     }
 
     renderer.render(scene, camera);
+
+    const loadBudget = Math.max(4, TARGET_FRAME_MS - (performance.now() - frameStart));
+    world.processLoadQueue(player.position, loadBudget);
   }
 
   animate();

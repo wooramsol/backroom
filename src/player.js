@@ -7,6 +7,11 @@ const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 
+const _fwd = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _move = new THREE.Vector3();
+const _step = new THREE.Vector3();
+
 export class Player {
   constructor(camera, domElement) {
     this.camera = camera;
@@ -89,25 +94,25 @@ export class Player {
   }
 
   update(dt) {
-    const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const move = new THREE.Vector3();
+    _fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    _right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    _move.set(0, 0, 0);
 
-    if (this.keys.KeyW || this.keys.ArrowUp) move.add(fwd);
-    if (this.keys.KeyS || this.keys.ArrowDown) move.sub(fwd);
-    if (this.keys.KeyA || this.keys.ArrowLeft) move.sub(right);
-    if (this.keys.KeyD || this.keys.ArrowRight) move.add(right);
+    if (this.keys.KeyW || this.keys.ArrowUp) _move.add(_fwd);
+    if (this.keys.KeyS || this.keys.ArrowDown) _move.sub(_fwd);
+    if (this.keys.KeyA || this.keys.ArrowLeft) _move.sub(_right);
+    if (this.keys.KeyD || this.keys.ArrowRight) _move.add(_right);
 
     const running = this.keys.ShiftLeft || this.keys.ShiftRight;
     const speed = running ? RUN : WALK;
 
-    if (move.lengthSq() > 0) {
-      move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(move.length() / 0.05));
-      const step = move.clone().divideScalar(steps);
+    if (_move.lengthSq() > 0) {
+      _move.normalize().multiplyScalar(speed * dt);
+      const steps = Math.max(1, Math.ceil(_move.length() / 0.05));
+      _step.copy(_move).divideScalar(steps);
       for (let i = 0; i < steps; i++) {
-        let px = this.position.x + step.x;
-        let pz = this.position.z + step.z;
+        let px = this.position.x + _step.x;
+        let pz = this.position.z + _step.z;
         const out = this._pushOut(px, pz);
         this.position.x = out.px;
         this.position.z = out.pz;

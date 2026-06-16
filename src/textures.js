@@ -29,18 +29,26 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
+const _wallMatCache = new Map();
+
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
+  const key = `${widthM.toFixed(2)}|${heightM.toFixed(2)}`;
+  const cached = _wallMatCache.get(key);
+  if (cached) return cached;
+
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  return new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     map,
     roughness: 0.92,
     metalness: 0,
     ...opts,
   });
+  _wallMatCache.set(key, mat);
+  return mat;
 }
 
 export function tiled(tex, tileM, w, h) {
