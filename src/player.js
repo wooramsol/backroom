@@ -10,13 +10,13 @@ import {
   GRAVITY,
   CAMERA_WALL_CLEAR,
   CAMERA_MAX_OFFSET,
+  BODY_WALL_CLEAR,
 } from "./constants.js";
 
 const WALK = 3.2;
 const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
-const CORNER_R = 0.13;
 const BODY_HW = PLAYER_R * 0.98;
 const MOVE_STEP = 0.012;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
@@ -146,7 +146,7 @@ export class Player {
 
   _pushOut(px, pz) {
     const y = this.position.y;
-    const r = CORNER_R;
+    const r = BODY_WALL_CLEAR;
 
     for (let n = 0; n < 40; n++) {
       this._fillBodyPoints(px, pz);
