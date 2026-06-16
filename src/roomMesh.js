@@ -72,7 +72,9 @@ export function buildRoomMesh(room, materials) {
   group.add(floor);
 
   const ceilingMat = materials.carpet.clone();
-  ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
+  // RectAreaLights face down — ceiling diffuse map stays dark; drive grain via emissiveMap.
+  ceilingMat.emissive = new THREE.Color(0xffffff);
+  ceilingMat.emissiveMap = ceilingMat.map;
   ceilingMat.emissiveIntensity =
     CEILING_EMISSIVE_BASE + strength * CEILING_EMISSIVE_LIT;
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK, CHUNK), ceilingMat);
