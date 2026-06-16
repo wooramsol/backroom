@@ -23,31 +23,26 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 10;
 export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
-/** Warm fluorescent fill in lit areas */
-export const AMBIENT_COLOR = 0xc8b890;
-export const AMBIENT_INTENSITY = 0.07;
-/** Bright panel face — reference white-yellow fluorescent */
-export const LIGHT_PANEL_COLOR = 0xffffff;
-export const LIGHT_PANEL_OFF_COLOR = 0x1e1c18;
-/** Panel face brightness multiplier */
-export const LIGHT_PANEL_BRIGHTNESS = 1.35;
-/** Lit tile aperture in ceiling grid (metres) */
-export const FIXTURE_TILE_SIZE = 1.12;
-/** Soft halo on ceiling around each lit tile */
-export const FIXTURE_GLOW_SIZE = 2.85;
-/** RectAreaLight — warm downward wash from each tile */
-export const PANEL_LIGHT_COLOR = 0xffe4b0;
-export const PANEL_LIGHT_INTENSITY = 24;
-/** Bloom on bright ceiling panels */
-export const BLOOM_STRENGTH = 0.62;
-export const BLOOM_RADIUS = 0.48;
-export const BLOOM_THRESHOLD = 0.68;
+/** Low warm fill — lit rooms come from ceiling fixtures */
+export const AMBIENT_COLOR = 0xa09888;
+export const AMBIENT_INTENSITY = 0.04;
+export const LIGHT_PANEL_COLOR = 0xfff8e8;
+export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
+/** Lit rectangle emissive look on the panel face */
+export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-export const TONE_MAPPING_EXPOSURE = 0.88;
+/** RectAreaLight — same rectangle as panel face, points down */
+export const PANEL_LIGHT_COLOR = 0xfff4d8;
+export const PANEL_LIGHT_INTENSITY = 16;
+/** Subtle bloom on bright rectangular panels */
+export const BLOOM_STRENGTH = 0.38;
+export const BLOOM_RADIUS = 0.35;
+export const BLOOM_THRESHOLD = 0.82;
+export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;

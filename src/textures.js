@@ -66,25 +66,6 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Reference-style fluorescent tile — bright core, wide soft ceiling halo */
-export function createFixtureGlowTexture() {
-  return canvasTex((ctx, size) => {
-    const cx = size / 2;
-    const cy = size / 2;
-    const r = size * 0.5;
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, "rgba(255, 255, 252, 1)");
-    g.addColorStop(0.12, "rgba(255, 255, 245, 1)");
-    g.addColorStop(0.28, "rgba(255, 250, 225, 0.82)");
-    g.addColorStop(0.48, "rgba(255, 240, 195, 0.38)");
-    g.addColorStop(0.68, "rgba(255, 228, 165, 0.14)");
-    g.addColorStop(0.86, "rgba(255, 215, 140, 0.04)");
-    g.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, size, size);
-  }, 256);
-}
-
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
 export function createCarpetTexture() {
   return canvasTex((ctx, size) => {

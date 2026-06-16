@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
-  createFixtureGlowTexture,
   loadWallpaperOrFallback,
   tiled,
   CARPET_TILE_M,
@@ -20,8 +19,8 @@ import {
   AMBIENT_COLOR,
   AMBIENT_INTENSITY,
   LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_BRIGHTNESS,
-  FIXTURE_GLOW_SIZE,
+  LIGHT_PANEL_OFF_COLOR,
+  LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
@@ -58,7 +57,6 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
-  const fixtureGlowTex = createFixtureGlowTexture();
 
   const materials = {
     wallTex: wallpaper,
@@ -70,18 +68,11 @@ async function init() {
       metalness: 0,
       side: THREE.DoubleSide,
     }),
-    fixtureGlowGeo: new THREE.PlaneGeometry(FIXTURE_GLOW_SIZE, FIXTURE_GLOW_SIZE),
     lightPanelOn: new THREE.MeshBasicMaterial({
-      map: fixtureGlowTex,
       color: LIGHT_PANEL_COLOR,
-      transparent: true,
-      depthWrite: false,
-      toneMapped: true,
     }),
-    lightPanelOff: new THREE.MeshStandardMaterial({
-      color: 0x1e1c18,
-      roughness: 0.96,
-      metalness: 0,
+    lightPanelOff: new THREE.MeshBasicMaterial({
+      color: LIGHT_PANEL_OFF_COLOR,
     }),
   };
 
@@ -135,9 +126,9 @@ async function init() {
       for (const { light, panel, face } of fixtures) {
         const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
         light.intensity = PANEL_LIGHT_INTENSITY * panel.bright * flicker;
-        _panelColor.set(LIGHT_PANEL_COLOR);
-        _panelColor.multiplyScalar(LIGHT_PANEL_BRIGHTNESS * panel.bright * flicker);
-        face.material.color.copy(_panelColor);
+        face.material.color
+          .copy(_panelColor)
+          .multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
       }
     }
 

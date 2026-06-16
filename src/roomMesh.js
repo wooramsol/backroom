@@ -4,18 +4,19 @@ import {
   WALL_T,
   DOOR_H,
   LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_BRIGHTNESS,
+  LIGHT_PANEL_INTENSITY,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
-  FIXTURE_TILE_SIZE,
+  PANEL_W,
+  PANEL_H,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
-const _offGeo = new THREE.PlaneGeometry(FIXTURE_TILE_SIZE, FIXTURE_TILE_SIZE);
+const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
-const _panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
+const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -58,36 +59,30 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
+/** Lit panel = bright rectangle + matching RectAreaLight at the same spot */
 function addOnePanel(group, materials, h, panel, fixtures) {
-  const y = h - 0.004;
-
-  if (!(panel.on && claimPanelLight())) {
-    const face = new THREE.Mesh(_offGeo, materials.lightPanelOff);
-    face.rotation.x = Math.PI / 2;
-    face.position.set(panel.x, y, panel.z);
-    face.userData.panel = panel;
-    panel.face = face;
-    group.add(face);
-    return;
-  }
-
-  const mat = materials.lightPanelOn.clone();
-  _panelColor.set(LIGHT_PANEL_COLOR);
-  _panelColor.multiplyScalar(LIGHT_PANEL_BRIGHTNESS * panel.bright);
-  mat.color.copy(_panelColor);
-  const face = new THREE.Mesh(materials.fixtureGlowGeo, mat);
+  const y = h - 0.012;
+  const gotLight = panel.on && claimPanelLight();
+  const face = new THREE.Mesh(
+    _panelGeo,
+    gotLight ? materials.lightPanelOn.clone() : materials.lightPanelOff
+  );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
-  face.userData.fluorescent = true;
   face.userData.panel = panel;
   panel.face = face;
   group.add(face);
 
+  if (!gotLight) return;
+
+  face.userData.fluorescent = true;
+  face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
+
   const light = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
-    FIXTURE_TILE_SIZE,
-    FIXTURE_TILE_SIZE
+    PANEL_W,
+    PANEL_H
   );
   light.position.set(panel.x, y, panel.z);
   light.rotation.copy(_down);
