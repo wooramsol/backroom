@@ -8,6 +8,15 @@ import {
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 
+function spreadPick(sorted, count) {
+  if (count >= sorted.length) return sorted;
+  const picked = [];
+  for (let i = 0; i < count; i++) {
+    picked.push(sorted[Math.floor((i * sorted.length) / count)]);
+  }
+  return picked;
+}
+
 function releaseSlot(slot) {
   if (slot.light.parent) slot.light.parent.remove(slot.light);
   if (slot.panel) {
@@ -19,7 +28,7 @@ function releaseSlot(slot) {
   slot.light.visible = false;
 }
 
-/** Fixed RectAreaLight pool — assigned at chunk load, never by player distance. */
+/** RectAreaLights bound to ceiling panel fixtures — never stolen between rooms. */
 export class PanelLightPool {
   constructor() {
     this.slots = [];
@@ -31,18 +40,33 @@ export class PanelLightPool {
     }
   }
 
-  /** Spread pool slots across all ON panels in loaded chunks (stable sort, not player distance). */
-  sync(chunks) {
-    const candidates = [];
-    for (const { room, mesh } of chunks.values()) {
-      for (const panel of room.panels) {
-        if (panel.on && panel.face) {
-          candidates.push({ panel, mesh, room });
-        }
+  _onPanels(room) {
+    return room.panels
+      .filter((p) => p.on && p.face)
+      .sort((a, b) => a.z - b.z || a.x - b.x);
+  }
+
+  _bind(slot, panel, mesh, room) {
+    const y = room.height - 0.05;
+    mesh.add(slot.light);
+    slot.light.position.set(panel.x, y, panel.z);
+    slot.light.rotation.copy(_down);
+    slot.panel = panel;
+    slot.mesh = mesh;
+    panel.light = slot.light;
+    slot.light.visible = true;
+  }
+
+  /** One-time fair spread when the world boots (all chunks known upfront). */
+  distributeFair(entries) {
+    const all = [];
+    for (const { room, mesh } of entries) {
+      for (const panel of this._onPanels(room)) {
+        all.push({ panel, mesh, room });
       }
     }
 
-    candidates.sort(
+    all.sort(
       (a, b) =>
         a.room.cz - b.room.cz ||
         a.room.cx - b.room.cx ||
@@ -50,35 +74,28 @@ export class PanelLightPool {
         a.panel.x - b.panel.x
     );
 
-    const target = [];
-    const n = candidates.length;
-    const slots = Math.min(LIGHT_POOL_SIZE, n);
-    for (let i = 0; i < slots; i++) {
-      target.push(candidates[Math.floor((i * n) / slots)]);
-    }
-
-    const targetSet = new Set(target.map((t) => t.panel));
-
-    for (const slot of this.slots) {
-      if (slot.panel && (!targetSet.has(slot.panel) || !slot.panel.face?.parent)) {
-        releaseSlot(slot);
-      }
-    }
-
     const free = this.slots.filter((s) => !s.panel);
-    const need = target.filter((t) => !t.panel.light);
+    const picked = spreadPick(all, Math.min(LIGHT_POOL_SIZE, all.length, free.length));
+    for (let i = 0; i < picked.length; i++) {
+      this._bind(free[i], picked[i].panel, picked[i].mesh, picked[i].room);
+    }
+  }
 
-    for (let i = 0; i < free.length && i < need.length; i++) {
-      const slot = free[i];
-      const { panel, mesh, room } = need[i];
-      const y = room.height - 0.05;
-      mesh.add(slot.light);
-      slot.light.position.set(panel.x, y, panel.z);
-      slot.light.rotation.copy(_down);
-      slot.panel = panel;
-      slot.mesh = mesh;
-      panel.light = slot.light;
-      slot.light.visible = true;
+  /** New chunk only — uses free slots, never reassigns lights from other rooms. */
+  attachRoom(room, mesh) {
+    const need = this._onPanels(room).filter((p) => !p.light);
+    const free = this.slots.filter((s) => !s.panel);
+    const picked = spreadPick(need, Math.min(need.length, free.length));
+    for (let i = 0; i < picked.length; i++) {
+      this._bind(free[i], picked[i], mesh, room);
+    }
+  }
+
+  detachRoom(room) {
+    for (const panel of room.panels) {
+      if (!panel.light) continue;
+      const slot = this.slots.find((s) => s.panel === panel);
+      if (slot) releaseSlot(slot);
     }
   }
 

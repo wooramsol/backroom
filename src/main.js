@@ -76,10 +76,9 @@ async function init() {
     }),
   };
 
-  const world = new World(scene, materials);
-  world.init();
   const panelLights = new PanelLightPool();
-  panelLights.sync(world.chunks);
+  const world = new World(scene, materials, panelLights);
+  world.init();
 
   const player = new Player(camera, renderer.domElement);
   player.connect();
@@ -107,10 +106,6 @@ async function init() {
 
     world.tick(dt);
     world.update(player.position);
-    if (world.lightsDirty) {
-      panelLights.sync(world.chunks);
-      world.lightsDirty = false;
-    }
     player.setColliders(world.getColliders());
     if (started) {
       player.update(dt);

@@ -4,14 +4,14 @@ import { buildRoomMesh } from "./roomMesh.js";
 const GRID_RADIUS = 2;
 
 export class World {
-  constructor(scene, materials) {
+  constructor(scene, materials, panelLights) {
     this.scene = scene;
     this.materials = materials;
+    this.panelLights = panelLights;
     this.chunks = new Map();
     this.cell = { x: 0, z: 0 };
     this.colliders = [];
     this.dirty = true;
-    this.lightsDirty = true;
     this.time = 0;
   }
 
@@ -22,6 +22,7 @@ export class World {
   spawn(cx, cz) {
     const room = generateRoom(cx, cz);
     const mesh = buildRoomMesh(room, this.materials);
+    this.panelLights.attachRoom(room, mesh);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
   }
@@ -36,10 +37,18 @@ export class World {
   }
 
   init() {
+    const batch = [];
     for (let z = -GRID_RADIUS; z <= GRID_RADIUS; z++) {
       for (let x = -GRID_RADIUS; x <= GRID_RADIUS; x++) {
-        this.spawn(x, z);
+        const room = generateRoom(x, z);
+        const mesh = buildRoomMesh(room, this.materials);
+        batch.push({ room, mesh });
+        this.chunks.set(this.key(x, z), { mesh, room });
       }
+    }
+    this.panelLights.distributeFair(batch);
+    for (const { mesh } of batch) {
+      this.scene.add(mesh);
     }
     this.rebuildColliders();
   }
@@ -60,12 +69,12 @@ export class World {
 
     for (const k of [...this.chunks.keys()]) {
       if (!need.has(k)) {
-        const { mesh } = this.chunks.get(k);
+        const { mesh, room } = this.chunks.get(k);
+        this.panelLights.detachRoom(room);
         this.scene.remove(mesh);
         mesh.traverse((o) => o.geometry?.dispose());
         this.chunks.delete(k);
         this.dirty = true;
-        this.lightsDirty = true;
       }
     }
 
@@ -74,7 +83,6 @@ export class World {
         const [x, z] = k.split(",").map(Number);
         this.spawn(x, z);
         this.dirty = true;
-        this.lightsDirty = true;
       }
     }
 
