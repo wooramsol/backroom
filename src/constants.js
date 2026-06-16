@@ -40,7 +40,7 @@ export const PANEL_ON_CHANCE = 0.72;
 export const PANEL_LIGHT_INTENSITY = 16;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
-/** Uniform ceiling glow — same in every room so chunk edges stay invisible */
+/** Max ceiling self-glow at full brightness — scaled by lit panel ratio per room */
 export const CEILING_EMISSIVE_INTENSITY = 0.12;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;

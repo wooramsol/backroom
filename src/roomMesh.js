@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
+import { CHUNK, roomLitStrength } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
@@ -120,7 +120,7 @@ export function buildRoomShell(state) {
   ceilingMat.map = ceilingMap;
   ceilingMat.emissive = new THREE.Color(CARPET_COLOR);
   ceilingMat.emissiveMap = ceilingMap;
-  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY;
+  ceilingMat.emissiveIntensity = CEILING_EMISSIVE_INTENSITY * roomLitStrength(room);
   const ceiling = new THREE.Mesh(_chunkPlane, ceilingMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h;
