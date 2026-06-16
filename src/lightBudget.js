@@ -3,6 +3,10 @@ export const MAX_PANEL_LIGHTS = 40;
 
 let active = 0;
 
+export function resetPanelLightBudget() {
+  active = 0;
+}
+
 export function claimPanelLight() {
   if (active >= MAX_PANEL_LIGHTS) return false;
   active++;

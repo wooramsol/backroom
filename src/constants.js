@@ -25,10 +25,8 @@ export const FOG_FAR = 42;
 export const FOG_COLOR = 0x1a1810;
 /** Low fill — lit rooms come from ceiling fixtures, not sky */
 export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.06;
-export const HEMI_SKY = 0x706860;
-export const HEMI_GROUND = 0x281f18;
-export const HEMI_INTENSITY = 0.035;
+/** Minimal fill — ceiling fixtures are the only light sources */
+export const AMBIENT_INTENSITY = 0.04;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x2a2820;
 /** Panel emissive visual — the lit rectangle itself */
@@ -36,8 +34,8 @@ export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight strength (nits) — emitted from each ceiling panel fixture */
-export const PANEL_LIGHT_INTENSITY = 12;
+/** RectAreaLight strength (nits) — emitted downward from each lit fixture */
+export const PANEL_LIGHT_INTENSITY = 16;
 export const TONE_MAPPING_EXPOSURE = 0.78;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Uniform ceiling glow — same in every room so chunk edges stay invisible */

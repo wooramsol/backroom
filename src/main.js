@@ -17,9 +17,6 @@ import {
   FOG_FAR,
   AMBIENT_COLOR,
   AMBIENT_INTENSITY,
-  HEMI_SKY,
-  HEMI_GROUND,
-  HEMI_INTENSITY,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
@@ -52,7 +49,6 @@ const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / windo
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
-scene.add(new THREE.HemisphereLight(HEMI_SKY, HEMI_GROUND, HEMI_INTENSITY));
 
 const hum = new FluorescentHum();
 
@@ -123,13 +119,9 @@ async function init() {
       mesh.traverse((obj) => {
         if (!obj.isMesh) return;
         const panel = obj.userData?.panel;
-        if (!panel) return;
-        if (panel.on) {
-          const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-          obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
-        } else {
-          obj.material.color.setHex(LIGHT_PANEL_OFF_COLOR);
-        }
+        if (!panel || !panel.light) return;
+        const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
+        obj.material.color.set(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright * flicker);
       });
     }
 

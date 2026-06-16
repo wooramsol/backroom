@@ -1,6 +1,6 @@
 import { CHUNK, generateRoom, registerRoomWalls, collidersFromMap } from "./room.js";
 import { buildRoomMesh } from "./roomMesh.js";
-import { releasePanelLights } from "./lightBudget.js";
+import { releasePanelLights, resetPanelLightBudget } from "./lightBudget.js";
 
 /** 3×3 loaded rooms — keeps per-panel RectAreaLights within GPU cap */
 const GRID_RADIUS = 1;
@@ -37,6 +37,7 @@ export class World {
   }
 
   init() {
+    resetPanelLightBudget();
     for (let z = -GRID_RADIUS; z <= GRID_RADIUS; z++) {
       for (let x = -GRID_RADIUS; x <= GRID_RADIUS; x++) {
         this.spawn(x, z);

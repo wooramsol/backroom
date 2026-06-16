@@ -15,6 +15,8 @@ import {
 import { claimPanelLight } from "./lightBudget.js";
 import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
@@ -58,20 +60,19 @@ function addCeilingPanels(group, room, lightMat, h) {
     panel.face = face;
     group.add(face);
 
-    if (panel.on) {
+    if (panel.on && claimPanelLight()) {
       face.material.color.copy(onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
-      if (claimPanelLight()) {
-        const light = new THREE.RectAreaLight(
-          0xfff4d8,
-          PANEL_LIGHT_INTENSITY * panel.bright,
-          PANEL_W,
-          PANEL_H
-        );
-        face.add(light);
-        light.position.set(0, 0, 0);
-        panel.light = light;
-        fixtures.push({ light, panel });
-      }
+      const light = new THREE.RectAreaLight(
+        0xfff4d8,
+        PANEL_LIGHT_INTENSITY * panel.bright,
+        PANEL_W,
+        PANEL_H
+      );
+      group.add(light);
+      light.position.set(panel.x, y, panel.z);
+      light.rotation.copy(_down);
+      panel.light = light;
+      fixtures.push({ light, panel });
     } else {
       face.material.color.copy(offColor);
     }
