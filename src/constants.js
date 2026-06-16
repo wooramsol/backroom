@@ -66,13 +66,16 @@ export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 export const LIGHT_PANEL_INTENSITY = 0.48;
 export const PANEL_W = 1.15;
 export const PANEL_H = 0.42;
+/** RectAreaLight emitter — much wider than the visible panel face */
+export const PANEL_LIGHT_SPAN_W = 5.4;
+export const PANEL_LIGHT_SPAN_D = 4.6;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
 /** RectAreaLight — down onto floor, up onto ceiling carpet */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
-export const PANEL_LIGHT_INTENSITY = 16;
-export const PANEL_CEILING_LIGHT_INTENSITY = 11;
+export const PANEL_LIGHT_INTENSITY = 24;
+export const PANEL_CEILING_LIGHT_INTENSITY = 16;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
 export const BLOOM_STRENGTH = 0.32;
 export const BLOOM_RADIUS = 0.3;

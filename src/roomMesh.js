@@ -11,6 +11,8 @@ import {
   PANEL_CEILING_LIGHT_INTENSITY,
   PANEL_W,
   PANEL_H,
+  PANEL_LIGHT_SPAN_W,
+  PANEL_LIGHT_SPAN_D,
 } from "./constants.js";
 import { claimPanelLight } from "./lightBudget.js";
 import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
@@ -92,8 +94,8 @@ function addOnePanel(group, materials, h, panel, fixtures) {
   const floorLight = new THREE.RectAreaLight(
     PANEL_LIGHT_COLOR,
     PANEL_LIGHT_INTENSITY * panel.bright,
-    PANEL_W,
-    PANEL_H,
+    PANEL_LIGHT_SPAN_W,
+    PANEL_LIGHT_SPAN_D,
   );
   floorLight.position.set(panel.x, y, panel.z);
   floorLight.rotation.copy(_down);
@@ -105,8 +107,8 @@ function addOnePanel(group, materials, h, panel, fixtures) {
     ceilingLight = new THREE.RectAreaLight(
       PANEL_LIGHT_COLOR,
       PANEL_CEILING_LIGHT_INTENSITY * panel.bright,
-      PANEL_W,
-      PANEL_H,
+      PANEL_LIGHT_SPAN_W,
+      PANEL_LIGHT_SPAN_D,
     );
     ceilingLight.position.set(panel.x, y, panel.z);
     ceilingLight.rotation.copy(_up);
