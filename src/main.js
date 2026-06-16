@@ -19,6 +19,9 @@ import {
   FOG_FAR,
   AMBIENT_COLOR,
   AMBIENT_INTENSITY,
+  HEMI_SKY_COLOR,
+  HEMI_GROUND_COLOR,
+  HEMI_INTENSITY,
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
@@ -51,6 +54,7 @@ const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / windo
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
+scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
 
 const hum = new FluorescentHum();
 

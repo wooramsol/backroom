@@ -46,6 +46,10 @@ export const FOG_COLOR = 0x1a1810;
 /** Low warm fill — lit rooms come from ceiling fixtures */
 export const AMBIENT_COLOR = 0xa09888;
 export const AMBIENT_INTENSITY = 0.055;
+/** Hemisphere — sky tints floor, ground tints ceiling (down-facing carpet) */
+export const HEMI_SKY_COLOR = 0x6a6250;
+export const HEMI_GROUND_COLOR = 0x9a9470;
+export const HEMI_INTENSITY = 0.4;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 /** Lit rectangle emissive look on the panel face */
