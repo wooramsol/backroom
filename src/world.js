@@ -2,7 +2,6 @@ import { CHUNK, generateRoom, appendRoomWalls } from "./room.js";
 import {
   GRID_RADIUS,
   PRELOAD_RADIUS,
-  PREFETCH_RADIUS,
   EDGE_PREFETCH,
 } from "./constants.js";
 import {
@@ -65,7 +64,7 @@ export class World {
     return need;
   }
 
-  computeNeed(cx, cz, playerPos, radius = PREFETCH_RADIUS) {
+  computeNeed(cx, cz, playerPos, radius = GRID_RADIUS) {
     const need = this.ringKeys(cx, cz, radius);
 
     const lx = playerPos.x - cx * CHUNK;

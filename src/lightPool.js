@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
-import { MAX_PANEL_LIGHTS } from "./lightBudget.js";
+import { MAX_PANEL_LIGHTS, LIGHT_POOL_RADIUS } from "./lightBudget.js";
 import { PANEL_LIGHT_COLOR, PANEL_LIGHT_INTENSITY, PANEL_W, PANEL_H } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _heap = [];
+const _radiusSq = LIGHT_POOL_RADIUS * LIGHT_POOL_RADIUS;
 
 /** Shared RectAreaLights — nearest on-panels only, reassigned on chunk moves */
 export class PanelLightPool {
@@ -23,8 +24,6 @@ export class PanelLightPool {
     this.dirty = true;
     this.lastCcx = NaN;
     this.lastCcz = NaN;
-    this.lastPx = NaN;
-    this.lastPz = NaN;
   }
 
   dropFixtures(removed) {
@@ -51,6 +50,7 @@ export class PanelLightPool {
       const dx = fixture.wx - px;
       const dz = fixture.wz - pz;
       const dist = dx * dx + dz * dz;
+      if (dist > _radiusSq) continue;
       if (_heap.length < k) {
         _heap.push({ fixture, dist });
         continue;
@@ -69,17 +69,13 @@ export class PanelLightPool {
     const pz = playerPos.z;
     const ccx = Math.floor(px / CHUNK);
     const ccz = Math.floor(pz / CHUNK);
-    const moved =
-      (px - this.lastPx) ** 2 + (pz - this.lastPz) ** 2 > 3.5 ** 2;
-    if (!this.dirty && ccx === this.lastCcx && ccz === this.lastCcz && !moved) {
+    if (!this.dirty && ccx === this.lastCcx && ccz === this.lastCcz) {
       return;
     }
 
     this.dirty = false;
     this.lastCcx = ccx;
     this.lastCcz = ccz;
-    this.lastPx = px;
-    this.lastPz = pz;
 
     this._clearAssignments();
     this.assigned.length = 0;

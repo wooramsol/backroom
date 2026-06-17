@@ -37,7 +37,7 @@ const vignette = document.getElementById("vignette");
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 RectAreaLightUniformsLib.init();
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -140,27 +140,23 @@ async function init() {
     world.tick(dt);
     if (!world.preloading) {
       world.update(player.position);
-      if (world.hasPendingLoads()) world.flushColliders();
-    }
-    player.setColliders(world.getColliders());
-    if (world.consumeColliderRebuild()) {
-      player.resolvePenetration();
+      if (world.consumeColliderRebuild()) {
+        world.flushColliders();
+        player.setColliders(world.getColliders());
+        player.resolvePenetration();
+      }
     }
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
+      world.updateLights(player.position);
     }
-
-    world.updateLights(player.position);
 
     composer.render();
 
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
-      let loadBudget = Math.max(3, Math.min(8, TARGET_FRAME_MS - elapsed));
-      if (world.hasPendingLoads()) {
-        loadBudget = Math.max(loadBudget, 14);
-      }
+      const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
       world.processLoadQueue(player.position, loadBudget);
     }
   }
