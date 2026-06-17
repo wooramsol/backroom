@@ -7,8 +7,6 @@ import {
   MIN_DOOR_WIDTH,
   MIN_PASSAGE_SPAN,
   ROOM_H,
-  TALL_ROOM_H_MIN,
-  TALL_ROOM_H_MAX,
   PANEL_ON_CHANCE,
   PANEL_EDGE_INSET,
   PANEL_W,
@@ -482,98 +480,6 @@ function compoundLT(rng) {
   return l;
 }
 
-function zoneArea(z) {
-  return (z.x1 - z.x0) * (z.z1 - z.z0);
-}
-
-function largestZone(zones) {
-  let best = zones[0];
-  for (let i = 1; i < zones.length; i++) {
-    if (zoneArea(zones[i]) > zoneArea(best)) best = zones[i];
-  }
-  return best;
-}
-
-function defaultFloor() {
-  return [{ type: "flat", x0: 0, z0: 0, x1: CHUNK, z1: CHUNK, y: 0 }];
-}
-
-function addRampVariant(rng, shape, floorSurfaces) {
-  const zone = largestZone(shape.zones);
-  const w = zone.x1 - zone.x0;
-  const d = zone.z1 - zone.z0;
-  if (w < 5.5 || d < 5.5) return false;
-
-  const alongX = w >= d ? rng.chance(0.55) : !rng.chance(0.55);
-  const rise = rng.range(0.42, 1.05);
-  const rampLen = rng.range(Math.min(w, d) * 0.38, Math.min(w, d) * 0.58);
-
-  if (alongX) {
-    const x0 = zone.x0 + rng.range(0.4, Math.max(0.5, w - rampLen - 0.4));
-    const z0 = zone.z0 + rng.range(0.25, Math.max(0.3, d * 0.15));
-    const z1 = zone.z1 - rng.range(0.25, Math.max(0.3, d * 0.15));
-    floorSurfaces.push({
-      type: "ramp",
-      x0,
-      z0,
-      x1: x0 + rampLen,
-      z1,
-      y0: 0,
-      y1: rise,
-      axis: "x",
-    });
-    floorSurfaces.push({
-      type: "flat",
-      x0: x0 + rampLen * 0.25,
-      z0: zone.z0,
-      x1: zone.x1,
-      z1: zone.z1,
-      y: rise,
-    });
-  } else {
-    const z0 = zone.z0 + rng.range(0.4, Math.max(0.5, d - rampLen - 0.4));
-    const x0 = zone.x0 + rng.range(0.25, Math.max(0.3, w * 0.15));
-    const x1 = zone.x1 - rng.range(0.25, Math.max(0.3, w * 0.15));
-    floorSurfaces.push({
-      type: "ramp",
-      x0,
-      z0,
-      x1,
-      z1: z0 + rampLen,
-      y0: 0,
-      y1: rise,
-      axis: "z",
-    });
-    floorSurfaces.push({
-      type: "flat",
-      x0: zone.x0,
-      z0: z0 + rampLen * 0.25,
-      x1: zone.x1,
-      z1: zone.z1,
-      y: rise,
-    });
-  }
-
-  shape.kind = `${shape.kind}-ramp`;
-  return true;
-}
-
-function applyRoomVariant(rng, shape) {
-  const floorSurfaces = defaultFloor();
-  let height = ROOM_H;
-
-  if (rng.chance(0.22)) {
-    height = rng.range(TALL_ROOM_H_MIN, TALL_ROOM_H_MAX);
-    shape = { ...shape, kind: `tall-${shape.kind}` };
-  }
-
-  if (rng.chance(0.17)) {
-    addRampVariant(rng, shape, floorSurfaces);
-  }
-
-  return { ...shape, height, floorSurfaces };
-}
-
 function crossHall(rng) {
   const arm = narrowSpan(rng, 3.5, 5.4);
   const cx0 = (CHUNK - arm) / 2;
@@ -637,87 +543,22 @@ function diagonalSlice(rng) {
   };
 }
 
-function mezzanine(rng) {
-  const leg = rng.range(4.2, 6.2);
-  const deck = rng.range(5.5, 8.5);
-  const corner = rng.pick(["nw", "ne", "sw", "se"]);
-  const rise = rng.range(0.55, 1.0);
-  const floorSurfaces = defaultFloor();
-  const shapes = {
-    se: {
-      zones: [
-        { x0: 0, z0: 0, x1: CHUNK, z1: CHUNK },
-        { x0: CHUNK - deck, z0: CHUNK - deck, x1: CHUNK, z1: CHUNK },
-      ],
-      innerWalls: [
-        { axis: "x", pos: CHUNK - deck, span0: CHUNK - deck, span1: CHUNK, door: doorSpec(rng, deck) },
-        { axis: "z", pos: CHUNK - deck, span0: CHUNK - deck, span1: CHUNK, door: doorSpec(rng, deck) },
-      ],
-      ramp: { x0: CHUNK - deck - leg, z0: CHUNK - deck - 1.2, x1: CHUNK - deck, z1: CHUNK - deck, axis: "x", y1: rise },
-      deckFlat: { x0: CHUNK - deck, z0: CHUNK - deck, x1: CHUNK, z1: CHUNK, y: rise },
-    },
-    sw: {
-      zones: [
-        { x0: 0, z0: 0, x1: CHUNK, z1: CHUNK },
-        { x0: 0, z0: CHUNK - deck, x1: deck, z1: CHUNK },
-      ],
-      innerWalls: [
-        { axis: "x", pos: deck, span0: CHUNK - deck, span1: CHUNK, door: doorSpec(rng, deck) },
-        { axis: "z", pos: CHUNK - deck, span0: 0, span1: deck, door: doorSpec(rng, deck) },
-      ],
-      ramp: { x0: deck, z0: CHUNK - deck - leg, x1: deck, z1: CHUNK - deck, axis: "z", y1: rise },
-      deckFlat: { x0: 0, z0: CHUNK - deck, x1: deck, z1: CHUNK, y: rise },
-    },
-    ne: {
-      zones: [
-        { x0: 0, z0: 0, x1: CHUNK, z1: CHUNK },
-        { x0: CHUNK - deck, z0: 0, x1: CHUNK, z1: deck },
-      ],
-      innerWalls: [
-        { axis: "x", pos: CHUNK - deck, span0: 0, span1: deck, door: doorSpec(rng, deck) },
-        { axis: "z", pos: deck, span0: CHUNK - deck, span1: CHUNK, door: doorSpec(rng, deck) },
-      ],
-      ramp: { x0: CHUNK - deck - leg, z0: deck, x1: CHUNK - deck, z1: deck + 1.2, axis: "x", y1: rise },
-      deckFlat: { x0: CHUNK - deck, z0: 0, x1: CHUNK, z1: deck, y: rise },
-    },
-    nw: {
-      zones: [
-        { x0: 0, z0: 0, x1: CHUNK, z1: CHUNK },
-        { x0: 0, z0: 0, x1: deck, z1: deck },
-      ],
-      innerWalls: [
-        { axis: "x", pos: deck, span0: 0, span1: deck, door: doorSpec(rng, deck) },
-        { axis: "z", pos: deck, span0: 0, span1: deck, door: doorSpec(rng, deck) },
-      ],
-      ramp: { x0: deck, z0: deck, x1: deck + leg, z1: deck + 1.2, axis: "x", y1: rise },
-      deckFlat: { x0: 0, z0: 0, x1: deck, z1: deck, y: rise },
-    },
-  };
-  const s = shapes[corner];
-  floorSurfaces.push({
-    type: "ramp",
-    x0: s.ramp.x0,
-    z0: s.ramp.z0,
-    x1: s.ramp.x1,
-    z1: s.ramp.z1,
-    y0: 0,
-    y1: s.ramp.y1,
-    axis: s.ramp.axis,
-  });
-  floorSurfaces.push({
-    type: "flat",
-    x0: s.deckFlat.x0,
-    z0: s.deckFlat.z0,
-    x1: s.deckFlat.x1,
-    z1: s.deckFlat.z1,
-    y: s.deckFlat.y,
-  });
+function forkHall(rng) {
+  const arm = narrowSpan(rng, 3.5, 5.2);
+  const cx = (CHUNK - arm) / 2;
+  const splitZ = rng.range(6.2, 9.2);
+  const forkX = cx + arm * rng.range(0.35, 0.65);
   return {
-    kind: "mezzanine",
-    zones: s.zones,
-    innerWalls: s.innerWalls,
-    height: rng.range(TALL_ROOM_H_MIN, TALL_ROOM_H_MAX),
-    floorSurfaces,
+    kind: "fork",
+    zones: [
+      { x0: cx, z0: 0, x1: cx + arm, z1: splitZ },
+      { x0: 0, z0: splitZ, x1: forkX, z1: CHUNK },
+      { x0: forkX, z0: splitZ, x1: CHUNK, z1: CHUNK },
+    ],
+    innerWalls: [
+      { axis: "z", pos: splitZ, span0: forkX, span1: CHUNK, door: null },
+      { axis: "x", pos: forkX, span0: splitZ, span1: CHUNK, door: doorSpec(rng, CHUNK - splitZ) },
+    ],
   };
 }
 
@@ -739,10 +580,10 @@ function pickShape(rng) {
     ["zigzag", 8],
     ["hall-pockets", 8],
     ["compound", 7],
-    ["cross", 9],
-    ["stagger", 8],
-    ["diag", 8],
-    ["mezzanine", 7],
+    ["cross", 10],
+    ["stagger", 9],
+    ["diag", 9],
+    ["fork", 9],
   ]);
 
   switch (kind) {
@@ -784,8 +625,8 @@ function pickShape(rng) {
       return staggeredWings(rng);
     case "diag":
       return diagonalSlice(rng);
-    case "mezzanine":
-      return mezzanine(rng);
+    case "fork":
+      return forkHall(rng);
     default:
       return { kind: "full", zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }], innerWalls: [] };
   }
@@ -793,20 +634,15 @@ function pickShape(rng) {
 
 export function generateRoom(cx, cz) {
   const rng = createRng(cx, cz, 7);
-  const base = pickShape(rng);
-  const variant =
-    base.floorSurfaces != null
-      ? base
-      : applyRoomVariant(rng, { kind: base.kind, zones: base.zones, innerWalls: base.innerWalls });
+  const shape = pickShape(rng);
 
   const room = {
     cx,
     cz,
-    kind: variant.kind,
-    zones: variant.zones,
-    innerWalls: variant.innerWalls,
-    height: variant.height ?? ROOM_H,
-    floorSurfaces: variant.floorSurfaces ?? defaultFloor(),
+    kind: shape.kind,
+    zones: shape.zones,
+    innerWalls: shape.innerWalls,
+    height: ROOM_H,
     doors: {
       north: getSharedDoor(cx, cz, cx, cz - 1),
       south: getSharedDoor(cx, cz, cx, cz + 1),

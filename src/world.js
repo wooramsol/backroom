@@ -13,7 +13,6 @@ import {
   buildRoomMesh,
 } from "./roomMesh.js";
 import { PanelLightPool } from "./lightPool.js";
-import { roomFloorSurfacesToWorld } from "./floorSampling.js";
 
 const PANELS_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
@@ -32,7 +31,6 @@ export class World {
     this.pendingKeys = new Set();
     this.disposeQueue = [];
     this.fixtures = [];
-    this.floorSurfaces = [];
     this.cellCx = NaN;
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
@@ -111,10 +109,8 @@ export class World {
   rebuildColliders() {
     this.wallMap.clear();
     this.colliders = [];
-    this.floorSurfaces = [];
     for (const { room } of this.chunks.values()) {
       this.colliders.push(...appendRoomWalls(this.wallMap, room));
-      this.floorSurfaces.push(...roomFloorSurfacesToWorld(room));
     }
     this.collidersDirty = true;
     this.pendingColliderRebuild = false;
@@ -187,7 +183,6 @@ export class World {
     this.cellCz = cz;
     this.lastPrefetchEdge = this.nearPrefetchEdge(playerPos, cx, cz);
     this.spawnComplete(cx, cz);
-    this.rebuildColliders();
   }
 
   update(playerPos) {
@@ -326,10 +321,6 @@ export class World {
 
   getFixtures() {
     return this.fixtures;
-  }
-
-  getFloorSurfaces() {
-    return this.floorSurfaces;
   }
 
   updateLights(playerPos) {
