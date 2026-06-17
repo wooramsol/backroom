@@ -2,7 +2,6 @@ import * as THREE from "three";
 import {
   EYE_H,
   PLAYER_R,
-  PLAYER_DEPTH,
   CHUNK,
   MOUSE_SENS,
   PITCH_LIMIT,
@@ -15,28 +14,13 @@ const WALK = 3.2;
 const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
-const BODY_HW = PLAYER_R * 0.98;
+const BODY_R = PLAYER_R + BODY_WALL_CLEAR;
 const MOVE_STEP = 0.008;
-const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
+const _up = new THREE.Vector3(0, 1, 0);
 
 const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _move = new THREE.Vector3();
-const _camFwd = new THREE.Vector3();
-const _bodyPts = [
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-];
 
 export class Player {
   constructor(camera, domElement) {
@@ -51,6 +35,8 @@ export class Player {
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
+
+    this.camera.rotation.order = "YXZ";
 
     this._onKeyDown = (e) => {
       if (e.code === "Space") {
@@ -98,102 +84,66 @@ export class Player {
     this.grounded = true;
   }
 
-  _horizBasis() {
-    const fx = -Math.sin(this.yaw);
-    const fz = -Math.cos(this.yaw);
-    const rx = Math.cos(this.yaw);
-    const rz = -Math.sin(this.yaw);
-    return { fx, fz, rx, rz };
+  _applyLook() {
+    this.camera.rotation.y = this.yaw;
+    this.camera.rotation.x = this.pitch;
+    this.camera.rotation.z = 0;
   }
 
-  _fillBodyPoints(px, pz) {
-    const { fx, fz, rx, rz } = this._horizBasis();
-    const hw = BODY_HW;
-    const hd = PLAYER_DEPTH;
-    _bodyPts[0][0] = px + fx * hd + rx * hw;
-    _bodyPts[0][1] = pz + fz * hd + rz * hw;
-    _bodyPts[1][0] = px + fx * hd - rx * hw;
-    _bodyPts[1][1] = pz + fz * hd - rz * hw;
-    _bodyPts[2][0] = px - fx * hd + rx * hw;
-    _bodyPts[2][1] = pz - fz * hd + rz * hw;
-    _bodyPts[3][0] = px - fx * hd - rx * hw;
-    _bodyPts[3][1] = pz - fz * hd - rz * hw;
-    _bodyPts[4][0] = px + rx * hw;
-    _bodyPts[4][1] = pz + rz * hw;
-    _bodyPts[5][0] = px - rx * hw;
-    _bodyPts[5][1] = pz - rz * hw;
-    _bodyPts[6][0] = px + fx * hd;
-    _bodyPts[6][1] = pz + fz * hd;
-    _bodyPts[7][0] = px - fx * hd;
-    _bodyPts[7][1] = pz - fz * hd;
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      _bodyPts[8 + i][0] = px + fx * (hd * 0.55 * ca + 0.01) + rx * (hw * sa);
-      _bodyPts[8 + i][1] = pz + fz * (hd * 0.55 * ca + 0.01) + rz * (hw * sa);
-    }
+  /** Walk axes = camera center ray projected onto the floor (matches crosshair) */
+  _syncMoveAxes() {
+    this.camera.getWorldDirection(_fwd);
+    _fwd.y = 0;
+    if (_fwd.lengthSq() < 1e-10) _fwd.set(0, 0, -1);
+    else _fwd.normalize();
+    _right.crossVectors(_fwd, _up).normalize();
   }
 
-  _sampleHitsWall(sx, sz, y, r) {
+  _hitsWall(px, pz, y) {
     for (const c of this.colliders) {
       if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
-      if (sx + r > c.minX && sx - r < c.maxX && sz + r > c.minZ && sz - r < c.maxZ) {
-        return true;
-      }
+      const cx = THREE.MathUtils.clamp(px, c.minX, c.maxX);
+      const cz = THREE.MathUtils.clamp(pz, c.minZ, c.maxZ);
+      const dx = px - cx;
+      const dz = pz - cz;
+      if (dx * dx + dz * dz < BODY_R * BODY_R) return true;
     }
     return false;
   }
 
-  _bodyOverlaps(px, pz) {
-    const y = this.position.y;
-    const r = BODY_WALL_CLEAR;
-    this._fillBodyPoints(px, pz);
-    for (let i = 0; i < 12; i++) {
-      if (this._sampleHitsWall(_bodyPts[i][0], _bodyPts[i][1], y, r)) return true;
-    }
-    return this._sampleHitsWall(px, pz, y, BODY_WALL_CLEAR * 0.5);
-  }
-
-  _pushSample(sx, sz, px, pz, y, r) {
-    let hit = false;
-    for (const c of this.colliders) {
-      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
-      if (sx + r <= c.minX || sx - r >= c.maxX || sz + r <= c.minZ || sz - r >= c.maxZ) {
-        continue;
-      }
-
-      const oL = sx + r - c.minX;
-      const oR = c.maxX - (sx - r);
-      const oF = sz + r - c.minZ;
-      const oB = c.maxZ - (sz - r);
-      const m = Math.min(oL, oR, oF, oB);
-
-      if (m === oL) px -= oL;
-      else if (m === oR) px += oR;
-      else if (m === oF) pz -= oF;
-      else pz += oB;
-
-      hit = true;
-    }
-    return { px, pz, hit };
-  }
-
   _pushOut(px, pz) {
     const y = this.position.y;
-    const r = BODY_WALL_CLEAR;
 
-    for (let n = 0; n < 48; n++) {
-      this._fillBodyPoints(px, pz);
+    for (let n = 0; n < 12; n++) {
       let hit = false;
+      for (const c of this.colliders) {
+        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
 
-      for (let i = 0; i < 12; i++) {
-        const out = this._pushSample(_bodyPts[i][0], _bodyPts[i][1], px, pz, y, r);
-        px = out.px;
-        pz = out.pz;
-        if (out.hit) hit = true;
+        const cx = THREE.MathUtils.clamp(px, c.minX, c.maxX);
+        const cz = THREE.MathUtils.clamp(pz, c.minZ, c.maxZ);
+        const dx = px - cx;
+        const dz = pz - cz;
+        const distSq = dx * dx + dz * dz;
+        if (distSq >= BODY_R * BODY_R) continue;
+
+        if (distSq < 1e-8) {
+          const oL = px - c.minX;
+          const oR = c.maxX - px;
+          const oF = pz - c.minZ;
+          const oB = c.maxZ - pz;
+          const m = Math.min(oL, oR, oF, oB);
+          if (m === oL) px += BODY_R - oL;
+          else if (m === oR) px -= BODY_R - oR;
+          else if (m === oF) pz += BODY_R - oF;
+          else pz -= BODY_R - oB;
+        } else {
+          const dist = Math.sqrt(distSq);
+          const push = (BODY_R - dist) / dist;
+          px += dx * push;
+          pz += dz * push;
+        }
+        hit = true;
       }
-
       if (!hit) break;
     }
 
@@ -202,17 +152,17 @@ export class Player {
 
   _tryMove(px, pz, dx, dz) {
     const target = this._pushOut(px + dx, pz + dz);
-    if (!this._bodyOverlaps(target.px, target.pz)) return target;
+    if (!this._hitsWall(target.px, target.pz, this.position.y)) return target;
 
     const xOnly = this._pushOut(px + dx, pz);
-    if (!this._bodyOverlaps(xOnly.px, xOnly.pz)) {
+    if (!this._hitsWall(xOnly.px, xOnly.pz, this.position.y)) {
       const xz = this._pushOut(xOnly.px, pz + dz);
-      if (!this._bodyOverlaps(xz.px, xz.pz)) return xz;
+      if (!this._hitsWall(xz.px, xz.pz, this.position.y)) return xz;
       return xOnly;
     }
 
     const zOnly = this._pushOut(px, pz + dz);
-    if (!this._bodyOverlaps(zOnly.px, zOnly.pz)) return zOnly;
+    if (!this._hitsWall(zOnly.px, zOnly.pz, this.position.y)) return zOnly;
 
     return { px, pz };
   }
@@ -230,55 +180,11 @@ export class Player {
     return { px, pz };
   }
 
-  _pointInsideCollider(x, y, z, pad = 0) {
-    for (const c of this.colliders) {
-      if (y < c.minY - pad || y > c.maxY + pad) continue;
-      if (
-        x >= c.minX - pad &&
-        x <= c.maxX + pad &&
-        z >= c.minZ - pad &&
-        z <= c.maxZ + pad
-      ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** Pull eye back along view ray only — keep XZ aligned with body for straight movement */
-  _adjustCameraForWalls(eyeX, eyeY, eyeZ, yaw, pitch) {
-    let x = eyeX;
-    let y = eyeY;
-    let z = eyeZ;
-
-    _camFwd
-      .set(
-        -Math.sin(yaw) * Math.cos(pitch),
-        Math.sin(pitch),
-        -Math.cos(yaw) * Math.cos(pitch),
-      )
-      .normalize();
-
-    for (let t = 0.04; t <= 0.35; t += 0.04) {
-      const px = x + _camFwd.x * t;
-      const py = y + _camFwd.y * t;
-      const pz = z + _camFwd.z * t;
-      if (this._pointInsideCollider(px, py, pz, 0.03)) {
-        x -= _camFwd.x * (t + 0.03);
-        y -= _camFwd.y * (t + 0.03);
-        z -= _camFwd.z * (t + 0.03);
-        break;
-      }
-    }
-
-    return { x, y, z };
-  }
-
   resolvePenetration() {
     const prevX = this.position.x;
     const prevZ = this.position.z;
     const out = this._pushOut(this.position.x, this.position.z);
-    if (this._bodyOverlaps(out.px, out.pz)) {
+    if (this._hitsWall(out.px, out.pz, this.position.y)) {
       this.position.x = prevX;
       this.position.z = prevZ;
       const safe = this._pushOut(prevX, prevZ);
@@ -291,11 +197,10 @@ export class Player {
   }
 
   update(dt) {
-    const { fx, fz, rx, rz } = this._horizBasis();
-    _fwd.set(fx, 0, fz);
-    _right.set(rx, 0, rz);
-    _move.set(0, 0, 0);
+    this._applyLook();
+    this._syncMoveAxes();
 
+    _move.set(0, 0, 0);
     if (this.keys.KeyW || this.keys.ArrowUp) _move.add(_fwd);
     if (this.keys.KeyS || this.keys.ArrowDown) _move.sub(_fwd);
     if (this.keys.KeyA || this.keys.ArrowLeft) _move.sub(_right);
@@ -327,11 +232,7 @@ export class Player {
     this.resolvePenetration();
 
     const bobY = this.grounded ? Math.sin(this.bob) * BOB_AMOUNT : 0;
-    const eyeY = this.position.y + bobY;
-    const cam = this._adjustCameraForWalls(this.position.x, eyeY, this.position.z, this.yaw, this.pitch);
-    this.camera.position.set(cam.x, cam.y, cam.z);
-    this.camera.up.set(0, 1, 0);
-    _lookEuler.set(this.pitch, this.yaw, 0);
-    this.camera.quaternion.setFromEuler(_lookEuler);
+    this.camera.position.set(this.position.x, this.position.y + bobY, this.position.z);
+    this._applyLook();
   }
 }
