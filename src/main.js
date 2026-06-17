@@ -109,7 +109,7 @@ async function init() {
   overlay.style.cursor = "wait";
 
   world
-    .preloadAround(player.position, (done, total) => {
+    .preloadAround(camera, (done, total) => {
       if (hint && !ready) {
         hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
       }
@@ -168,7 +168,7 @@ async function init() {
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      world.updateLights(player.position);
+      world.updateLights(camera);
     }
 
     composer.render();

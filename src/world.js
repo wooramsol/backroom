@@ -322,8 +322,8 @@ export class World {
     return this.fixtures;
   }
 
-  updateLights(playerPos) {
-    this.lightPool.update(this.fixtures, playerPos);
+  updateLights(camera) {
+    this.lightPool.update(this.fixtures, camera);
   }
 
   /** Sync full build — used during title-screen preload to avoid in-game hitches */
@@ -339,7 +339,8 @@ export class World {
   }
 
   /** Fully build the visible preload square before gameplay. */
-  async preloadAround(playerPos, onProgress) {
+  async preloadAround(camera, onProgress) {
+    const playerPos = camera.position;
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
     const toBuild = [];
@@ -375,7 +376,7 @@ export class World {
 
     this.preloading = false;
     this.lightPool.markDirty();
-    this.lightPool.update(this.fixtures, playerPos);
+    this.lightPool.update(this.fixtures, camera);
     onProgress?.(total || 1, total || 1);
   }
 

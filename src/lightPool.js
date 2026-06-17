@@ -1,13 +1,23 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
-import { MAX_PANEL_LIGHTS, LIGHT_POOL_RADIUS } from "./lightBudget.js";
-import { PANEL_LIGHT_COLOR, PANEL_LIGHT_INTENSITY, PANEL_W, PANEL_H } from "./constants.js";
+import { MAX_PANEL_LIGHTS } from "./lightBudget.js";
+import {
+  FOG_FAR,
+  PANEL_LIGHT_COLOR,
+  PANEL_LIGHT_INTENSITY,
+  PANEL_W,
+  PANEL_H,
+} from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _heap = [];
-const _radiusSq = LIGHT_POOL_RADIUS * LIGHT_POOL_RADIUS;
+const _frustum = new THREE.Frustum();
+const _projScreen = new THREE.Matrix4();
+const _point = new THREE.Vector3();
+const _lastPos = new THREE.Vector3();
+const _lastQuat = new THREE.Quaternion();
+const _viewDistSq = FOG_FAR * FOG_FAR;
 
-/** Shared RectAreaLights — nearest on-panels only, reassigned on chunk moves */
+/** Shared RectAreaLights — assigned to on-panels visible in the camera frustum */
 export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
@@ -22,8 +32,7 @@ export class PanelLightPool {
     this.assigned = [];
     this.prevAssigned = [];
     this.dirty = true;
-    this.lastCcx = NaN;
-    this.lastCcz = NaN;
+    _lastPos.set(NaN, NaN, NaN);
   }
 
   dropFixtures(removed) {
@@ -43,14 +52,27 @@ export class PanelLightPool {
     this.prevAssigned.length = 0;
   }
 
-  _selectNearest(fixtures, px, pz, k) {
+  _selectVisible(fixtures, camera, k) {
+    camera.updateMatrixWorld(true);
+    _projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _frustum.setFromProjectionMatrix(_projScreen);
+
+    const px = camera.position.x;
+    const py = camera.position.y;
+    const pz = camera.position.z;
+
     _heap.length = 0;
     for (let i = 0; i < fixtures.length; i++) {
       const fixture = fixtures[i];
+      _point.set(fixture.wx, fixture.wy, fixture.wz);
+      if (!_frustum.containsPoint(_point)) continue;
+
       const dx = fixture.wx - px;
+      const dy = fixture.wy - py;
       const dz = fixture.wz - pz;
-      const dist = dx * dx + dz * dz;
-      if (dist > _radiusSq) continue;
+      const dist = dx * dx + dy * dy + dz * dz;
+      if (dist > _viewDistSq) continue;
+
       if (_heap.length < k) {
         _heap.push({ fixture, dist });
         continue;
@@ -64,23 +86,21 @@ export class PanelLightPool {
     return _heap;
   }
 
-  update(fixtures, playerPos) {
-    const px = playerPos.x;
-    const pz = playerPos.z;
-    const ccx = Math.floor(px / CHUNK);
-    const ccz = Math.floor(pz / CHUNK);
-    if (!this.dirty && ccx === this.lastCcx && ccz === this.lastCcz) {
-      return;
-    }
+  update(fixtures, camera) {
+    const moved =
+      this.dirty ||
+      !_lastPos.equals(camera.position) ||
+      !_lastQuat.equals(camera.quaternion);
+    if (!moved) return;
 
     this.dirty = false;
-    this.lastCcx = ccx;
-    this.lastCcz = ccz;
+    _lastPos.copy(camera.position);
+    _lastQuat.copy(camera.quaternion);
 
     this._clearAssignments();
     this.assigned.length = 0;
 
-    const picks = this._selectNearest(fixtures, px, pz, this.lights.length);
+    const picks = this._selectVisible(fixtures, camera, this.lights.length);
     for (let i = 0; i < picks.length; i++) {
       const { fixture } = picks[i];
       const light = this.lights[i];
