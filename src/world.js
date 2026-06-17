@@ -35,7 +35,7 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
-    this.lightPool = new PanelLightPool(scene, materials.lightPanelOn);
+    this.lightPool = new PanelLightPool(scene);
   }
 
   key(cx, cz) {
@@ -325,10 +325,6 @@ export class World {
 
   updateLights(playerPos) {
     this.lightPool.update(this.fixtures, playerPos);
-  }
-
-  getActiveLightFixtures() {
-    return this.lightPool.getAssigned();
   }
 
   /** Sync full build — used during title-screen preload to avoid in-game hitches */

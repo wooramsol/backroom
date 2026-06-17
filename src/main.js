@@ -25,7 +25,6 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
-  PANEL_LIGHT_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -130,7 +129,6 @@ async function init() {
 
   const clock = new THREE.Clock();
   let lightT = 0;
-  const _panelColor = new THREE.Color(LIGHT_PANEL_COLOR);
   const TARGET_FRAME_MS = 16.7;
 
   function animate() {
@@ -154,14 +152,6 @@ async function init() {
     }
 
     world.updateLights(player.position);
-
-    for (const fixture of world.getActiveLightFixtures()) {
-      const { light, panel, face } = fixture;
-      const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
-      const k = panel.bright * flicker;
-      light.intensity = PANEL_LIGHT_INTENSITY * k;
-      face.material.color.copy(_panelColor).multiplyScalar(LIGHT_PANEL_INTENSITY * k);
-    }
 
     composer.render();
 

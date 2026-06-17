@@ -1,25 +1,22 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
 import { MAX_PANEL_LIGHTS } from "./lightBudget.js";
-import { PANEL_LIGHT_COLOR, PANEL_W, PANEL_H } from "./constants.js";
+import { PANEL_LIGHT_COLOR, PANEL_LIGHT_INTENSITY, PANEL_W, PANEL_H } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _heap = [];
 
 /** Shared RectAreaLights — nearest on-panels only, reassigned on chunk moves */
 export class PanelLightPool {
-  constructor(scene, staticPanelMat) {
+  constructor(scene) {
     this.scene = scene;
-    this.staticMat = staticPanelMat;
     this.lights = [];
-    this.flickerMats = [];
     for (let i = 0; i < MAX_PANEL_LIGHTS; i++) {
       const light = new THREE.RectAreaLight(PANEL_LIGHT_COLOR, 0, PANEL_W, PANEL_H);
       light.rotation.copy(_down);
       light.visible = false;
       scene.add(light);
       this.lights.push(light);
-      this.flickerMats.push(staticPanelMat.clone());
     }
     this.assigned = [];
     this.prevAssigned = [];
@@ -42,17 +39,8 @@ export class PanelLightPool {
     this.dirty = true;
   }
 
-  getAssigned() {
-    return this.assigned;
-  }
-
-  _revertFaces() {
-    for (const fixture of this.prevAssigned) {
-      fixture.light = null;
-      if (fixture.face.material !== this.staticMat) {
-        fixture.face.material = this.staticMat;
-      }
-    }
+  _clearAssignments() {
+    for (const fixture of this.prevAssigned) fixture.light = null;
     this.prevAssigned.length = 0;
   }
 
@@ -93,7 +81,7 @@ export class PanelLightPool {
     this.lastPx = px;
     this.lastPz = pz;
 
-    this._revertFaces();
+    this._clearAssignments();
     this.assigned.length = 0;
 
     const picks = this._selectNearest(fixtures, px, pz, this.lights.length);
@@ -101,7 +89,7 @@ export class PanelLightPool {
       const { fixture } = picks[i];
       const light = this.lights[i];
       fixture.light = light;
-      fixture.face.material = this.flickerMats[i];
+      light.intensity = PANEL_LIGHT_INTENSITY * fixture.panel.bright;
       light.position.set(fixture.wx, fixture.wy, fixture.wz);
       light.visible = true;
       this.assigned.push(fixture);

@@ -65,7 +65,6 @@ function generatePanels(rng, room) {
           x,
           z,
           on: rng.chance(narrow ? PANEL_ON_CHANCE * 0.92 : PANEL_ON_CHANCE),
-          phase: rng.range(0, Math.PI * 2),
           bright: 0.9 + hash(z + zone.z0) * 0.14,
         });
       }
