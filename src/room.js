@@ -82,6 +82,29 @@ function panelBlocked(px, pz, room) {
   return false;
 }
 
+const PANEL_MIN_GAP = 0.18;
+
+function panelOverlapsExisting(px, pz, panels) {
+  const halfW = PANEL_W / 2 + PANEL_MIN_GAP;
+  const halfH = PANEL_H / 2 + PANEL_MIN_GAP;
+  const minX = px - halfW;
+  const maxX = px + halfW;
+  const minZ = pz - halfH;
+  const maxZ = pz + halfH;
+
+  for (let i = 0; i < panels.length; i++) {
+    const p = panels[i];
+    const eMinX = p.x - halfW;
+    const eMaxX = p.x + halfW;
+    const eMinZ = p.z - halfH;
+    const eMaxZ = p.z + halfH;
+    if (spansOverlap(minX, maxX, eMinX, eMaxX) && spansOverlap(minZ, maxZ, eMinZ, eMaxZ)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function generatePanels(rng, room) {
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
   const panels = [];
@@ -97,13 +120,18 @@ function generatePanels(rng, room) {
     if (zw < PANEL_W || zd < PANEL_H) continue;
 
     const narrow = Math.min(zw, zd) < 5.2;
-    const spacing = narrow ? rng.pick([2.6, 3.0, 3.4]) : room.lightSpacing;
+    const minSpacing = Math.max(PANEL_W, PANEL_H) + PANEL_MIN_GAP + 0.2;
+    const spacing = Math.max(
+      minSpacing,
+      narrow ? rng.pick([2.6, 3.0, 3.4]) : room.lightSpacing,
+    );
     const skip = narrow ? 0.14 : 0.28;
 
     for (let x = xLo + spacing / 2; x < xHi; x += spacing) {
       for (let z = zLo + spacing / 2; z < zHi; z += spacing) {
         if (hash(x * 3.1 + z + zone.x0 * 0.7) < skip) continue;
         if (panelBlocked(x, z, room)) continue;
+        if (panelOverlapsExisting(x, z, panels)) continue;
         panels.push({
           x,
           z,
