@@ -8,8 +8,6 @@ import {
   PITCH_LIMIT,
   JUMP_V,
   GRAVITY,
-  CAMERA_WALL_CLEAR,
-  CAMERA_MAX_OFFSET,
   BODY_WALL_CLEAR,
 } from "./constants.js";
 
@@ -25,7 +23,6 @@ const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _move = new THREE.Vector3();
 const _camFwd = new THREE.Vector3();
-const _camOff = new THREE.Vector3();
 const _bodyPts = [
   [0, 0],
   [0, 0],
@@ -241,53 +238,21 @@ export class Player {
     return false;
   }
 
-  /** Pull eye away from nearby wall surfaces and out of the view frustum */
+  /** Pull eye back along view ray only — keep XZ aligned with body for straight movement */
   _adjustCameraForWalls(eyeX, eyeY, eyeZ, yaw, pitch) {
-    const clear = CAMERA_WALL_CLEAR;
     let x = eyeX;
     let y = eyeY;
     let z = eyeZ;
 
-    for (let pass = 0; pass < 6; pass++) {
-      let moved = false;
-      for (const c of this.colliders) {
-        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+    _camFwd
+      .set(
+        -Math.sin(yaw) * Math.cos(pitch),
+        Math.sin(pitch),
+        -Math.cos(yaw) * Math.cos(pitch),
+      )
+      .normalize();
 
-        const cx = THREE.MathUtils.clamp(x, c.minX, c.maxX);
-        const cz = THREE.MathUtils.clamp(z, c.minZ, c.maxZ);
-        const dx = x - cx;
-        const dz = z - cz;
-        const distSq = dx * dx + dz * dz;
-        if (distSq >= clear * clear) continue;
-
-        if (distSq < 1e-8) {
-          const oL = x - c.minX;
-          const oR = c.maxX - x;
-          const oF = z - c.minZ;
-          const oB = c.maxZ - z;
-          const m = Math.min(oL, oR, oF, oB);
-          if (m === oL) x += clear - oL;
-          else if (m === oR) x -= clear - oR;
-          else if (m === oF) z += clear - oF;
-          else z -= clear - oB;
-        } else {
-          const dist = Math.sqrt(distSq);
-          const push = (clear - dist) / dist;
-          x += dx * push;
-          z += dz * push;
-        }
-        moved = true;
-      }
-      if (!moved) break;
-    }
-
-    _camFwd.set(
-      -Math.sin(yaw) * Math.cos(pitch),
-      Math.sin(pitch),
-      -Math.cos(yaw) * Math.cos(pitch)
-    ).normalize();
-
-    for (let t = 0.04; t <= 0.45; t += 0.04) {
+    for (let t = 0.04; t <= 0.35; t += 0.04) {
       const px = x + _camFwd.x * t;
       const py = y + _camFwd.y * t;
       const pz = z + _camFwd.z * t;
@@ -299,36 +264,7 @@ export class Player {
       }
     }
 
-    this._fillBodyPoints(x, z);
-    for (let i = 0; i < 12; i++) {
-      const sx = _bodyPts[i][0];
-      const sz = _bodyPts[i][1];
-      for (const c of this.colliders) {
-        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
-        const cx = THREE.MathUtils.clamp(sx, c.minX, c.maxX);
-        const cz = THREE.MathUtils.clamp(sz, c.minZ, c.maxZ);
-        const dx = sx - cx;
-        const dz = sz - cz;
-        const distSq = dx * dx + dz * dz;
-        if (distSq >= clear * clear) continue;
-        if (distSq < 1e-8) continue;
-        const dist = Math.sqrt(distSq);
-        const push = (clear - dist) / dist;
-        x += dx * push;
-        z += dz * push;
-      }
-    }
-
-    _camOff.set(x - eyeX, y - eyeY, z - eyeZ);
-    if (_camOff.lengthSq() > CAMERA_MAX_OFFSET * CAMERA_MAX_OFFSET) {
-      _camOff.setLength(CAMERA_MAX_OFFSET);
-    }
-
-    return {
-      x: eyeX + _camOff.x,
-      y: eyeY + _camOff.y,
-      z: eyeZ + _camOff.z,
-    };
+    return { x, y, z };
   }
 
   resolvePenetration() {
@@ -380,6 +316,8 @@ export class Player {
       this.grounded = false;
     }
 
+    this.resolvePenetration();
+
     const bobY = this.grounded ? Math.sin(this.bob) * BOB_AMOUNT : 0;
     const eyeY = this.position.y + bobY;
     const cam = this._adjustCameraForWalls(this.position.x, eyeY, this.position.z, this.yaw, this.pitch);
@@ -387,7 +325,5 @@ export class Player {
     this.camera.up.set(0, 1, 0);
     _lookEuler.set(this.pitch, this.yaw, 0);
     this.camera.quaternion.setFromEuler(_lookEuler);
-
-    this.resolvePenetration();
   }
 }
