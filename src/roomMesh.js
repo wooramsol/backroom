@@ -56,6 +56,43 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
+function addFlatPlatform(group, surf, mat) {
+  const w = surf.x1 - surf.x0;
+  const d = surf.z1 - surf.z0;
+  if (w < 0.2 || d < 0.2) return;
+  const geo = new THREE.PlaneGeometry(w, d);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(surf.x0 + w / 2, surf.y + 0.01, surf.z0 + d / 2);
+  group.add(mesh);
+}
+
+function addRampMesh(group, surf, mat) {
+  const run = surf.axis === "x" ? surf.x1 - surf.x0 : surf.z1 - surf.z0;
+  const span = surf.axis === "x" ? surf.z1 - surf.z0 : surf.x1 - surf.x0;
+  const rise = surf.y1 - surf.y0;
+  if (run < 0.4 || span < 0.4) return;
+
+  const geo = new THREE.BoxGeometry(run, 0.09, span);
+  const mesh = new THREE.Mesh(geo, mat);
+  const cx = (surf.x0 + surf.x1) / 2;
+  const cz = (surf.z0 + surf.z1) / 2;
+  const cy = (surf.y0 + surf.y1) / 2 + 0.045;
+  mesh.position.set(cx, cy, cz);
+  if (surf.axis === "x") mesh.rotation.z = -Math.atan2(rise, run);
+  else mesh.rotation.x = Math.atan2(rise, run);
+  group.add(mesh);
+}
+
+function addFloorFeatures(group, room, materials) {
+  const surfaces = room.floorSurfaces ?? [];
+  for (const s of surfaces) {
+    if (s.type === "flat" && s.y <= 0.001) continue;
+    if (s.type === "flat") addFlatPlatform(group, s, materials.carpet);
+    else if (s.type === "ramp") addRampMesh(group, s, materials.carpet);
+  }
+}
+
 /** On panel = bright rectangle; RectAreaLight comes from the shared pool */
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const y = h - 0.012;
@@ -106,6 +143,8 @@ export function buildRoomShell(state) {
   const floor = new THREE.Mesh(_chunkPlane, materials.carpet);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
+
+  addFloorFeatures(group, room, materials);
 
   const ceilingMap = tiledAt(materials.carpetTex, CARPET_TILE_M, CHUNK, CHUNK, state.worldX, state.worldZ);
   const ceilingMat = createCarpetSurfaceMaterial(ceilingMap);

@@ -12,6 +12,7 @@ import {
   CAMERA_MAX_OFFSET,
   BODY_WALL_CLEAR,
 } from "./constants.js";
+import { sampleFloorHeight } from "./floorSampling.js";
 
 const WALK = 3.2;
 const RUN = 5.8;
@@ -51,6 +52,7 @@ export class Player {
     this.keys = {};
     this.locked = false;
     this.colliders = [];
+    this.floorSurfaces = [];
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
@@ -95,8 +97,17 @@ export class Player {
     this.colliders = colliders;
   }
 
+  setFloorSurfaces(surfaces) {
+    this.floorSurfaces = surfaces;
+  }
+
+  _eyeHeightAt(wx, wz) {
+    return sampleFloorHeight(this.floorSurfaces, wx, wz) + EYE_H;
+  }
+
   _unstuck() {
-    this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
+    const y = this._eyeHeightAt(CHUNK / 2, CHUNK / 2);
+    this.position.set(CHUNK / 2, y, CHUNK / 2);
     this.vy = 0;
     this.grounded = true;
   }
@@ -372,12 +383,18 @@ export class Player {
 
     this.vy -= GRAVITY * dt;
     this.position.y += this.vy * dt;
-    if (this.position.y <= EYE_H) {
-      this.position.y = EYE_H;
+
+    const groundY = this._eyeHeightAt(this.position.x, this.position.z);
+    if (this.position.y <= groundY) {
+      this.position.y = groundY;
       this.vy = 0;
       this.grounded = true;
     } else {
       this.grounded = false;
+    }
+
+    if (this.grounded) {
+      this.position.y = this._eyeHeightAt(this.position.x, this.position.z);
     }
 
     const bobY = this.grounded ? Math.sin(this.bob) * BOB_AMOUNT : 0;

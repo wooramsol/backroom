@@ -102,6 +102,7 @@ async function init() {
     .then(() => {
       for (let i = 0; i < 5; i++) composer.render();
       player.setColliders(world.getColliders());
+      player.setFloorSurfaces(world.getFloorSurfaces());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
@@ -144,6 +145,7 @@ async function init() {
     }
     player.setColliders(world.getColliders());
     if (world.consumeColliderRebuild()) {
+      player.setFloorSurfaces(world.getFloorSurfaces());
       player.resolvePenetration();
     }
     if (started) {

@@ -12,10 +12,12 @@ export const DOOR_H = 2.2;
 export const DOOR_JAMB_INSET = 0.05;
 /** Legacy — door offset RNG only */
 export const DOOR_CLEAR = 0.48;
-/** Fixed ceiling height */
+/** Default ceiling height */
 export const ROOM_H = 2.7;
-export const MIN_ROOM_H = ROOM_H;
-export const MAX_ROOM_H = ROOM_H;
+export const MIN_ROOM_H = 2.7;
+export const MAX_ROOM_H = 5.0;
+export const TALL_ROOM_H_MIN = 3.5;
+export const TALL_ROOM_H_MAX = 4.8;
 export const EYE_H = 1.62;
 /** ~41 cm radius — adult torso / shoulder width */
 export const PLAYER_R = 0.41;
