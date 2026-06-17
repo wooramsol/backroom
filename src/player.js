@@ -98,33 +98,40 @@ export class Player {
     this.grounded = true;
   }
 
+  _horizBasis() {
+    const fx = -Math.sin(this.yaw);
+    const fz = -Math.cos(this.yaw);
+    const rx = Math.cos(this.yaw);
+    const rz = -Math.sin(this.yaw);
+    return { fx, fz, rx, rz };
+  }
+
   _fillBodyPoints(px, pz) {
-    const c = Math.cos(this.yaw);
-    const s = Math.sin(this.yaw);
+    const { fx, fz, rx, rz } = this._horizBasis();
     const hw = BODY_HW;
     const hd = PLAYER_DEPTH;
-    _bodyPts[0][0] = px + c * hd + s * hw;
-    _bodyPts[0][1] = pz + s * hd - c * hw;
-    _bodyPts[1][0] = px + c * hd - s * hw;
-    _bodyPts[1][1] = pz + s * hd + c * hw;
-    _bodyPts[2][0] = px - c * hd + s * hw;
-    _bodyPts[2][1] = pz - s * hd - c * hw;
-    _bodyPts[3][0] = px - c * hd - s * hw;
-    _bodyPts[3][1] = pz - s * hd + c * hw;
-    _bodyPts[4][0] = px + s * hw;
-    _bodyPts[4][1] = pz - c * hw;
-    _bodyPts[5][0] = px - s * hw;
-    _bodyPts[5][1] = pz + c * hw;
-    _bodyPts[6][0] = px + c * hd;
-    _bodyPts[6][1] = pz + s * hd;
-    _bodyPts[7][0] = px - c * hd;
-    _bodyPts[7][1] = pz - s * hd;
+    _bodyPts[0][0] = px + fx * hd + rx * hw;
+    _bodyPts[0][1] = pz + fz * hd + rz * hw;
+    _bodyPts[1][0] = px + fx * hd - rx * hw;
+    _bodyPts[1][1] = pz + fz * hd - rz * hw;
+    _bodyPts[2][0] = px - fx * hd + rx * hw;
+    _bodyPts[2][1] = pz - fz * hd + rz * hw;
+    _bodyPts[3][0] = px - fx * hd - rx * hw;
+    _bodyPts[3][1] = pz - fz * hd - rz * hw;
+    _bodyPts[4][0] = px + rx * hw;
+    _bodyPts[4][1] = pz + rz * hw;
+    _bodyPts[5][0] = px - rx * hw;
+    _bodyPts[5][1] = pz - rz * hw;
+    _bodyPts[6][0] = px + fx * hd;
+    _bodyPts[6][1] = pz + fz * hd;
+    _bodyPts[7][0] = px - fx * hd;
+    _bodyPts[7][1] = pz - fz * hd;
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      _bodyPts[8 + i][0] = px + c * (hd * 0.55 * ca + 0.01) + s * (hw * sa);
-      _bodyPts[8 + i][1] = pz + s * (hd * 0.55 * ca + 0.01) - c * (hw * sa);
+      _bodyPts[8 + i][0] = px + fx * (hd * 0.55 * ca + 0.01) + rx * (hw * sa);
+      _bodyPts[8 + i][1] = pz + fz * (hd * 0.55 * ca + 0.01) + rz * (hw * sa);
     }
   }
 
@@ -284,8 +291,9 @@ export class Player {
   }
 
   update(dt) {
-    _fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    _right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const { fx, fz, rx, rz } = this._horizBasis();
+    _fwd.set(fx, 0, fz);
+    _right.set(rx, 0, rz);
     _move.set(0, 0, 0);
 
     if (this.keys.KeyW || this.keys.ArrowUp) _move.add(_fwd);
