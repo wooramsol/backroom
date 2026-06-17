@@ -62,8 +62,10 @@ export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 /** Lit rectangle emissive look on the panel face */
 export const LIGHT_PANEL_INTENSITY = 0.48;
-export const PANEL_W = 1.15;
-export const PANEL_H = 0.42;
+/** Square ceiling panel — mesh + RectAreaLight footprint */
+export const PANEL_SIZE = 0.9;
+export const PANEL_W = PANEL_SIZE;
+export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
