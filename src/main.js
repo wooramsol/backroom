@@ -43,6 +43,13 @@ const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
 if (buildBadge) buildBadge.textContent = buildText;
 
+function syncCrosshair() {
+  if (!crosshair) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  crosshair.style.left = `${rect.left + rect.width / 2}px`;
+  crosshair.style.top = `${rect.top + rect.height / 2}px`;
+}
+
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
@@ -112,6 +119,7 @@ async function init() {
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
+      syncCrosshair();
       overlay.style.cursor = "pointer";
       if (hint) hint.innerHTML = defaultHint;
     })
@@ -132,6 +140,7 @@ async function init() {
       hud.classList.add("visible");
       vignette.classList.add("visible");
       crosshair?.classList.add("visible");
+      syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_FLUORESCENT_HUM) hum.start();
     }
@@ -179,6 +188,7 @@ async function init() {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     resizeBloomPipeline(renderer, composer, bloom, w, h);
+    syncCrosshair();
   });
 }
 

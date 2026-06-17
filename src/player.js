@@ -13,8 +13,11 @@ const WALK = 3.2;
 const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
-const MOVE_STEP = 0.05;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
+const _up = new THREE.Vector3(0, 1, 0);
+const _fwd = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _move = new THREE.Vector3();
 
 export class Player {
   constructor(camera, domElement) {
@@ -29,6 +32,8 @@ export class Player {
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
+
+    this.camera.rotation.order = "YXZ";
 
     this._onKeyDown = (e) => {
       if (e.code === "Space") {
@@ -76,17 +81,33 @@ export class Player {
     this.grounded = true;
   }
 
-  /** Horizontal walk axes from yaw — same basis as camera look (crosshair center) */
-  _walkBasis(fwd, right) {
-    fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-  }
-
   _applyLook(bobY = 0) {
     this.camera.position.set(this.position.x, this.position.y + bobY, this.position.z);
     this.camera.up.set(0, 1, 0);
     _lookEuler.set(this.pitch, this.yaw, 0);
     this.camera.quaternion.setFromEuler(_lookEuler);
+    this.camera.updateMatrixWorld(true);
+  }
+
+  /** Walk axes = horizontal center-ray of the camera (matches crosshair) */
+  _syncWalkFromCamera() {
+    this.camera.getWorldDirection(_fwd);
+    _fwd.y = 0;
+    if (_fwd.lengthSq() < 1e-10) _fwd.set(0, 0, -1);
+    else _fwd.normalize();
+    _right.crossVectors(_up, _fwd).normalize();
+  }
+
+  _insideWall(px, pz, y) {
+    const r = PLAYER_R;
+    for (const c of this.colliders) {
+      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
+        continue;
+      }
+      return true;
+    }
+    return false;
   }
 
   _pushOut(px, pz) {
@@ -118,31 +139,34 @@ export class Player {
   }
 
   resolvePenetration() {
+    if (!this._insideWall(this.position.x, this.position.z, this.position.y)) return;
     const out = this._pushOut(this.position.x, this.position.z);
     this.position.x = out.px;
     this.position.z = out.pz;
   }
 
   update(dt) {
-    const fwd = new THREE.Vector3();
-    const right = new THREE.Vector3();
-    const move = new THREE.Vector3();
-    this._walkBasis(fwd, right);
+    this._applyLook(0);
+    this._syncWalkFromCamera();
 
-    if (this.keys.KeyW || this.keys.ArrowUp) move.add(fwd);
-    if (this.keys.KeyS || this.keys.ArrowDown) move.sub(fwd);
-    if (this.keys.KeyA || this.keys.ArrowLeft) move.sub(right);
-    if (this.keys.KeyD || this.keys.ArrowRight) move.add(right);
+    _move.set(0, 0, 0);
+    if (this.keys.KeyW || this.keys.ArrowUp) _move.add(_fwd);
+    if (this.keys.KeyS || this.keys.ArrowDown) _move.sub(_fwd);
+    if (this.keys.KeyA || this.keys.ArrowLeft) _move.sub(_right);
+    if (this.keys.KeyD || this.keys.ArrowRight) _move.add(_right);
 
     const running = this.keys.ShiftLeft || this.keys.ShiftRight;
     const speed = running ? RUN : WALK;
 
-    if (move.lengthSq() > 0) {
-      move.normalize().multiplyScalar(speed * dt);
-      const steps = Math.max(1, Math.ceil(move.length() / MOVE_STEP));
-      const step = move.clone().divideScalar(steps);
-      for (let i = 0; i < steps; i++) {
-        const out = this._pushOut(this.position.x + step.x, this.position.z + step.z);
+    if (_move.lengthSq() > 0) {
+      _move.normalize().multiplyScalar(speed * dt);
+      const nx = this.position.x + _move.x;
+      const nz = this.position.z + _move.z;
+      if (!this._insideWall(nx, nz, this.position.y)) {
+        this.position.x = nx;
+        this.position.z = nz;
+      } else {
+        const out = this._pushOut(nx, nz);
         this.position.x = out.px;
         this.position.z = out.pz;
       }
