@@ -32,6 +32,8 @@ export class Player {
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
+    this.onLockLost = null;
+    this.onLockAcquired = null;
 
     this.camera.rotation.order = "YXZ";
 
@@ -56,8 +58,25 @@ export class Player {
       this.pitch = THREE.MathUtils.clamp(this.pitch, -PITCH_LIMIT, PITCH_LIMIT);
     };
     this._onLockChange = () => {
+      const wasLocked = this.locked;
       this.locked = document.pointerLockElement === this.domElement;
+      if (wasLocked && !this.locked) {
+        this._clearKeys();
+        this.onLockLost?.();
+      } else if (!wasLocked && this.locked) {
+        this.onLockAcquired?.();
+      }
     };
+    this._onVisibility = () => {
+      if (document.hidden) this._clearKeys();
+    };
+    this._onBlur = () => {
+      this._clearKeys();
+    };
+  }
+
+  _clearKeys() {
+    this.keys = {};
   }
 
   connect() {
@@ -65,10 +84,17 @@ export class Player {
     window.addEventListener("keyup", this._onKeyUp);
     document.addEventListener("mousemove", this._onMouseMove);
     document.addEventListener("pointerlockchange", this._onLockChange);
+    document.addEventListener("visibilitychange", this._onVisibility);
+    window.addEventListener("blur", this._onBlur);
   }
 
   requestLock() {
+    if (this.locked) return;
     this.domElement.requestPointerLock();
+  }
+
+  isLocked() {
+    return this.locked;
   }
 
   setColliders(colliders) {

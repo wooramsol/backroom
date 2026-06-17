@@ -38,6 +38,7 @@ const vignette = document.getElementById("vignette");
 const crosshair = document.getElementById("crosshair");
 const buildLabel = document.getElementById("build-label");
 const buildBadge = document.getElementById("build-badge");
+const resumePrompt = document.getElementById("resume-prompt");
 
 const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
@@ -96,6 +97,31 @@ async function init() {
   const player = new Player(camera, renderer.domElement);
   world.init(player.position);
   player.connect();
+
+  function showResumePrompt() {
+    if (!resumePrompt) return;
+    resumePrompt.hidden = false;
+    resumePrompt.classList.add("visible");
+  }
+
+  function hideResumePrompt() {
+    if (!resumePrompt) return;
+    resumePrompt.classList.remove("visible");
+    resumePrompt.hidden = true;
+  }
+
+  function tryResumeLock() {
+    if (!ready || !started) return;
+    if (!player.isLocked()) player.requestLock();
+  }
+
+  player.onLockLost = () => {
+    if (started) showResumePrompt();
+  };
+  player.onLockAcquired = hideResumePrompt;
+
+  renderer.domElement.addEventListener("click", tryResumeLock);
+  resumePrompt?.addEventListener("click", tryResumeLock);
 
   const { composer, bloom } = createBloomPipeline(renderer, scene, camera);
 

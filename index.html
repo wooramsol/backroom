@@ -68,6 +68,27 @@
         opacity: 0;
         pointer-events: none;
       }
+      #resume-prompt {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(8, 7, 5, 0.45);
+        color: #c9b87a;
+        font-size: 0.8rem;
+        letter-spacing: 0.14em;
+        z-index: 8;
+        cursor: pointer;
+        user-select: none;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+      #resume-prompt.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
       #hud {
         position: fixed;
         bottom: 1.2rem;
@@ -170,6 +191,7 @@
       <span class="ch-v"></span>
     </div>
     <div id="vignette"></div>
+    <div id="resume-prompt" hidden>Click to resume</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
