@@ -30,10 +30,18 @@ import {
   CAMERA_NEAR,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
+import { formatBuildLabel } from "./version.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
+const crosshair = document.getElementById("crosshair");
+const buildLabel = document.getElementById("build-label");
+const buildBadge = document.getElementById("build-badge");
+
+const buildText = formatBuildLabel();
+if (buildLabel) buildLabel.textContent = buildText;
+if (buildBadge) buildBadge.textContent = buildText;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 RectAreaLightUniformsLib.init();
@@ -88,15 +96,15 @@ async function init() {
   let ready = false;
   const hint = document.querySelector("#overlay .hint");
   const defaultHint =
-    "클릭하여 시작<br />WASD · 이동 &nbsp; Shift · 달리기 &nbsp; Space · 점프 &nbsp; 마우스 · 시야";
+    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
 
-  if (hint) hint.textContent = "주변 공간 생성 중… (처음 한 번만)";
+  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
   overlay.style.cursor = "wait";
 
   world
     .preloadAround(player.position, (done, total) => {
       if (hint && !ready) {
-        hint.innerHTML = `주변 공간 생성 중… ${done}/${total}<br/>시야 거리만큼 미리 만들고 있습니다`;
+        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
       }
     })
     .then(() => {
@@ -112,7 +120,7 @@ async function init() {
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
-      if (hint) hint.textContent = "로딩 오류 — 새로고침 해주세요.";
+      if (hint) hint.textContent = "Load error — please refresh.";
     });
 
   overlay.addEventListener("click", () => {
@@ -123,6 +131,8 @@ async function init() {
       overlay.classList.add("hidden");
       hud.classList.add("visible");
       vignette.classList.add("visible");
+      crosshair?.classList.add("visible");
+      buildBadge?.classList.add("visible");
       if (ENABLE_FLUORESCENT_HUM) hum.start();
     }
   });
@@ -175,5 +185,5 @@ async function init() {
 init().catch((err) => {
   console.error(err);
   const hint = document.querySelector("#overlay .hint");
-  if (hint) hint.textContent = "로딩 오류 — 새로고침 해주세요.";
+  if (hint) hint.textContent = "Load error — please refresh.";
 });
