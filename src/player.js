@@ -95,7 +95,7 @@ export class Player {
     _fwd.y = 0;
     if (_fwd.lengthSq() < 1e-10) _fwd.set(0, 0, -1);
     else _fwd.normalize();
-    _right.crossVectors(_up, _fwd).normalize();
+    _right.crossVectors(_fwd, _up).normalize();
   }
 
   _insideWall(px, pz, y) {
