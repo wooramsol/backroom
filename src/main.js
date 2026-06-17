@@ -64,12 +64,14 @@ async function init() {
   const carpetTex = createCarpetTexture();
   const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
 
+  const _staticPanel = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
+
   const materials = {
     wallTex: wallpaper,
     carpetTex,
     carpet: createCarpetSurfaceMaterial(floorMap),
     lightPanelOn: new THREE.MeshBasicMaterial({
-      color: LIGHT_PANEL_COLOR,
+      color: _staticPanel,
     }),
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
@@ -140,7 +142,7 @@ async function init() {
     world.tick(dt);
     if (!world.preloading) {
       world.update(player.position);
-      world.flushColliders();
+      if (world.hasPendingLoads()) world.flushColliders();
     }
     player.setColliders(world.getColliders());
     if (world.consumeColliderRebuild()) {
@@ -153,10 +155,11 @@ async function init() {
 
     world.updateLights(player.position);
 
-    for (const { light, panel, face } of world.getFixtures()) {
+    for (const fixture of world.getActiveLightFixtures()) {
+      const { light, panel, face } = fixture;
       const flicker = 0.94 + Math.sin(lightT * 8 + panel.phase) * 0.04;
       const k = panel.bright * flicker;
-      if (light) light.intensity = PANEL_LIGHT_INTENSITY * k;
+      light.intensity = PANEL_LIGHT_INTENSITY * k;
       face.material.color.copy(_panelColor).multiplyScalar(LIGHT_PANEL_INTENSITY * k);
     }
 

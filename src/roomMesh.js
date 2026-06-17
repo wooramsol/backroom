@@ -3,8 +3,6 @@ import { CHUNK } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
-  LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_INTENSITY,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
@@ -12,8 +10,6 @@ import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
-const _onColor = new THREE.Color(LIGHT_PANEL_COLOR);
-
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
@@ -65,7 +61,7 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const y = h - 0.012;
   const face = new THREE.Mesh(
     _panelGeo,
-    panel.on ? materials.lightPanelOn.clone() : materials.lightPanelOff,
+    panel.on ? materials.lightPanelOn : materials.lightPanelOff,
   );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
@@ -76,7 +72,6 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   if (!panel.on) return;
 
   face.userData.fluorescent = true;
-  face.material.color.copy(_onColor).multiplyScalar(LIGHT_PANEL_INTENSITY * panel.bright);
 
   fixtures.push({
     panel,

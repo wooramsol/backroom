@@ -35,7 +35,7 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
-    this.lightPool = new PanelLightPool(scene);
+    this.lightPool = new PanelLightPool(scene, materials.lightPanelOn);
   }
 
   key(cx, cz) {
@@ -130,6 +130,7 @@ export class World {
     const drop = new Set(f);
     this.fixtures = this.fixtures.filter((item) => !drop.has(item));
     for (const fixture of f) fixture.light = null;
+    this.lightPool.dropFixtures(f);
     this.lightPool.markDirty();
   }
 
@@ -324,6 +325,10 @@ export class World {
 
   updateLights(playerPos) {
     this.lightPool.update(this.fixtures, playerPos);
+  }
+
+  getActiveLightFixtures() {
+    return this.lightPool.getAssigned();
   }
 
   /** Sync full build — used during title-screen preload to avoid in-game hitches */
