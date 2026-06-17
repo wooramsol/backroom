@@ -40,6 +40,48 @@ function zoneInset(zone) {
   return Math.min(PANEL_EDGE_INSET, w * 0.2, d * 0.2, 0.9);
 }
 
+function panelWallList(room) {
+  return [
+    { axis: "z", pos: 0, span0: 0, span1: CHUNK },
+    { axis: "z", pos: CHUNK, span0: 0, span1: CHUNK },
+    { axis: "x", pos: 0, span0: 0, span1: CHUNK },
+    { axis: "x", pos: CHUNK, span0: 0, span1: CHUNK },
+    ...room.innerWalls,
+  ];
+}
+
+function spansOverlap(a0, a1, b0, b1) {
+  return a0 < b1 && a1 > b0;
+}
+
+/** Keep ceiling panels off wall slabs (open floor only) */
+function panelOnWall(px, pz, wall) {
+  const halfW = PANEL_W / 2;
+  const halfH = PANEL_H / 2;
+  const halfT = WALL_T / 2;
+  const margin = 0.1;
+
+  if (wall.axis === "z") {
+    const wMinZ = wall.pos - halfT - margin;
+    const wMaxZ = wall.pos + halfT + margin;
+    if (pz + halfH <= wMinZ || pz - halfH >= wMaxZ) return false;
+    return spansOverlap(px - halfW, px + halfW, wall.span0, wall.span1);
+  }
+
+  const wMinX = wall.pos - halfT - margin;
+  const wMaxX = wall.pos + halfT + margin;
+  if (px + halfW <= wMinX || px - halfW >= wMaxX) return false;
+  return spansOverlap(pz - halfH, pz + halfH, wall.span0, wall.span1);
+}
+
+function panelBlocked(px, pz, room) {
+  const walls = panelWallList(room);
+  for (let i = 0; i < walls.length; i++) {
+    if (panelOnWall(px, pz, walls[i])) return true;
+  }
+  return false;
+}
+
 function generatePanels(rng, room) {
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
   const panels = [];
@@ -61,6 +103,7 @@ function generatePanels(rng, room) {
     for (let x = xLo + spacing / 2; x < xHi; x += spacing) {
       for (let z = zLo + spacing / 2; z < zHi; z += spacing) {
         if (hash(x * 3.1 + z + zone.x0 * 0.7) < skip) continue;
+        if (panelBlocked(x, z, room)) continue;
         panels.push({
           x,
           z,
