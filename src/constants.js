@@ -33,6 +33,9 @@ export const GRAVITY = 14;
 export const CAMERA_FOV = 60;
 /** Closer near plane — default 0.08 let walls vanish when hugging them */
 export const CAMERA_NEAR = 0.035;
+/** Lower ceiling ~1 screen px toward floor — avoids coplanar troffer lights */
+export const CEILING_DROP_M =
+  (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (ROOM_H - EYE_H)) / 1080;
 /** Keep the eye this far from wall surfaces (near + margin) */
 export const CAMERA_WALL_CLEAR = 0.04;
 /** Camera may shift slightly off body center to stay out of geometry */
