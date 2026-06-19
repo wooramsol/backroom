@@ -169,15 +169,6 @@ export function createCeilingTileTexture() {
   });
 }
 
-/** Unlit — ceiling viewed from below; same carpet map/color as floor */
-export function createCeilingTileMaterial(map) {
-  return new THREE.MeshBasicMaterial({
-    map,
-    color: CARPET_COLOR,
-    side: THREE.DoubleSide,
-  });
-}
-
 /** Dark plenum between tiles — square grid */
 export function createCeilingBackingTexture() {
   return canvasTex((ctx, size) => {
