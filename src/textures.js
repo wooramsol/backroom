@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_PLENUM_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_PLENUM_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -98,33 +98,72 @@ export function createSurfaceMaterial(map = null) {
   return createSurfaceMaterial(map);
 }
 
-/** One troffer tile — bottom texture with a thin plenum gap between neighbours */
-export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
+/** Matte plenum backing visible between ceiling tile pieces */
+export function createCeilingPlenumMaterial() {
+  return new THREE.MeshStandardMaterial({
+    color: CEILING_PLENUM_COLOR,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+    side: THREE.DoubleSide,
+  });
+}
+
+/** Single tile face — bottom.jpg with a soft edge shade (not a hard grid line) */
+export function createCeilingTileFaceTexture(sourceTex) {
   const img = sourceTex?.image;
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  const gap = Math.max(2, Math.round((size * CEILING_TILE_GAP_M) / tileM * 0.5));
-  const plenum = `#${CEILING_PLENUM_COLOR.toString(16).padStart(6, "0")}`;
 
-  ctx.fillStyle = plenum;
-  ctx.fillRect(0, 0, size, size);
   if (img?.width && img?.height) {
-    ctx.drawImage(img, gap, gap, size - gap * 2, size - gap * 2);
+    ctx.drawImage(img, 0, 0, size, size);
   } else {
     ctx.fillStyle = "#e7e191";
-    ctx.fillRect(gap, gap, size - gap * 2, size - gap * 2);
+    ctx.fillRect(0, 0, size, size);
   }
 
+  const edge = Math.max(4, Math.round(size * 0.05));
+
+  let g = ctx.createLinearGradient(0, 0, edge, 0);
+  g.addColorStop(0, "rgba(36,34,24,0.22)");
+  g.addColorStop(1, "rgba(36,34,24,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, edge, size);
+
+  g = ctx.createLinearGradient(size, 0, size - edge, 0);
+  g.addColorStop(0, "rgba(36,34,24,0.22)");
+  g.addColorStop(1, "rgba(36,34,24,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(size - edge, 0, edge, size);
+
+  g = ctx.createLinearGradient(0, 0, 0, edge);
+  g.addColorStop(0, "rgba(36,34,24,0.22)");
+  g.addColorStop(1, "rgba(36,34,24,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, edge);
+
+  g = ctx.createLinearGradient(0, size, 0, size - edge);
+  g.addColorStop(0, "rgba(36,34,24,0.22)");
+  g.addColorStop(1, "rgba(36,34,24,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, size - edge, size, edge);
+
   const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   tex.generateMipmaps = false;
-  tex.userData.tileW = tileM;
-  tex.userData.tileH = tileM;
   return tex;
+}
+
+/** @deprecated use per-tile geometry with createCeilingTileFaceTexture */
+export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
+  const tileFace = createCeilingTileFaceTexture(sourceTex);
+  tileFace.wrapS = tileFace.wrapT = THREE.RepeatWrapping;
+  tileFace.userData.tileW = tileM;
+  tileFace.userData.tileH = tileM;
+  return tileFace;
 }
 
 /** @deprecated */ export function createCarpetSurfaceMaterial(map) {

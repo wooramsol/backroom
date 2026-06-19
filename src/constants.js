@@ -63,14 +63,16 @@ export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */
 export const LIGHT_PANEL_INTENSITY = 0.95;
-/** Square ceiling panel — mesh footprint */
+/** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
-/** Visible clearance between ceiling troffer tiles (metres) */
-export const CEILING_TILE_GAP_M = 0.018;
-/** Plenum visible in tile gaps */
-export const CEILING_PLENUM_COLOR = 0x3a3830;
-export const PANEL_W = PANEL_SIZE;
-export const PANEL_H = PANEL_SIZE;
+/** Hairline gap between ceiling tile pieces (metres) */
+export const CEILING_TILE_GAP_M = 0.014;
+/** Visible tile face — sits inside one grid cell */
+export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
+/** Plenum shadow in tile gaps */
+export const CEILING_PLENUM_COLOR = 0x454238;
+export const PANEL_W = CEILING_TILE_FACE_M;
+export const PANEL_H = CEILING_TILE_FACE_M;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
