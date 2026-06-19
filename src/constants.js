@@ -84,9 +84,12 @@ export const BLOOM_THRESHOLD = 0.97;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
+/** Floor/ceiling get more indirect fill than walls — dim matched tint */
+export const SURFACE_LIGHT_DIM = 0.5;
+/** @deprecated walls use texture albedo directly */
+export const WALL_COLOR = 0xffffff;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
-export const WALL_COLOR = 0xffffff;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

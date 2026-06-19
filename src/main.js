@@ -80,8 +80,8 @@ async function init() {
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
-    carpet: createFloorCeilingMaterial(),
-    ceiling: createFloorCeilingMaterial(),
+    carpet: createFloorCeilingMaterial(wallpaper, surfaceTex),
+    ceiling: createFloorCeilingMaterial(wallpaper, surfaceTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: true,
