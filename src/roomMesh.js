@@ -12,6 +12,7 @@ import { getCeilingLayers } from "./ceilingLayers.js";
 import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
+const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 
@@ -84,11 +85,6 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
   const halfFace = CEILING_TILE_FACE_M / 2;
   const lightCells = panelTileSet(panels);
 
-  const gap = new THREE.Mesh(_chunkPlane, materials.ceilingGap);
-  gap.rotation.x = Math.PI / 2;
-  gap.position.y = gapY;
-  group.add(gap);
-
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
   for (let tx = tx0; tx <= tx1; tx++) {
@@ -99,6 +95,11 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
       if (px - halfFace < 0 || px + halfFace > CHUNK || pz - halfFace < 0 || pz + halfFace > CHUNK) {
         continue;
       }
+
+      const backing = new THREE.Mesh(_cellBackingGeo, materials.ceilingGap);
+      backing.rotation.x = Math.PI / 2;
+      backing.position.set(px, gapY, pz);
+      group.add(backing);
 
       const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
       tile.rotation.x = Math.PI / 2;

@@ -94,8 +94,62 @@ export function createSurfaceMaterial(map = null) {
   });
 }
 
+/** Matte ceiling carpet — underside only */
+export function createCeilingTileMaterial(map) {
+  return new THREE.MeshStandardMaterial({
+    map,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+  });
+}
+
 /** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {
   return createSurfaceMaterial(map);
+}
+
+/** Carpet tile with shaded groove bevel on each edge — pairs with physical tile gaps */
+export function createCeilingTileBevelTexture(sourceTex) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const bevelPx = Math.max(5, Math.round(size * 0.028));
+  const groovePx = Math.max(2, Math.round(size * 0.012));
+  const gapHex = `#${CEILING_GAP_COLOR.toString(16).padStart(6, "0")}`;
+
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, 0, 0, size, size);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const shade = (x0, y0, x1, y1, x, y, w, h, peak = 0.22) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, `rgba(55,50,32,${peak})`);
+    g.addColorStop(1, "rgba(55,50,32,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  };
+
+  shade(bevelPx, 0, 0, 0, 0, 0, bevelPx, size, 0.26);
+  shade(size - bevelPx, 0, size, 0, size - bevelPx, 0, bevelPx, size, 0.26);
+  shade(0, bevelPx, 0, 0, 0, 0, size, bevelPx, 0.26);
+  shade(0, size - bevelPx, 0, size, 0, size - bevelPx, size, bevelPx, 0.26);
+
+  ctx.fillStyle = gapHex;
+  ctx.fillRect(0, 0, size, groovePx);
+  ctx.fillRect(0, size - groovePx, size, groovePx);
+  ctx.fillRect(0, 0, groovePx, size);
+  ctx.fillRect(size - groovePx, 0, groovePx, size);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
 }
 
 /** Single ceiling tile face — bottom.jpg, one cell */
