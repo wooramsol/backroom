@@ -1,12 +1,9 @@
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
-  createCarpetTexture,
   loadWallpaperOrFallback,
-  tiled,
-  createCarpetSurfaceMaterial,
-  createCeilingSurfaceMaterial,
-  CARPET_TILE_M,
+  loadSurfaceOrFallback,
+  createFloorCeilingMaterial,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -77,15 +74,14 @@ const hum = new FluorescentHum();
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
-  const carpetTex = createCarpetTexture();
-  const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
+  const surfaceTex = await loadSurfaceOrFallback(loader);
   const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
   const materials = {
     wallTex: wallpaper,
-    carpetTex,
-    carpet: createCarpetSurfaceMaterial(floorMap),
-    ceiling: createCeilingSurfaceMaterial(floorMap),
+    surfaceTex,
+    carpet: createFloorCeilingMaterial(),
+    ceiling: createFloorCeilingMaterial(),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: true,

@@ -1,12 +1,15 @@
 import * as THREE from "three";
-import { CARPET_COLOR, PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
+import { WALL_COLOR, PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
-/** User ceiling tile — one image = one light panel (square) */
-export const CEILING_URL = "./assets/backroom_ceiling.webp";
+/** User floor/ceiling carpet — one image = one repeat */
+export const SURFACE_URL = "./assets/backroom_ceiling.webp";
+/** @deprecated */ export const CEILING_URL = SURFACE_URL;
 export const WALL_TILE_W = 0.76;
-export const CARPET_TILE_M = 0.55;
+/** Physical repeat size for floor/ceiling asset (metres) */
+export const SURFACE_TILE_M = 0.55;
+/** @deprecated */ export const CARPET_TILE_M = SURFACE_TILE_M;
 /** Ceiling tile — matches square PANEL_SIZE */
 export const CEILING_TILE_M = PANEL_SIZE;
 
@@ -80,26 +83,23 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Carpet floor — matte */
-export function createCarpetSurfaceMaterial(map) {
+/** Floor and ceiling — matte, white tint like wallpaper */
+export function createFloorCeilingMaterial(map) {
   return new THREE.MeshStandardMaterial({
     map,
-    color: CARPET_COLOR,
+    color: WALL_COLOR,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }
 
-/** Ceiling — same carpet tile, full matte for flat troffer bounce */
-export function createCeilingSurfaceMaterial(map) {
-  return new THREE.MeshStandardMaterial({
-    map,
-    color: CARPET_COLOR,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-    side: THREE.DoubleSide,
-  });
+/** @deprecated */ export function createCarpetSurfaceMaterial(map) {
+  return createFloorCeilingMaterial(map);
+}
+
+/** @deprecated */ export function createCeilingSurfaceMaterial(map) {
+  return createFloorCeilingMaterial(map);
 }
 
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
@@ -123,23 +123,27 @@ export function createCarpetTexture() {
   });
 }
 
-/** Store tile physical size — one image covers one light panel cell */
-export function applyCeilingTileSize(tex) {
-  tex.userData.tileW = CEILING_TILE_M;
-  tex.userData.tileH = CEILING_TILE_M;
+/** Store tile physical size for floor/ceiling asset */
+export function applySurfaceTileSize(tex) {
+  tex.userData.tileW = SURFACE_TILE_M;
+  tex.userData.tileH = SURFACE_TILE_M;
   return tex;
 }
 
-export function loadCeiling(loader) {
+/** @deprecated */ export function applyCeilingTileSize(tex) {
+  return applySurfaceTileSize(tex);
+}
+
+export function loadSurface(loader) {
   return new Promise((resolve, reject) => {
     loader.load(
-      CEILING_URL,
+      SURFACE_URL,
       (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.minFilter = THREE.LinearFilter;
         tex.generateMipmaps = false;
-        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-        applyCeilingTileSize(tex);
+        applySurfaceTileSize(tex);
         resolve(tex);
       },
       undefined,
@@ -148,14 +152,22 @@ export function loadCeiling(loader) {
   });
 }
 
-export async function loadCeilingOrFallback(loader) {
+export async function loadSurfaceOrFallback(loader) {
   try {
-    return await loadCeiling(loader);
+    return await loadSurface(loader);
   } catch {
     const tex = createCeilingTileTexture();
-    applyCeilingTileSize(tex);
+    applySurfaceTileSize(tex);
     return tex;
   }
+}
+
+/** @deprecated */ export function loadCeiling(loader) {
+  return loadSurface(loader);
+}
+
+/** @deprecated */ export async function loadCeilingOrFallback(loader) {
+  return loadSurfaceOrFallback(loader);
 }
 
 /** Fallback procedural troffer tile */
