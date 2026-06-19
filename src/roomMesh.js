@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
+import { CHUNK, nearestWallClearance } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
@@ -61,7 +61,7 @@ function addWalls(group, room, wallTex, h) {
 }
 
 /** On panel = bright rectangle; RectAreaLight comes from the shared pool */
-function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
+function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz, room) {
   const y = h - 0.012;
   const face = new THREE.Mesh(
     _panelGeo,
@@ -84,6 +84,7 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     wx: roomCx * CHUNK + panel.x,
     wy: y,
     wz: roomCz * CHUNK + panel.z,
+    wallClear: nearestWallClearance(panel.x, panel.z, room),
   });
 }
 
@@ -130,7 +131,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz);
+    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz, room);
     state.panelIdx++;
     added++;
   }

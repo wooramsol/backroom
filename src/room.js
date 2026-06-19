@@ -37,7 +37,10 @@ function doorSpec(rng, span) {
 function zoneInset(zone) {
   const w = zone.x1 - zone.x0;
   const d = zone.z1 - zone.z0;
-  return Math.min(PANEL_EDGE_INSET, w * 0.2, d * 0.2, 0.9);
+  const narrow = Math.min(w, d);
+  const bySize = Math.min(PANEL_EDGE_INSET, w * 0.2, d * 0.2, 0.9);
+  const byClear = narrow * 0.3 + PANEL_W * 0.5;
+  return Math.max(bySize, Math.min(byClear, narrow * 0.45));
 }
 
 function panelWallList(room) {
@@ -81,6 +84,27 @@ function panelBlocked(px, pz, room) {
   }
   return false;
 }
+
+/** Distance from panel center to the nearest wall inner face along the open span */
+export function nearestWallClearance(px, pz, room) {
+  const walls = panelWallList(room);
+  let best = Infinity;
+
+  for (let i = 0; i < walls.length; i++) {
+    const wall = walls[i];
+    if (wall.axis === "z") {
+      if (px < wall.span0 || px > wall.span1) continue;
+      best = Math.min(best, Math.abs(pz - wall.pos) - WALL_T / 2);
+    } else {
+      if (pz < wall.span0 || pz > wall.span1) continue;
+      best = Math.min(best, Math.abs(px - wall.pos) - WALL_T / 2);
+    }
+  }
+
+  return best;
+}
+
+const MIN_PANEL_WALL_CLEAR = 1.55;
 
 const PANEL_MIN_GAP = 0.18;
 
@@ -131,6 +155,7 @@ function generatePanels(rng, room) {
       for (let z = zLo + spacing / 2; z < zHi; z += spacing) {
         if (hash(x * 3.1 + z + zone.x0 * 0.7) < skip) continue;
         if (panelBlocked(x, z, room)) continue;
+        if (nearestWallClearance(x, z, room) < MIN_PANEL_WALL_CLEAR) continue;
         if (panelOverlapsExisting(x, z, panels)) continue;
         panels.push({
           x,
