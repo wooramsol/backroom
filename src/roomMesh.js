@@ -100,6 +100,7 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
       const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
       tile.rotation.x = Math.PI / 2;
       tile.position.set(px, tileY, pz);
+      tile.renderOrder = 2;
       group.add(tile);
     }
   }
@@ -117,19 +118,14 @@ function addWalls(group, room, wallTex, h) {
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const { panelY, lightY } = getCeilingLayers(h);
-  const face = new THREE.Mesh(
-    _panelGeo,
-    panel.on ? materials.lightPanelOn : materials.lightPanelOff,
-  );
+  const face = new THREE.Mesh(_panelGeo, materials.lightPanelOn);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, panelY, panel.z);
+  face.renderOrder = 1;
   face.userData.panel = panel;
+  face.userData.fluorescent = true;
   panel.face = face;
   group.add(face);
-
-  if (!panel.on) return;
-
-  face.userData.fluorescent = true;
 
   fixtures.push({
     panel,

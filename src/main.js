@@ -23,7 +23,6 @@ import {
   HEMI_SKY_COLOR,
   HEMI_GROUND_COLOR,
   HEMI_INTENSITY,
-  LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   FLUORESCENT_COLOR,
   TONE_MAPPING_EXPOSURE,
@@ -90,9 +89,6 @@ async function init() {
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: false,
-    }),
-    lightPanelOff: new THREE.MeshBasicMaterial({
-      color: LIGHT_PANEL_OFF_COLOR,
     }),
   };
 
