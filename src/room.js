@@ -646,6 +646,80 @@ function forkHall(rng) {
   };
 }
 
+const BOUND_EPS = 0.25;
+
+function wallTouchesBoundary(wall) {
+  return wall.span0 <= BOUND_EPS || wall.span1 >= CHUNK - BOUND_EPS;
+}
+
+function wallEndpoints(wall) {
+  if (wall.axis === "z") {
+    return [
+      { x: wall.span0, z: wall.pos },
+      { x: wall.span1, z: wall.pos },
+    ];
+  }
+  return [
+    { x: wall.pos, z: wall.span0 },
+    { x: wall.pos, z: wall.span1 },
+  ];
+}
+
+function pointOnWall(point, wall, eps = 0.2) {
+  if (wall.axis === "z") {
+    if (Math.abs(point.z - wall.pos) > eps) return false;
+    return point.x >= wall.span0 - eps && point.x <= wall.span1 + eps;
+  }
+  if (Math.abs(point.x - wall.pos) > eps) return false;
+  return point.z >= wall.span0 - eps && point.z <= wall.span1 + eps;
+}
+
+function wallsLinked(a, b) {
+  const eps = 0.2;
+  const ea = wallEndpoints(a);
+  const eb = wallEndpoints(b);
+  for (const p of ea) {
+    for (const q of eb) {
+      if (Math.abs(p.x - q.x) <= eps && Math.abs(p.z - q.z) <= eps) return true;
+    }
+    if (pointOnWall(p, b, eps)) return true;
+    for (const q of eb) {
+      if (pointOnWall(q, a, eps)) return true;
+    }
+  }
+  return false;
+}
+
+/** Every inner wall must link to the chunk boundary through connected segments */
+export function isMazeConnected(innerWalls) {
+  if (!innerWalls.length) return true;
+
+  const anchored = innerWalls.map(wallTouchesBoundary);
+  if (!anchored.some(Boolean)) return false;
+
+  const visited = new Set();
+  const queue = [];
+  innerWalls.forEach((wall, i) => {
+    if (anchored[i]) {
+      visited.add(i);
+      queue.push(i);
+    }
+  });
+
+  while (queue.length) {
+    const i = queue.shift();
+    for (let j = 0; j < innerWalls.length; j++) {
+      if (visited.has(j)) continue;
+      if (wallsLinked(innerWalls[i], innerWalls[j])) {
+        visited.add(j);
+        queue.push(j);
+      }
+    }
+  }
+
+  return visited.size === innerWalls.length;
+}
+
 function pickShape(rng) {
   const kind = rng.pickWeighted([
     ["full", 3],
@@ -655,17 +729,13 @@ function pickShape(rng) {
     ["wide-hall-ns", 5],
     ["alcove", 12],
     ["L", 14],
-    ["elongated", 8],
     ["T", 10],
-    ["twin", 10],
     ["triple", 9],
     ["U", 8],
-    ["hub", 9],
     ["zigzag", 8],
     ["hall-pockets", 8],
     ["compound", 7],
     ["cross", 10],
-    ["stagger", 9],
     ["diag", 9],
     ["fork", 9],
   ]);
@@ -685,18 +755,12 @@ function pickShape(rng) {
       return alcove(rng, rng.pick(["nw", "ne", "sw", "se"]));
     case "L":
       return lShape(rng, rng.pick(["nw", "ne", "sw", "se"]));
-    case "elongated":
-      return offsetSlab(rng);
     case "T":
       return tShape(rng, rng.pick(["north", "south", "east", "west"]));
-    case "twin":
-      return twinZone(rng);
     case "triple":
       return tripleSplit(rng);
     case "U":
       return uShape(rng);
-    case "hub":
-      return hubRoom(rng);
     case "zigzag":
       return zigzag(rng);
     case "hall-pockets":
@@ -705,8 +769,6 @@ function pickShape(rng) {
       return compoundLT(rng);
     case "cross":
       return crossHall(rng);
-    case "stagger":
-      return staggeredWings(rng);
     case "diag":
       return diagonalSlice(rng);
     case "fork":
@@ -716,9 +778,17 @@ function pickShape(rng) {
   }
 }
 
+function pickValidShape(rng) {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const shape = pickShape(rng);
+    if (isMazeConnected(shape.innerWalls)) return shape;
+  }
+  return { kind: "full", zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }], innerWalls: [] };
+}
+
 export function generateRoom(cx, cz) {
   const rng = createRng(cx, cz, 7);
-  const shape = pickShape(rng);
+  const shape = pickValidShape(rng);
 
   const room = {
     cx,
