@@ -1,19 +1,15 @@
 import * as THREE from "three";
-import {
-  PANEL_SIZE,
-  SURFACE_ROUGHNESS,
-  SURFACE_METALNESS,
-  SURFACE_LIGHT_DIM,
-} from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
-/** User floor/ceiling carpet — one image = one repeat */
-export const SURFACE_URL = "./assets/backroom_ceiling.webp";
-/** @deprecated */ export const CEILING_URL = SURFACE_URL;
+/** User floor/ceiling surface */
+export const BOTTOM_URL = "./assets/bottom.jpg";
+/** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
+/** @deprecated */ export const CEILING_URL = BOTTOM_URL;
 export const WALL_TILE_W = 0.76;
-/** Physical repeat size for floor/ceiling asset (metres) */
-export const SURFACE_TILE_M = 0.55;
+/** One bottom.jpg repeat = one ceiling troffer tile (matches PANEL_SIZE) */
+export const SURFACE_TILE_M = PANEL_SIZE;
 /** @deprecated */ export const CARPET_TILE_M = SURFACE_TILE_M;
 /** Ceiling tile — matches square PANEL_SIZE */
 export const CEILING_TILE_M = PANEL_SIZE;
@@ -88,58 +84,54 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Downsampled average sRGB color from a loaded texture */
-export function sampleTextureAvgColor(tex) {
-  const img = tex?.image;
-  if (!img?.width || !img?.height) return new THREE.Color(0xf5ea91);
-
-  const size = 64;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, size, size);
-  const { data } = ctx.getImageData(0, 0, size, size);
-
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  const n = data.length / 4;
-  for (let i = 0; i < data.length; i += 4) {
-    r += data[i];
-    g += data[i + 1];
-    b += data[i + 2];
-  }
-  return new THREE.Color(r / n / 255, g / n / 255, b / n / 255);
-}
-
-/** Tint floor/ceiling toward wallpaper tone, dimmed for extra horizontal fill */
-export function computeSurfaceTint(wallpaperTex, surfaceTex, dim = SURFACE_LIGHT_DIM) {
-  const wall = sampleTextureAvgColor(wallpaperTex);
-  const surf = sampleTextureAvgColor(surfaceTex);
-  return new THREE.Color(
-    Math.min(1, (wall.r / Math.max(surf.r, 0.02)) * dim),
-    Math.min(1, (wall.g / Math.max(surf.g, 0.02)) * dim),
-    Math.min(1, (wall.b / Math.max(surf.b, 0.02)) * dim),
-  );
-}
-
-/** Floor and ceiling — matte, tinted to match wallpaper tone */
-export function createFloorCeilingMaterial(wallpaperTex, surfaceTex, map = null) {
+/** Floor/ceiling — matte, texture albedo only (no tint) */
+export function createSurfaceMaterial(map = null) {
   return new THREE.MeshStandardMaterial({
     map,
-    color: computeSurfaceTint(wallpaperTex, surfaceTex),
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }
 
+/** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {
+  return createSurfaceMaterial(map);
+}
+
+/** One troffer tile — bottom texture inset with dark plenum grooves */
+export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const groove = Math.max(3, Math.round(size * 0.032));
+
+  ctx.fillStyle = "#2a2818";
+  ctx.fillRect(0, 0, size, size);
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, groove, groove, size - groove * 2, size - groove * 2);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(groove, groove, size - groove * 2, size - groove * 2);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.userData.tileW = tileM;
+  tex.userData.tileH = tileM;
+  return tex;
+}
+
 /** @deprecated */ export function createCarpetSurfaceMaterial(map) {
-  return createFloorCeilingMaterial(map);
+  return createSurfaceMaterial(map);
 }
 
 /** @deprecated */ export function createCeilingSurfaceMaterial(map) {
-  return createFloorCeilingMaterial(map);
+  return createSurfaceMaterial(map);
 }
 
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
@@ -177,7 +169,7 @@ export function applySurfaceTileSize(tex) {
 export function loadSurface(loader) {
   return new Promise((resolve, reject) => {
     loader.load(
-      SURFACE_URL,
+      BOTTOM_URL,
       (tex) => {
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.colorSpace = THREE.SRGBColorSpace;
@@ -196,7 +188,7 @@ export async function loadSurfaceOrFallback(loader) {
   try {
     return await loadSurface(loader);
   } catch {
-    const tex = createCeilingTileTexture();
+    const tex = createCarpetTexture();
     applySurfaceTileSize(tex);
     return tex;
   }

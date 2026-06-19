@@ -6,7 +6,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { createTiledMaterial, tiledAt, SURFACE_TILE_M } from "./textures.js";
+import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -69,8 +69,8 @@ function addFloor(group, materials, worldX, worldZ) {
 
 function addCeilingTiles(group, h, materials, worldX, worldZ) {
   const ceilingMap = tiledAt(
-    materials.surfaceTex,
-    SURFACE_TILE_M,
+    materials.ceilingGridTex,
+    CEILING_TILE_M,
     CHUNK,
     CHUNK,
     worldX,
