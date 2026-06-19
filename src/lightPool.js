@@ -154,7 +154,7 @@ export class PanelLightPool {
       light.intensity = lit;
       plenum.intensity = lit * CEILING_PLENUM_INTENSITY;
       light.position.set(fixture.wx, fixture.wy, fixture.wz);
-      plenum.position.set(fixture.wx, fixture.wy, fixture.wz);
+      plenum.position.set(fixture.wx, fixture.wCeiling, fixture.wz);
       light.visible = true;
       plenum.visible = true;
       this.assigned.push(fixture);

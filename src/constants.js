@@ -72,8 +72,10 @@ export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
 /** Soft rectangular troffer — area light matches panel footprint exactly */
 export const PANEL_LIGHT_INTENSITY = 4.8;
-/** Upward troffer wash — same square as panel, not a halo around it */
-export const CEILING_PLENUM_INTENSITY = 0.42;
+/** Upward troffer wash onto ceiling underside (panel-sized square) */
+export const CEILING_PLENUM_INTENSITY = 1.15;
+/** Even ceiling fill between troffers in lit rooms */
+export const CEILING_INDIRECT_EMISSIVE = 0.14;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
