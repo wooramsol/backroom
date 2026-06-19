@@ -84,12 +84,6 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
   const halfFace = CEILING_TILE_FACE_M / 2;
   const lightCells = panelTileSet(panels);
 
-  const gap = new THREE.Mesh(_chunkPlane, materials.ceilingGap);
-  gap.rotation.x = Math.PI / 2;
-  gap.position.y = gapY;
-  gap.renderOrder = 0;
-  group.add(gap);
-
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
   for (let tx = tx0; tx <= tx1; tx++) {
@@ -100,6 +94,12 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
       if (px - halfFace < 0 || px + halfFace > CHUNK || pz - halfFace < 0 || pz + halfFace > CHUNK) {
         continue;
       }
+
+      const backing = new THREE.Mesh(_tileGeo, materials.ceilingGap);
+      backing.rotation.x = Math.PI / 2;
+      backing.position.set(px, gapY, pz);
+      backing.renderOrder = 0;
+      group.add(backing);
 
       const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
       tile.rotation.x = Math.PI / 2;
@@ -121,7 +121,13 @@ function addWalls(group, room, wallTex, h) {
 }
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
-  const { panelY, lightY } = getCeilingLayers(h);
+  const { gapY, panelY, lightY } = getCeilingLayers(h);
+  const recess = new THREE.Mesh(_panelGeo, materials.lightPanelOff);
+  recess.rotation.x = Math.PI / 2;
+  recess.position.set(panel.x, gapY + 0.001, panel.z);
+  recess.renderOrder = 0;
+  group.add(recess);
+
   const face = new THREE.Mesh(
     _panelGeo,
     panel.on ? materials.lightPanelOn : materials.lightPanelOff,

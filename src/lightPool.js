@@ -152,7 +152,9 @@ export class PanelLightPool {
 
   update(fixtures, camera) {
     const now = performance.now();
-    const posMoved = _lastPos.distanceToSquared(camera.position) > _moveThresholdSq;
+    const posMoved =
+      Number.isNaN(_lastPos.x) ||
+      _lastPos.distanceToSquared(camera.position) > _moveThresholdSq;
     const due = now - this._lastUpdateAt >= LIGHT_POOL_MIN_INTERVAL_MS;
     if (!this.dirty && !(posMoved && due)) return;
 

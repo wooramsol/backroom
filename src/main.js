@@ -94,7 +94,6 @@ async function init() {
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: true,
-      depthWrite: false,
     }),
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
@@ -198,11 +197,11 @@ async function init() {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
+      world.updateLights(camera);
     }
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      world.updateLights(camera);
     }
 
     composer.render();

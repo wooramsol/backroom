@@ -13,6 +13,6 @@ export function getCeilingLayers(roomHeight) {
     gapY,
     tileY: gapY + CEILING_TILE_LIFT_M,
     panelY: gapY + CEILING_PANEL_LIFT_M,
-    lightY: gapY - TROFFER_LIGHT_DROP_M,
+    lightY: gapY + CEILING_PANEL_LIFT_M - TROFFER_LIGHT_DROP_M,
   };
 }
