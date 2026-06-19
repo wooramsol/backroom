@@ -104,6 +104,9 @@ export const SURFACE_METALNESS = 0;
 export const BLOOM_STRENGTH = 0.14;
 export const BLOOM_RADIUS = 0.18;
 export const BLOOM_THRESHOLD = 0.82;
+/** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
+export const RENDER_RESOLUTION_SCALE = 1;
+/** Bloom buffer scale — can stay low; scene pass is full res */
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
