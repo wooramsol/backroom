@@ -45,15 +45,23 @@ jobs:
           VITE_BASE: /backroom-live/
           BUILD_ENV: prod
 
-      - name: Verify deploy credentials
+      - name: Select deploy method
+        id: method
+        env:
+          HAS_KEY: ${{ secrets.PAGES_DEPLOY_KEY }}
+          HAS_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
         run: |
-          if [ -z "${{ secrets.PAGES_DEPLOY_KEY }}" ] && [ -z "${{ secrets.PAGES_DEPLOY_TOKEN }}" ]; then
-            echo "::error::Add PAGES_DEPLOY_KEY (deploy key private key) or PAGES_DEPLOY_TOKEN (PAT with backroom-live write) to backroom secrets."
+          if [ -n "$HAS_KEY" ]; then
+            echo "method=key" >> "$GITHUB_OUTPUT"
+          elif [ -n "$HAS_TOKEN" ]; then
+            echo "method=token" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Add PAGES_DEPLOY_KEY or PAGES_DEPLOY_TOKEN to backroom secrets."
             exit 1
           fi
 
       - name: Publish via deploy key
-        if: ${{ secrets.PAGES_DEPLOY_KEY != '' }}
+        if: steps.method.outputs.method == 'key'
         uses: peaceiris/actions-gh-pages@v4
         with:
           deploy_key: ${{ secrets.PAGES_DEPLOY_KEY }}
@@ -62,7 +70,7 @@ jobs:
           publish_dir: ./dist
 
       - name: Publish via PAT
-        if: ${{ secrets.PAGES_DEPLOY_KEY == '' }}
+        if: steps.method.outputs.method == 'token'
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
