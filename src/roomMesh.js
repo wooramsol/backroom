@@ -6,7 +6,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { createTiledMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
+import { createTiledMaterial } from "./textures.js";
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -51,18 +51,8 @@ function addInnerWall(group, wallTex, h, wall) {
   }
 }
 
-function addCeilingTiles(group, h, materials, worldX, worldZ) {
-  const ceilingMap = tiledAt(
-    materials.ceilingTex,
-    CEILING_TILE_M,
-    CHUNK,
-    CHUNK,
-    worldX,
-    worldZ,
-  );
-  const mat = materials.ceilingTile.clone();
-  mat.map = ceilingMap;
-  const ceiling = new THREE.Mesh(_chunkPlane, mat);
+function addCeilingTiles(group, h, materials) {
+  const ceiling = new THREE.Mesh(_chunkPlane, materials.ceilingTile);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h - 0.002;
   group.add(ceiling);
@@ -129,7 +119,7 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  addCeilingTiles(group, h, materials, state.worldX, state.worldZ);
+  addCeilingTiles(group, h, materials);
 
   addWalls(group, room, materials.wallTex, h);
   state.shellDone = true;

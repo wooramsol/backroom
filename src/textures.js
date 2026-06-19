@@ -169,11 +169,11 @@ export function createCeilingTileTexture() {
   });
 }
 
-/** Unlit — ceiling is viewed from below with very low ambient light */
-export function createCeilingTileMaterial(tex) {
+/** Unlit — ceiling viewed from below; same carpet map/color as floor */
+export function createCeilingTileMaterial(map) {
   return new THREE.MeshBasicMaterial({
-    map: tex,
-    color: 0xffffff,
+    map,
+    color: CARPET_COLOR,
     side: THREE.DoubleSide,
   });
 }
