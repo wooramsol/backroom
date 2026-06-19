@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { WALL_COLOR, PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
+import {
+  PANEL_SIZE,
+  SURFACE_ROUGHNESS,
+  SURFACE_METALNESS,
+  SURFACE_LIGHT_DIM,
+} from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -83,11 +88,46 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Floor and ceiling — matte, white tint like wallpaper */
-export function createFloorCeilingMaterial(map) {
+/** Downsampled average sRGB color from a loaded texture */
+export function sampleTextureAvgColor(tex) {
+  const img = tex?.image;
+  if (!img?.width || !img?.height) return new THREE.Color(0xf5ea91);
+
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, size, size);
+  const { data } = ctx.getImageData(0, 0, size, size);
+
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  const n = data.length / 4;
+  for (let i = 0; i < data.length; i += 4) {
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+  }
+  return new THREE.Color(r / n / 255, g / n / 255, b / n / 255);
+}
+
+/** Tint floor/ceiling toward wallpaper tone, dimmed for extra horizontal fill */
+export function computeSurfaceTint(wallpaperTex, surfaceTex, dim = SURFACE_LIGHT_DIM) {
+  const wall = sampleTextureAvgColor(wallpaperTex);
+  const surf = sampleTextureAvgColor(surfaceTex);
+  return new THREE.Color(
+    Math.min(1, (wall.r / Math.max(surf.r, 0.02)) * dim),
+    Math.min(1, (wall.g / Math.max(surf.g, 0.02)) * dim),
+    Math.min(1, (wall.b / Math.max(surf.b, 0.02)) * dim),
+  );
+}
+
+/** Floor and ceiling — matte, tinted to match wallpaper tone */
+export function createFloorCeilingMaterial(wallpaperTex, surfaceTex, map = null) {
   return new THREE.MeshStandardMaterial({
     map,
-    color: WALL_COLOR,
+    color: computeSurfaceTint(wallpaperTex, surfaceTex),
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
