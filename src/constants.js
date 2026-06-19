@@ -37,8 +37,8 @@ export const CAMERA_NEAR = 0.035;
 export const CEILING_TOP_INSET_M = 0.001;
 /** @deprecated kept at 0 — lowering caused wall/ceiling shadow bands */
 export const CEILING_DROP_M = 0;
-/** Carpet tiles sit above per-tile seam backing — recessed groove between pieces */
-export const CEILING_TILE_LIFT_M = 0.003;
+/** Flush ceiling tiles — recess is texture-only, no physical seam bands */
+export const CEILING_TILE_LIFT_M = 0;
 export const CEILING_PANEL_LIFT_M = 0.003;
 /** Troffer emitter below the visible panel face */
 export const TROFFER_LIGHT_DROP_M = 0.018;
