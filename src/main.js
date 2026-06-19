@@ -4,8 +4,7 @@ import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
   createSurfaceMaterial,
-  createCeilingGapMaterial,
-  createCeilingTileBevelTexture,
+  createEmbeddedCarpetTileTexture,
   createCeilingTileMaterial,
 } from "./textures.js";
 import { World } from "./world.js";
@@ -78,15 +77,15 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const ceilingTileTex = createCeilingTileBevelTexture(surfaceTex);
+  const carpetTileTex = createEmbeddedCarpetTileTexture(surfaceTex);
   const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
+    carpetTileTex,
     carpet: createSurfaceMaterial(),
-    ceilingGap: createCeilingGapMaterial(),
-    ceilingTile: createCeilingTileMaterial(ceilingTileTex),
+    ceilingTile: createCeilingTileMaterial(carpetTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: false,
