@@ -128,7 +128,10 @@ export class World {
     if (!f?.length) return;
     const drop = new Set(f);
     this.fixtures = this.fixtures.filter((item) => !drop.has(item));
-    for (const fixture of f) fixture.light = null;
+    for (const fixture of f) {
+      fixture.light = null;
+      fixture.bounceLight = null;
+    }
     this.lightPool.dropFixtures(f);
     this.lightPool.markDirty();
   }

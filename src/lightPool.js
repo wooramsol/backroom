@@ -4,11 +4,13 @@ import {
   FOG_FAR,
   PANEL_LIGHT_COLOR,
   PANEL_LIGHT_INTENSITY,
+  CEILING_BOUNCE_RATIO,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+const _up = new THREE.Euler(Math.PI / 2, 0, 0);
 const _frustum = new THREE.Frustum();
 const _projScreen = new THREE.Matrix4();
 const _point = new THREE.Vector3();
@@ -24,12 +26,19 @@ export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
     this.lights = [];
+    this.bounceLights = [];
     for (let i = 0; i < MAX_PANEL_LIGHTS; i++) {
       const light = new THREE.RectAreaLight(PANEL_LIGHT_COLOR, 0, PANEL_W, PANEL_H);
       light.rotation.copy(_down);
       light.visible = false;
       scene.add(light);
       this.lights.push(light);
+
+      const bounce = new THREE.RectAreaLight(PANEL_LIGHT_COLOR, 0, PANEL_W, PANEL_H);
+      bounce.rotation.copy(_up);
+      bounce.visible = false;
+      scene.add(bounce);
+      this.bounceLights.push(bounce);
     }
     this.assigned = [];
     this.prevAssigned = [];
@@ -50,7 +59,10 @@ export class PanelLightPool {
   }
 
   _clearAssignments() {
-    for (const fixture of this.prevAssigned) fixture.light = null;
+    for (const fixture of this.prevAssigned) {
+      fixture.light = null;
+      fixture.bounceLight = null;
+    }
     this.prevAssigned.length = 0;
   }
 
@@ -125,16 +137,23 @@ export class PanelLightPool {
     for (let i = 0; i < picks.length; i++) {
       const fixture = picks[i];
       const light = this.lights[i];
+      const bounce = this.bounceLights[i];
+      const lit = PANEL_LIGHT_INTENSITY * fixture.panel.bright;
       fixture.light = light;
-      light.intensity = PANEL_LIGHT_INTENSITY * fixture.panel.bright;
+      fixture.bounceLight = bounce;
+      light.intensity = lit;
+      bounce.intensity = lit * CEILING_BOUNCE_RATIO;
       light.position.set(fixture.wx, fixture.wy, fixture.wz);
+      bounce.position.set(fixture.wx, fixture.wy + 0.02, fixture.wz);
       light.visible = true;
+      bounce.visible = true;
       this.assigned.push(fixture);
       this.prevAssigned.push(fixture);
     }
 
     for (let i = picks.length; i < this.lights.length; i++) {
       this.lights[i].visible = false;
+      this.bounceLights[i].visible = false;
     }
   }
 }
