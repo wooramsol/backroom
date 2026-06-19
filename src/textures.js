@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_PLENUM_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -98,22 +98,23 @@ export function createSurfaceMaterial(map = null) {
   return createSurfaceMaterial(map);
 }
 
-/** One troffer tile — bottom texture inset with dark plenum grooves */
+/** One troffer tile — bottom texture with a thin plenum gap between neighbours */
 export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
   const img = sourceTex?.image;
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  const groove = Math.max(3, Math.round(size * 0.032));
+  const gap = Math.max(2, Math.round((size * CEILING_TILE_GAP_M) / tileM * 0.5));
+  const plenum = `#${CEILING_PLENUM_COLOR.toString(16).padStart(6, "0")}`;
 
-  ctx.fillStyle = "#2a2818";
+  ctx.fillStyle = plenum;
   ctx.fillRect(0, 0, size, size);
   if (img?.width && img?.height) {
-    ctx.drawImage(img, groove, groove, size - groove * 2, size - groove * 2);
+    ctx.drawImage(img, gap, gap, size - gap * 2, size - gap * 2);
   } else {
     ctx.fillStyle = "#e7e191";
-    ctx.fillRect(groove, groove, size - groove * 2, size - groove * 2);
+    ctx.fillRect(gap, gap, size - gap * 2, size - gap * 2);
   }
 
   const tex = new THREE.CanvasTexture(canvas);
