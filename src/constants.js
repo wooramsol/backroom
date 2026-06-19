@@ -37,9 +37,10 @@ export const CAMERA_NEAR = 0.035;
 export const CEILING_TOP_INSET_M = 0.001;
 /** @deprecated kept at 0 — lowering caused wall/ceiling shadow bands */
 export const CEILING_DROP_M = 0;
-/** Flush ceiling tiles — recess is texture-only, no physical seam bands */
-export const CEILING_TILE_LIFT_M = 0.002;
-export const CEILING_PANEL_LIFT_M = 0.003;
+/** Physical recess depth under each ceiling carpet tile (metres) */
+export const CEILING_GROOVE_DEPTH_M = 0.009;
+export const CEILING_TILE_LIFT_M = CEILING_GROOVE_DEPTH_M;
+export const CEILING_PANEL_LIFT_M = CEILING_GROOVE_DEPTH_M + 0.001;
 /** Troffer emitter below the visible panel face */
 export const TROFFER_LIGHT_DROP_M = 0.018;
 /** Keep the eye this far from wall surfaces (near + margin) */
@@ -86,7 +87,8 @@ export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
-export const PANEL_ON_CHANCE = 0.72;
+/** @deprecated all troffers are lit */
+export const PANEL_ON_CHANCE = 1;
 /** Downward square troffer — RectAreaLight matches panel footprint */
 export const PANEL_LIGHT_INTENSITY = 4.8;
 /** Rebuild pooled lights after the camera moves this far (metres) */
