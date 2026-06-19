@@ -36,13 +36,13 @@ export const CAMERA_NEAR = 0.035;
 /** Inset from room top before ceiling stack begins */
 export const CEILING_TOP_INSET_M = 0.002;
 /** Lower entire ceiling stack slightly — keeps troffer geometry off the room bound */
-export const CEILING_DROP_M = 0.01;
+export const CEILING_DROP_M = 0.004;
 /** Gap backing → carpet tile */
 export const CEILING_TILE_LIFT_M = 0.004;
 /** Gap backing → emissive troffer face (above carpet tiles) */
 export const CEILING_PANEL_LIFT_M = 0.006;
-/** Troffer emitter sits below the ceiling plane into the room — avoids coplanar z-fight */
-export const TROFFER_LIGHT_DROP_M = 0.055;
+/** Troffer emitter just under the panel face — small gap avoids z-fight */
+export const TROFFER_LIGHT_DROP_M = 0.003;
 /** Keep the eye this far from wall surfaces (near + margin) */
 export const CAMERA_WALL_CLEAR = 0.04;
 /** Camera may shift slightly off body center to stay out of geometry */

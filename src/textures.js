@@ -166,13 +166,12 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
   return tex;
 }
 
-/** Warm gap visible between ceiling tile pieces */
+/** Warm seam backing under carpet tiles — underside only */
 export function createCeilingGapMaterial() {
   return new THREE.MeshStandardMaterial({
     color: CEILING_GAP_COLOR,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
-    side: THREE.DoubleSide,
   });
 }
 
