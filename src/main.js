@@ -202,7 +202,7 @@ async function init() {
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
       const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
-      world.processLoadQueue(player.position, loadBudget);
+      world.processLoadQueue(player.position, loadBudget, camera);
     }
   }
 

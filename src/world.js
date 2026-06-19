@@ -123,6 +123,13 @@ export class World {
     }
   }
 
+  /** Pre-warm troffer lights for fixtures already in the current view */
+  warmVisibleLights(camera) {
+    if (!this.fixtures.length) return;
+    this.lightPool.markDirty();
+    this.lightPool.update(this.fixtures, camera);
+  }
+
   removeFixtures(mesh) {
     const f = mesh.userData.fixtures;
     if (!f?.length) return;
@@ -256,8 +263,9 @@ export class World {
     this.pendingKeys.delete(k);
   }
 
-  processLoadQueue(playerPos, budgetMs) {
+  processLoadQueue(playerPos, budgetMs, camera = null) {
     const t0 = performance.now();
+    let warmed = false;
     while (this.loadQueue.length && performance.now() - t0 < budgetMs) {
       const job = this.loadQueue[0];
       const k = this.key(job.cx, job.cz);
@@ -282,10 +290,14 @@ export class World {
         }
         this.loadQueue.shift();
         this.pendingKeys.delete(k);
+        warmed = true;
+      } else if (job.build.fixtures.length) {
+        warmed = true;
       } else {
         break;
       }
     }
+    if (warmed && camera) this.warmVisibleLights(camera);
   }
 
   tick(dt) {
