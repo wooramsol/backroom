@@ -64,4 +64,5 @@ jobs:
           git add -A
           git commit -m "Deploy production ${BUILD_TIME} KST"
           git branch -M gh-pages
-          git push -f "https://x-access-token:${DEPLOY_TOKEN}@github.com/wooramsol/backroom-live.git" gh-pages
+          git remote add origin https://github.com/wooramsol/backroom-live.git
+          git -c http.extraheader="AUTHORIZATION: bearer ${DEPLOY_TOKEN}" push -f origin gh-pages
