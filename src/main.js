@@ -2,9 +2,7 @@ import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
-  createCeilingBackingTexture,
   createCeilingTileMaterial,
-  createCeilingBackingMaterial,
   loadWallpaperOrFallback,
   loadCeilingOrFallback,
   tiled,
@@ -83,7 +81,6 @@ async function init() {
   const ceilingTex = await loadCeilingOrFallback(loader);
   const carpetTex = createCarpetTexture();
   const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
-  const ceilingBackingTex = createCeilingBackingTexture();
 
   const _staticPanel = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
@@ -91,8 +88,7 @@ async function init() {
     wallTex: wallpaper,
     carpetTex,
     carpet: createCarpetSurfaceMaterial(floorMap),
-    ceilingBackingTex,
-    ceilingBacking: createCeilingBackingMaterial(ceilingBackingTex),
+    ceilingTex,
     ceilingTile: createCeilingTileMaterial(ceilingTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: _staticPanel,

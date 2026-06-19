@@ -10,18 +10,7 @@ import { createTiledMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
-const CEILING_TILE_GAP = 0.034;
 const CEILING_TILE_THICK = 0.02;
-const _tileMatrix = new THREE.Matrix4();
-const _tilePos = new THREE.Vector3();
-const _tileRot = new THREE.Quaternion().setFromEuler(
-  new THREE.Euler(Math.PI / 2, 0, 0, "XYZ"),
-);
-const _tileScale = new THREE.Vector3(1, 1, 1);
-const _ceilingTileGeo = new THREE.PlaneGeometry(
-  CEILING_TILE_M - CEILING_TILE_GAP,
-  CEILING_TILE_M - CEILING_TILE_GAP,
-);
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -63,38 +52,20 @@ function addInnerWall(group, wallTex, h, wall) {
 }
 
 function addCeilingTiles(group, h, materials, worldX, worldZ) {
-  const backingMap = tiledAt(
-    materials.ceilingBackingTex,
+  const ceilingMap = tiledAt(
+    materials.ceilingTex,
     CEILING_TILE_M,
     CHUNK,
     CHUNK,
     worldX,
     worldZ,
   );
-  const backingMat = materials.ceilingBacking.clone();
-  backingMat.map = backingMap;
-  const backing = new THREE.Mesh(_chunkPlane, backingMat);
-  backing.rotation.x = Math.PI / 2;
-  backing.position.y = h - CEILING_TILE_THICK - 0.004;
-  group.add(backing);
-
-  const geo = _ceilingTileGeo;
-  const nx = Math.ceil(CHUNK / CEILING_TILE_M);
-  const nz = Math.ceil(CHUNK / CEILING_TILE_M);
-  const mesh = new THREE.InstancedMesh(geo, materials.ceilingTile, nx * nz);
-  const ox = (CHUNK - nx * CEILING_TILE_M) / 2 + CEILING_TILE_M / 2;
-  const oz = (CHUNK - nz * CEILING_TILE_M) / 2 + CEILING_TILE_M / 2;
-  const y = h - 0.002;
-  let i = 0;
-  for (let iz = 0; iz < nz; iz++) {
-    for (let ix = 0; ix < nx; ix++) {
-      _tilePos.set(ox + ix * CEILING_TILE_M, y, oz + iz * CEILING_TILE_M);
-      _tileMatrix.compose(_tilePos, _tileRot, _tileScale);
-      mesh.setMatrixAt(i++, _tileMatrix);
-    }
-  }
-  mesh.instanceMatrix.needsUpdate = true;
-  group.add(mesh);
+  const mat = materials.ceilingTile.clone();
+  mat.map = ceilingMap;
+  const ceiling = new THREE.Mesh(_chunkPlane, mat);
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = h - 0.002;
+  group.add(ceiling);
 }
 
 function addWalls(group, room, wallTex, h) {
