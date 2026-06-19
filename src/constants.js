@@ -33,16 +33,15 @@ export const GRAVITY = 14;
 export const CAMERA_FOV = 60;
 /** Closer near plane — default 0.08 let walls vanish when hugging them */
 export const CAMERA_NEAR = 0.035;
-/** Inset from room top before ceiling stack begins */
-export const CEILING_TOP_INSET_M = 0.002;
-/** Lower entire ceiling stack slightly — keeps troffer geometry off the room bound */
-export const CEILING_DROP_M = 0.004;
-/** Gap backing → carpet tile */
-export const CEILING_TILE_LIFT_M = 0.004;
-/** Gap backing → emissive troffer face (above carpet tiles) */
-export const CEILING_PANEL_LIFT_M = 0.006;
-/** Troffer emitter just under the panel face — small gap avoids z-fight */
-export const TROFFER_LIGHT_DROP_M = 0.003;
+/** Underside of ceiling stack — flush with wall tops */
+export const CEILING_TOP_INSET_M = 0.001;
+/** @deprecated kept at 0 — lowering caused wall/ceiling shadow bands */
+export const CEILING_DROP_M = 0;
+/** Single ceiling plane — no stacked layers (prevents z-fight shadows) */
+export const CEILING_TILE_LIFT_M = 0;
+export const CEILING_PANEL_LIFT_M = 0.0005;
+/** Troffer emitter below the visible panel face */
+export const TROFFER_LIGHT_DROP_M = 0.018;
 /** Keep the eye this far from wall surfaces (near + margin) */
 export const CAMERA_WALL_CLEAR = 0.04;
 /** Camera may shift slightly off body center to stay out of geometry */
@@ -72,7 +71,7 @@ export const HEMI_INTENSITY = 0.62;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */
-export const LIGHT_PANEL_INTENSITY = 0.95;
+export const LIGHT_PANEL_INTENSITY = 2.2;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
 /** Hairline gap between ceiling tile pieces (metres) */
@@ -102,7 +101,7 @@ export const SURFACE_METALNESS = 0;
 /** Subtle bloom — tight to bright panel squares only */
 export const BLOOM_STRENGTH = 0.14;
 export const BLOOM_RADIUS = 0.18;
-export const BLOOM_THRESHOLD = 0.97;
+export const BLOOM_THRESHOLD = 0.82;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
