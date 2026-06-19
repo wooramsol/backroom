@@ -11,7 +11,7 @@
 
 - `cursor/*` 브랜치 PR → 빌드 성공 시 **자동 머지**
 - `main` push → 개발 서버(`gh-pages`)에 **자동 배포**
-- 운영 배포는 **GitHub Actions → Deploy Production → Run workflow** 또는 에이전트에게 "운영 배포해줘" 요청
+- 운영 배포는 **GitHub Actions → Deploy Production → Run workflow** 또는 에이전트에게 "운영 배포해줘" 요청 (`production` 브랜치 push로도 트리거)
 
 ### 최초 1회 설정
 
