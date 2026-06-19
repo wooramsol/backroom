@@ -6,7 +6,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
+import { createTiledMaterial, tiledAt, SURFACE_TILE_M } from "./textures.js";
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -51,10 +51,26 @@ function addInnerWall(group, wallTex, h, wall) {
   }
 }
 
+function addFloor(group, materials, worldX, worldZ) {
+  const floorMap = tiledAt(
+    materials.surfaceTex,
+    SURFACE_TILE_M,
+    CHUNK,
+    CHUNK,
+    worldX,
+    worldZ,
+  );
+  const mat = materials.carpet.clone();
+  mat.map = floorMap;
+  const floor = new THREE.Mesh(_chunkPlane, mat);
+  floor.rotation.x = -Math.PI / 2;
+  group.add(floor);
+}
+
 function addCeilingTiles(group, h, materials, worldX, worldZ) {
   const ceilingMap = tiledAt(
-    materials.carpetTex,
-    CARPET_TILE_M,
+    materials.surfaceTex,
+    SURFACE_TILE_M,
     CHUNK,
     CHUNK,
     worldX,
@@ -128,9 +144,7 @@ export function buildRoomShell(state) {
   const { room, group, materials } = state;
   const h = room.height;
 
-  const floor = new THREE.Mesh(_chunkPlane, materials.carpet);
-  floor.rotation.x = -Math.PI / 2;
-  group.add(floor);
+  addFloor(group, materials, state.worldX, state.worldZ);
 
   addCeilingTiles(group, h, materials, state.worldX, state.worldZ);
 

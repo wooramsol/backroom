@@ -30,10 +30,14 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Require user-provided wallpaper
+      - name: Require user-provided assets
         run: |
           if [ ! -f public/assets/backroom_wallpaper.webp ]; then
             echo "::error::Add your wallpaper at public/assets/backroom_wallpaper.webp (do not auto-generate)."
+            exit 1
+          fi
+          if [ ! -f public/assets/backroom_ceiling.webp ]; then
+            echo "::error::Add your floor/ceiling texture at public/assets/backroom_ceiling.webp (do not auto-generate)."
             exit 1
           fi
 
