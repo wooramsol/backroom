@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CHUNK } from "./room.js";
 import {
   WALL_T,
@@ -17,12 +16,11 @@ const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
-const _identQuat = new THREE.Quaternion();
 const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
 
-function wallSegCollect(buckets, wallTex, h, axis, pos, a0, a1, door) {
+function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
@@ -38,16 +36,10 @@ function wallSegCollect(buckets, wallTex, h, axis, pos, a0, a1, door) {
         ? new THREE.BoxGeometry(slen, segH, WALL_T)
         : new THREE.BoxGeometry(WALL_T, segH, slen);
     const mat = createTiledMaterial(wallTex, slen, segH);
-    if (axis === "z") _pos.set(smid, segY + segH / 2, pos);
-    else _pos.set(pos, segY + segH / 2, smid);
-    _mat4.compose(_pos, _identQuat, _scale);
-    geo.applyMatrix4(_mat4);
-    let list = buckets.get(mat);
-    if (!list) {
-      list = [];
-      buckets.set(mat, list);
-    }
-    list.push(geo);
+    const m = new THREE.Mesh(geo, mat);
+    if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
+    else m.position.set(pos, segY + segH / 2, smid);
+    group.add(m);
   };
 
   if (door) {
@@ -59,22 +51,12 @@ function wallSegCollect(buckets, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function addInnerWall(buckets, wallTex, h, wall) {
+function addInnerWall(group, wallTex, h, wall) {
   if (wall.axis === "x") {
-    wallSegCollect(buckets, wallTex, h, "x", wall.pos, wall.span0, wall.span1, wall.door);
+    wallSeg(group, wallTex, h, "x", wall.pos, wall.span0, wall.span1, wall.door);
   } else {
-    wallSegCollect(buckets, wallTex, h, "z", wall.pos, wall.span0, wall.span1, wall.door);
+    wallSeg(group, wallTex, h, "z", wall.pos, wall.span0, wall.span1, wall.door);
   }
-}
-
-function flushWallMeshes(group, buckets) {
-  for (const [mat, geos] of buckets) {
-    const merged = mergeGeometries(geos, false);
-    for (const geo of geos) geo.dispose();
-    if (!merged) continue;
-    group.add(new THREE.Mesh(merged, mat));
-  }
-  buckets.clear();
 }
 
 function addFloor(group, materials, worldX, worldZ) {
@@ -143,15 +125,13 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 }
 
 function addWalls(group, room, wallTex, h) {
-  const buckets = new Map();
-  wallSegCollect(buckets, wallTex, h, "z", 0, 0, CHUNK, room.doors.north);
-  wallSegCollect(buckets, wallTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
-  wallSegCollect(buckets, wallTex, h, "x", 0, 0, CHUNK, room.doors.west);
-  wallSegCollect(buckets, wallTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
+  wallSeg(group, wallTex, h, "z", 0, 0, CHUNK, room.doors.north);
+  wallSeg(group, wallTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
+  wallSeg(group, wallTex, h, "x", 0, 0, CHUNK, room.doors.west);
+  wallSeg(group, wallTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
   for (const wall of room.innerWalls) {
-    addInnerWall(buckets, wallTex, h, wall);
+    addInnerWall(group, wallTex, h, wall);
   }
-  flushWallMeshes(group, buckets);
 }
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
@@ -170,35 +150,11 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     face,
     light: null,
     lightSlot: -1,
-    roomCx,
-    roomCz,
     wx: roomCx * CHUNK + panel.x,
     wy: panelY,
     wz: roomCz * CHUNK + panel.z,
     lightY,
   });
-}
-
-function finalizePanelInstances(group, fixtures, materials, h) {
-  if (fixtures.length < 2) return;
-
-  const { panelY } = getCeilingLayers(h);
-  const mesh = new THREE.InstancedMesh(_panelGeo, materials.lightPanelOn, fixtures.length);
-  mesh.renderOrder = 1;
-  mesh.userData.fluorescent = true;
-
-  for (let i = 0; i < fixtures.length; i++) {
-    const fixture = fixtures[i];
-    _pos.set(fixture.panel.x, panelY, fixture.panel.z);
-    _mat4.compose(_pos, _ceilRot, _scale);
-    mesh.setMatrixAt(i, _mat4);
-    group.remove(fixture.face);
-    fixture.face = mesh;
-    fixture.panel.face = mesh;
-  }
-
-  mesh.instanceMatrix.needsUpdate = true;
-  group.add(mesh);
 }
 
 export function createRoomBuildState(room, materials) {
@@ -245,7 +201,6 @@ export function buildPanelBatch(state, maxPanels) {
 
 export function finalizeRoomBuild(state) {
   const { group, room, fixtures } = state;
-  finalizePanelInstances(group, fixtures, state.materials, room.height);
   group.userData.room = room;
   group.userData.fixtures = fixtures;
   return group;

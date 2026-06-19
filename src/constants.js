@@ -53,10 +53,10 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 18;
 export const FOG_FAR = 48;
 export const FOG_COLOR = 0x3a3830;
-/** Loaded cells around player — 2-ring keeps ~35 m built, matches fog */
-export const GRID_RADIUS = 2;
+/** Loaded cells around player — ~3 chunks matches FOG_FAR so distant fog is already built */
+export const GRID_RADIUS = 3;
 /** Full square synced on the title screen before play */
-export const PRELOAD_RADIUS = 2;
+export const PRELOAD_RADIUS = 3;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
@@ -95,12 +95,6 @@ export const PANEL_LIGHT_INTENSITY = 4.8;
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
 export const LIGHT_POOL_MIN_INTERVAL_MS = 120;
-/** Faster rebuild when only the view direction changes */
-export const LIGHT_LOOK_INTERVAL_MS = 50;
-/** cos(angle) — panels this far ahead of walk direction are pre-lit */
-export const LIGHT_PREWARM_DOT = 0.55;
-/** Keep recently seen panels lit briefly so turns do not feel like sensors */
-export const LIGHT_GRACE_MS = 3200;
 /** @deprecated upward plenum lights removed — caused dark coplanar ceiling */
 export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
@@ -110,10 +104,8 @@ export const SURFACE_METALNESS = 0;
 export const BLOOM_STRENGTH = 0.14;
 export const BLOOM_RADIUS = 0.18;
 export const BLOOM_THRESHOLD = 0.82;
-/** Main scene render scale — 0.8 balances sharp grooves vs GPU fill */
-export const RENDER_RESOLUTION_SCALE = 0.8;
-/** Cap device pixel ratio for the WebGL canvas */
-export const MAX_PIXEL_RATIO = 1;
+/** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
+export const RENDER_RESOLUTION_SCALE = 1;
 /** Bloom buffer scale — can stay low; scene pass is full res */
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.92;
