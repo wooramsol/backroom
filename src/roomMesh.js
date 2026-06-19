@@ -5,12 +5,13 @@ import {
   DOOR_H,
   PANEL_W,
   PANEL_H,
+  CEILING_TILE_FACE_M,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
 import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
-const _tileGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 
@@ -78,10 +79,15 @@ function panelTileSet(panels) {
 }
 
 function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
-  const { tileY } = getCeilingLayers(h);
+  const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
-  const halfCell = PANEL_W / 2;
+  const halfFace = CEILING_TILE_FACE_M / 2;
   const lightCells = panelTileSet(panels);
+
+  const gap = new THREE.Mesh(_chunkPlane, materials.ceilingGap);
+  gap.rotation.x = Math.PI / 2;
+  gap.position.y = gapY;
+  group.add(gap);
 
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
@@ -90,7 +96,7 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
       if (lightCells.has(`${tx},${tz}`)) continue;
 
       const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
-      if (px - halfCell < 0 || px + halfCell > CHUNK || pz - halfCell < 0 || pz + halfCell > CHUNK) {
+      if (px - halfFace < 0 || px + halfFace > CHUNK || pz - halfFace < 0 || pz + halfFace > CHUNK) {
         continue;
       }
 
