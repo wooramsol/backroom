@@ -172,6 +172,7 @@ export function createCeilingGapMaterial() {
     color: CEILING_GAP_COLOR,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
+    depthWrite: false,
   });
 }
 

@@ -37,9 +37,9 @@ export const CAMERA_NEAR = 0.035;
 export const CEILING_TOP_INSET_M = 0.001;
 /** @deprecated kept at 0 — lowering caused wall/ceiling shadow bands */
 export const CEILING_DROP_M = 0;
-/** Single ceiling plane — no stacked layers (prevents z-fight shadows) */
-export const CEILING_TILE_LIFT_M = 0;
-export const CEILING_PANEL_LIFT_M = 0.0005;
+/** Carpet tiles sit slightly above seam backing — grooves visible between pieces */
+export const CEILING_TILE_LIFT_M = 0.002;
+export const CEILING_PANEL_LIFT_M = 0.003;
 /** Troffer emitter below the visible panel face */
 export const TROFFER_LIGHT_DROP_M = 0.018;
 /** Keep the eye this far from wall surfaces (near + margin) */
