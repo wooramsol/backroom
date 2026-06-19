@@ -3,7 +3,6 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  createSurfaceMaterial,
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
@@ -83,7 +82,8 @@ async function init() {
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
-    carpet: createSurfaceMaterial(),
+    carpetTileTex: ceilingTileTex,
+    carpet: createCeilingTileMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
@@ -122,7 +122,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, smaa } = createBloomPipeline(renderer, scene, camera);
+  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -212,7 +212,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, smaa, w, h);
+    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
     syncCrosshair();
   });
 }
