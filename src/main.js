@@ -122,7 +122,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, smaa } = createBloomPipeline(renderer, scene, camera);
+  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -201,7 +201,7 @@ async function init() {
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
       const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
-      world.processLoadQueue(player.position, loadBudget);
+      world.processLoadQueue(player.position, loadBudget, camera);
     }
   }
 
@@ -212,7 +212,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, smaa, w, h);
+    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
     syncCrosshair();
   });
 }
