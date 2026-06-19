@@ -80,20 +80,15 @@ async function init() {
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
   const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
-  const ceilingTileMat = createSurfaceMaterial(ceilingTileTex);
-  ceilingTileMat.polygonOffset = true;
-  ceilingTileMat.polygonOffsetFactor = -1;
-  ceilingTileMat.polygonOffsetUnits = -1;
-
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
     carpet: createSurfaceMaterial(),
     ceilingGap: createCeilingGapMaterial(),
-    ceilingTile: ceilingTileMat,
+    ceilingTile: createSurfaceMaterial(ceilingTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
-      toneMapped: true,
+      toneMapped: false,
     }),
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
