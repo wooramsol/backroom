@@ -170,6 +170,8 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     face,
     light: null,
     lightSlot: -1,
+    roomCx,
+    roomCz,
     wx: roomCx * CHUNK + panel.x,
     wy: panelY,
     wz: roomCz * CHUNK + panel.z,

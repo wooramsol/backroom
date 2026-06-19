@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { MAX_PANEL_LIGHTS, LIGHT_KEEP_RADIUS } from "./lightBudget.js";
 import {
+  CHUNK,
   FOG_FAR,
   FLUORESCENT_COLOR,
   PANEL_LIGHT_INTENSITY,
@@ -25,6 +26,7 @@ const _moveThresholdSq = LIGHT_POOL_MOVE_THRESHOLD * LIGHT_POOL_MOVE_THRESHOLD;
 const _lookThreshold = 0.12;
 const _viewDistSq = FOG_FAR * FOG_FAR;
 const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
+const _inRoom = [];
 const _inView = [];
 const _prewarm = [];
 const _grace = [];
@@ -107,6 +109,10 @@ export class PanelLightPool {
     _projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     _frustum.setFromProjectionMatrix(_projScreen);
 
+    const playerCx = Math.floor(camera.position.x / CHUNK);
+    const playerCz = Math.floor(camera.position.z / CHUNK);
+
+    _inRoom.length = 0;
     _inView.length = 0;
     _prewarm.length = 0;
     _grace.length = 0;
@@ -118,6 +124,15 @@ export class PanelLightPool {
       if (dist > _viewDistSq) continue;
 
       const entry = { fixture, dist };
+      const fxCx = fixture.roomCx ?? Math.floor(fixture.wx / CHUNK);
+      const fxCz = fixture.roomCz ?? Math.floor(fixture.wz / CHUNK);
+      const inRoom = fxCx === playerCx && fxCz === playerCz;
+
+      if (inRoom) {
+        _inRoom.push(entry);
+        continue;
+      }
+
       _point.set(fixture.wx, fixture.wy, fixture.wz);
       const inFrustum = _frustum.containsPoint(_point);
       const ahead = this._aheadOfView(camera, fixture);
@@ -136,6 +151,7 @@ export class PanelLightPool {
     }
 
     const byDist = (a, b) => a.dist - b.dist;
+    _inRoom.sort(byDist);
     _inView.sort(byDist);
     _prewarm.sort(byDist);
     _grace.sort(byDist);
@@ -143,6 +159,7 @@ export class PanelLightPool {
 
     const picks = [];
     const picked = new Set();
+    this._pushPicks(picks, picked, _inRoom, k);
     this._pushPicks(picks, picked, _inView, k);
     this._pushPicks(picks, picked, _prewarm, k);
     this._pushPicks(picks, picked, _grace, k);
