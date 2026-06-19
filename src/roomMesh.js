@@ -52,7 +52,7 @@ function addInnerWall(group, wallTex, h, wall) {
 }
 
 function addCeilingTiles(group, h, materials) {
-  const ceiling = new THREE.Mesh(_chunkPlane, materials.ceilingTile);
+  const ceiling = new THREE.Mesh(_chunkPlane, materials.carpet);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h - 0.002;
   group.add(ceiling);
