@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
@@ -52,7 +51,6 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -80,15 +78,21 @@ async function init() {
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
   const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
+  const ceilingTileMat = createSurfaceMaterial(ceilingTileTex);
+  ceilingTileMat.polygonOffset = true;
+  ceilingTileMat.polygonOffsetFactor = -1;
+  ceilingTileMat.polygonOffsetUnits = -1;
+
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
     carpet: createSurfaceMaterial(),
     ceilingGap: createCeilingGapMaterial(),
-    ceilingTile: createSurfaceMaterial(ceilingTileTex),
+    ceilingTile: ceilingTileMat,
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: true,
+      depthWrite: false,
     }),
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,
