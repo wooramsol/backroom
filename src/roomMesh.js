@@ -13,9 +13,13 @@ const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const CEILING_TILE_GAP = 0.034;
 const CEILING_TILE_THICK = 0.02;
 const _tileMatrix = new THREE.Matrix4();
-const _ceilingTileGeo = new THREE.BoxGeometry(
+const _tilePos = new THREE.Vector3();
+const _tileRot = new THREE.Quaternion().setFromEuler(
+  new THREE.Euler(Math.PI / 2, 0, 0, "XYZ"),
+);
+const _tileScale = new THREE.Vector3(1, 1, 1);
+const _ceilingTileGeo = new THREE.PlaneGeometry(
   CEILING_TILE_M - CEILING_TILE_GAP,
-  CEILING_TILE_THICK,
   CEILING_TILE_M - CEILING_TILE_GAP,
 );
 
@@ -80,11 +84,12 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
   const mesh = new THREE.InstancedMesh(geo, materials.ceilingTile, nx * nz);
   const ox = (CHUNK - nx * CEILING_TILE_M) / 2 + CEILING_TILE_M / 2;
   const oz = (CHUNK - nz * CEILING_TILE_M) / 2 + CEILING_TILE_M / 2;
-  const y = h - CEILING_TILE_THICK / 2 - 0.001;
+  const y = h - 0.002;
   let i = 0;
   for (let iz = 0; iz < nz; iz++) {
     for (let ix = 0; ix < nx; ix++) {
-      _tileMatrix.makeTranslation(ox + ix * CEILING_TILE_M, y, oz + iz * CEILING_TILE_M);
+      _tilePos.set(ox + ix * CEILING_TILE_M, y, oz + iz * CEILING_TILE_M);
+      _tileMatrix.compose(_tilePos, _tileRot, _tileScale);
       mesh.setMatrixAt(i++, _tileMatrix);
     }
   }

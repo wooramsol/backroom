@@ -169,12 +169,11 @@ export function createCeilingTileTexture() {
   });
 }
 
+/** Unlit — ceiling is viewed from below with very low ambient light */
 export function createCeilingTileMaterial(tex) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     map: tex,
     color: 0xffffff,
-    roughness: 0.92,
-    metalness: 0,
   });
 }
 
@@ -196,11 +195,9 @@ export function createCeilingBackingTexture() {
 }
 
 export function createCeilingBackingMaterial(map) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     map,
     color: 0x8a8470,
-    roughness: 0.98,
-    metalness: 0,
     side: THREE.DoubleSide,
   });
 }
