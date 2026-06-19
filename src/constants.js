@@ -67,13 +67,14 @@ export const LIGHT_PANEL_INTENSITY = 0.95;
 export const PANEL_SIZE = 0.9;
 /** Hairline gap between ceiling tile pieces (metres) */
 export const CEILING_TILE_GAP_M = 0.014;
-/** Visible tile face — sits inside one grid cell */
+/** Visible carpet tile face inside one grid cell */
 export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
 /** Recessed seam between ceiling tiles — warm beige, not black */
 export const CEILING_GAP_COLOR = 0xa39a68;
 /** @deprecated */ export const CEILING_PLENUM_COLOR = CEILING_GAP_COLOR;
-export const PANEL_W = CEILING_TILE_FACE_M;
-export const PANEL_H = CEILING_TILE_FACE_M;
+/** Lit troffer replaces the whole grid cell */
+export const PANEL_W = PANEL_SIZE;
+export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;

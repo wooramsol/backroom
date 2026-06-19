@@ -7,6 +7,7 @@ import {
   PANEL_H,
   CEILING_TILE_FACE_M,
 } from "./constants.js";
+import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
@@ -79,36 +80,22 @@ function panelTileSet(panels) {
 function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
   const ceilingY = h - 0.002;
   const tileM = CEILING_TILE_M;
-  const half = CEILING_TILE_FACE_M / 2;
+  const halfFace = CEILING_TILE_FACE_M / 2;
   const lightCells = panelTileSet(panels);
 
-  const seamMap = tiledAt(
-    materials.ceilingSeamTex,
-    CEILING_TILE_M,
-    CHUNK,
-    CHUNK,
-    worldX,
-    worldZ,
-  );
-  const seamMat = materials.ceilingSeam.clone();
-  seamMat.map = seamMap;
-  const seam = new THREE.Mesh(_chunkPlane, seamMat);
-  seam.rotation.x = Math.PI / 2;
-  seam.position.y = ceilingY;
-  group.add(seam);
+  const gap = new THREE.Mesh(_chunkPlane, materials.ceilingGap);
+  gap.rotation.x = Math.PI / 2;
+  gap.position.y = ceilingY;
+  group.add(gap);
 
-  const tx0 = Math.floor(worldX / tileM);
-  const tx1 = Math.floor((worldX + CHUNK - 1e-6) / tileM);
-  const tz0 = Math.floor(worldZ / tileM);
-  const tz1 = Math.floor((worldZ + CHUNK - 1e-6) / tileM);
+  const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
       if (lightCells.has(`${tx},${tz}`)) continue;
 
-      const px = (tx + 0.5) * tileM - worldX;
-      const pz = (tz + 0.5) * tileM - worldZ;
-      if (px - half < 0 || px + half > CHUNK || pz - half < 0 || pz + half > CHUNK) {
+      const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
+      if (px - halfFace < 0 || px + halfFace > CHUNK || pz - halfFace < 0 || pz + halfFace > CHUNK) {
         continue;
       }
 
@@ -132,7 +119,7 @@ function addWalls(group, room, wallTex, h) {
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const ceilingY = h - 0.002;
-  const y = ceilingY + 0.0004;
+  const y = ceilingY + 0.0005;
   const face = new THREE.Mesh(
     _panelGeo,
     panel.on ? materials.lightPanelOn : materials.lightPanelOff,
