@@ -6,9 +6,9 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
-  CEILING_DROP_M,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
+import { getCeilingLayers } from "./ceilingLayers.js";
 import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
@@ -78,19 +78,16 @@ function panelTileSet(panels) {
   return keys;
 }
 
-function ceilingBaseY(h) {
-  return h - 0.002 - CEILING_DROP_M;
-}
-
 function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
-  const ceilingY = ceilingBaseY(h);
+  const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
   const halfFace = CEILING_TILE_FACE_M / 2;
   const lightCells = panelTileSet(panels);
 
   const gap = new THREE.Mesh(_chunkPlane, materials.ceilingGap);
   gap.rotation.x = Math.PI / 2;
-  gap.position.y = ceilingY;
+  gap.position.y = gapY;
+  gap.renderOrder = 0;
   group.add(gap);
 
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
@@ -106,7 +103,8 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 
       const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
       tile.rotation.x = Math.PI / 2;
-      tile.position.set(px, ceilingY + 0.0004, pz);
+      tile.position.set(px, tileY, pz);
+      tile.renderOrder = 1;
       group.add(tile);
     }
   }
@@ -123,14 +121,13 @@ function addWalls(group, room, wallTex, h) {
 }
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
-  const ceilingY = ceilingBaseY(h);
-  const y = ceilingY + 0.0005;
+  const { panelY, lightY } = getCeilingLayers(h);
   const face = new THREE.Mesh(
     _panelGeo,
     panel.on ? materials.lightPanelOn : materials.lightPanelOff,
   );
   face.rotation.x = Math.PI / 2;
-  face.position.set(panel.x, y, panel.z);
+  face.position.set(panel.x, panelY, panel.z);
   face.renderOrder = 2;
   face.userData.panel = panel;
   panel.face = face;
@@ -144,11 +141,11 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     panel,
     face,
     light: null,
-    plenumLight: null,
+    lightSlot: -1,
     wx: roomCx * CHUNK + panel.x,
-    wy: y,
+    wy: panelY,
     wz: roomCz * CHUNK + panel.z,
-    wCeiling: ceilingY,
+    lightY,
   });
 }
 

@@ -33,9 +33,16 @@ export const GRAVITY = 14;
 export const CAMERA_FOV = 60;
 /** Closer near plane — default 0.08 let walls vanish when hugging them */
 export const CAMERA_NEAR = 0.035;
-/** Lower ceiling ~1 screen px toward floor — avoids coplanar troffer lights */
-export const CEILING_DROP_M =
-  (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (ROOM_H - EYE_H)) / 1080;
+/** Inset from room top before ceiling stack begins */
+export const CEILING_TOP_INSET_M = 0.002;
+/** Lower entire ceiling stack slightly — keeps troffer geometry off the room bound */
+export const CEILING_DROP_M = 0.01;
+/** Gap backing → carpet tile */
+export const CEILING_TILE_LIFT_M = 0.004;
+/** Gap backing → emissive troffer face (above carpet tiles) */
+export const CEILING_PANEL_LIFT_M = 0.006;
+/** Troffer emitter sits below the ceiling plane into the room — avoids coplanar z-fight */
+export const TROFFER_LIGHT_DROP_M = 0.055;
 /** Keep the eye this far from wall surfaces (near + margin) */
 export const CAMERA_WALL_CLEAR = 0.04;
 /** Camera may shift slightly off body center to stay out of geometry */
@@ -81,9 +88,15 @@ export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** Soft rectangular troffer — area light matches panel footprint exactly */
-export const PANEL_LIGHT_INTENSITY = 4.8;
-/** Upward troffer wash onto ceiling underside (panel-sized square) */
+/** Downward troffer point light — cheaper and stable vs RectAreaLight */
+export const PANEL_LIGHT_INTENSITY = 2.4;
+export const PANEL_LIGHT_DISTANCE = 11;
+export const PANEL_LIGHT_DECAY = 2;
+/** Rebuild pooled lights after the camera moves this far (metres) */
+export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
+/** Minimum ms between pool rebuilds while moving */
+export const LIGHT_POOL_MIN_INTERVAL_MS = 90;
+/** @deprecated upward plenum lights removed — caused dark coplanar ceiling */
 export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
