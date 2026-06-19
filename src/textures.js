@@ -58,7 +58,7 @@ export function createCeilingTexture() {
 export function loadWallpaperTexture(loader) {
   return new Promise((resolve, reject) => {
     loader.load(
-      "./assets/wallpaper.png",
+      "./assets/backroom_wallpaper.webp",
       (tex) => {
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
         tex.colorSpace = THREE.SRGBColorSpace;
