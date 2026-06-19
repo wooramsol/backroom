@@ -6,6 +6,7 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
+  CEILING_DROP_M,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
@@ -77,8 +78,12 @@ function panelTileSet(panels) {
   return keys;
 }
 
+function ceilingBaseY(h) {
+  return h - 0.002 - CEILING_DROP_M;
+}
+
 function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
-  const ceilingY = h - 0.002;
+  const ceilingY = ceilingBaseY(h);
   const tileM = CEILING_TILE_M;
   const halfFace = CEILING_TILE_FACE_M / 2;
   const lightCells = panelTileSet(panels);
@@ -118,7 +123,7 @@ function addWalls(group, room, wallTex, h) {
 }
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
-  const ceilingY = h - 0.002;
+  const ceilingY = ceilingBaseY(h);
   const y = ceilingY + 0.0005;
   const face = new THREE.Mesh(
     _panelGeo,
