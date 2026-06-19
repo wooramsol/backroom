@@ -1,5 +1,6 @@
 import { createRng } from "./rng.js";
 import { CEILING_TILE_M } from "./textures.js";
+import { tileCenterLocal, chunkTileRange } from "./ceilingGrid.js";
 import {
   CHUNK,
   WALL_T,
@@ -12,6 +13,7 @@ import {
   PANEL_EDGE_INSET,
   PANEL_W,
   PANEL_H,
+  PANEL_SIZE,
 } from "./constants.js";
 
 export { CHUNK };
@@ -112,8 +114,7 @@ function generatePanels(rng, room) {
   const worldX = room.cx * CHUNK;
   const worldZ = room.cz * CHUNK;
   const tileM = CEILING_TILE_M;
-  const halfW = PANEL_W / 2;
-  const halfH = PANEL_H / 2;
+  const halfCell = PANEL_SIZE / 2;
 
   for (const zone of room.zones) {
     const inset = zoneInset(zone);
@@ -123,25 +124,21 @@ function generatePanels(rng, room) {
     const zHi = zone.z1 - inset;
     const zw = xHi - xLo;
     const zd = zHi - zLo;
-    if (zw < PANEL_W || zd < PANEL_H) continue;
+    if (zw < PANEL_SIZE || zd < PANEL_SIZE) continue;
 
     const narrow = Math.min(zw, zd) < 5.2;
     const skip = narrow ? 0.14 : 0.28;
     const tileStride = Math.max(2, Math.round(room.lightSpacing / tileM));
 
-    const tx0 = Math.floor((worldX + xLo + halfW) / tileM);
-    const tx1 = Math.floor((worldX + xHi - halfW) / tileM);
-    const tz0 = Math.floor((worldZ + zLo + halfH) / tileM);
-    const tz1 = Math.floor((worldZ + zHi - halfH) / tileM);
+    const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
     for (let tx = tx0; tx <= tx1; tx++) {
       if (tx % tileStride !== 0) continue;
       for (let tz = tz0; tz <= tz1; tz++) {
         if (tz % tileStride !== 0) continue;
-        const px = (tx + 0.5) * tileM - worldX;
-        const pz = (tz + 0.5) * tileM - worldZ;
+        const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
 
-        if (px - halfW < xLo || px + halfW > xHi || pz - halfH < zLo || pz + halfH > zHi) {
+        if (px - halfCell < xLo || px + halfCell > xHi || pz - halfCell < zLo || pz + halfCell > zHi) {
           continue;
         }
         if (hash(tx * 3.1 + tz + zone.x0 * 0.7) < skip) continue;

@@ -166,13 +166,18 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
   return tex;
 }
 
-/** @deprecated */ export function createCeilingPlenumMaterial() {
+/** Warm gap visible between ceiling tile pieces */
+export function createCeilingGapMaterial() {
   return new THREE.MeshStandardMaterial({
     color: CEILING_GAP_COLOR,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
+}
+
+/** @deprecated */ export function createCeilingPlenumMaterial() {
+  return createCeilingGapMaterial();
 }
 
 /** @deprecated */ export function createCeilingTiledTexture(sourceTex, tileM = CEILING_TILE_M) {
