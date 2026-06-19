@@ -1,15 +1,14 @@
 import * as THREE from "three";
-import { CARPET_COLOR, PANEL_W, PANEL_H } from "./constants.js";
+import { CARPET_COLOR, PANEL_SIZE } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
-/** User ceiling troffer — one image = one light panel (PANEL_W × PANEL_H) */
+/** User ceiling tile — one image = one light panel (square) */
 export const CEILING_URL = "./assets/backroom_ceiling.webp";
 export const WALL_TILE_W = 0.76;
 export const CARPET_TILE_M = 0.55;
-/** Acoustic troffer cell — matches fluorescent panel footprint */
-export const CEILING_TILE_W = PANEL_W;
-export const CEILING_TILE_D = PANEL_H;
+/** Ceiling tile — matches square PANEL_SIZE */
+export const CEILING_TILE_M = PANEL_SIZE;
 
 function canvasTex(draw, size = 256) {
   const c = document.createElement("canvas");
@@ -113,10 +112,10 @@ export function createCarpetTexture() {
   });
 }
 
-/** Store troffer physical size — one image covers one light panel cell */
+/** Store tile physical size — one image covers one light panel cell */
 export function applyCeilingTileSize(tex) {
-  tex.userData.tileW = CEILING_TILE_W;
-  tex.userData.tileH = CEILING_TILE_D;
+  tex.userData.tileW = CEILING_TILE_M;
+  tex.userData.tileH = CEILING_TILE_M;
   return tex;
 }
 
@@ -179,17 +178,20 @@ export function createCeilingTileMaterial(tex) {
   });
 }
 
-/** Dark plenum between troffers — grid lines at troffer pitch */
+/** Dark plenum between tiles — square grid */
 export function createCeilingBackingTexture() {
   return canvasTex((ctx, size) => {
-    const cellW = size / 2;
-    const cellH = size;
+    const tiles = 2;
+    const cell = size / tiles;
     ctx.fillStyle = "#2e2c22";
     ctx.fillRect(0, 0, size, size);
     ctx.strokeStyle = "rgba(12,10,6,0.9)";
     ctx.lineWidth = 3;
-    ctx.strokeRect(1, 1, cellW - 2, cellH - 2);
-    ctx.strokeRect(cellW + 1, 1, cellW - 2, cellH - 2);
+    for (let y = 0; y < tiles; y++) {
+      for (let x = 0; x < tiles; x++) {
+        ctx.strokeRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+      }
+    }
   });
 }
 

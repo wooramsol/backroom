@@ -6,7 +6,7 @@ import {
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
-import { createTiledMaterial, tiledAtRect, CEILING_TILE_W, CEILING_TILE_D } from "./textures.js";
+import { createTiledMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -14,9 +14,9 @@ const CEILING_TILE_GAP = 0.034;
 const CEILING_TILE_THICK = 0.02;
 const _tileMatrix = new THREE.Matrix4();
 const _ceilingTileGeo = new THREE.BoxGeometry(
-  CEILING_TILE_W - CEILING_TILE_GAP,
+  CEILING_TILE_M - CEILING_TILE_GAP,
   CEILING_TILE_THICK,
-  CEILING_TILE_D - CEILING_TILE_GAP,
+  CEILING_TILE_M - CEILING_TILE_GAP,
 );
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
@@ -59,10 +59,9 @@ function addInnerWall(group, wallTex, h, wall) {
 }
 
 function addCeilingTiles(group, h, materials, worldX, worldZ) {
-  const backingMap = tiledAtRect(
+  const backingMap = tiledAt(
     materials.ceilingBackingTex,
-    CEILING_TILE_W,
-    CEILING_TILE_D,
+    CEILING_TILE_M,
     CHUNK,
     CHUNK,
     worldX,
@@ -76,16 +75,16 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
   group.add(backing);
 
   const geo = _ceilingTileGeo;
-  const nx = Math.ceil(CHUNK / CEILING_TILE_W);
-  const nz = Math.ceil(CHUNK / CEILING_TILE_D);
+  const nx = Math.ceil(CHUNK / CEILING_TILE_M);
+  const nz = Math.ceil(CHUNK / CEILING_TILE_M);
   const mesh = new THREE.InstancedMesh(geo, materials.ceilingTile, nx * nz);
-  const ox = (CHUNK - nx * CEILING_TILE_W) / 2 + CEILING_TILE_W / 2;
-  const oz = (CHUNK - nz * CEILING_TILE_D) / 2 + CEILING_TILE_D / 2;
+  const ox = (CHUNK - nx * CEILING_TILE_M) / 2 + CEILING_TILE_M / 2;
+  const oz = (CHUNK - nz * CEILING_TILE_M) / 2 + CEILING_TILE_M / 2;
   const y = h - CEILING_TILE_THICK / 2 - 0.001;
   let i = 0;
   for (let iz = 0; iz < nz; iz++) {
     for (let ix = 0; ix < nx; ix++) {
-      _tileMatrix.makeTranslation(ox + ix * CEILING_TILE_W, y, oz + iz * CEILING_TILE_D);
+      _tileMatrix.makeTranslation(ox + ix * CEILING_TILE_M, y, oz + iz * CEILING_TILE_M);
       mesh.setMatrixAt(i++, _tileMatrix);
     }
   }
