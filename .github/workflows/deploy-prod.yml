@@ -1,0 +1,51 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or tag to deploy
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-deploy-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Require user-provided wallpaper
+        run: |
+          if [ ! -f public/assets/backroom_wallpaper.webp ]; then
+            echo "::error::Add your wallpaper at public/assets/backroom_wallpaper.webp (do not auto-generate)."
+            exit 1
+          fi
+
+      - run: npm ci
+      - name: Set build time
+        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+      - run: npm run build
+        env:
+          VITE_BASE: /backroom-live/
+          BUILD_ENV: prod
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_access_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          external_repository: wooramsol/backroom-live
+          publish_branch: gh-pages
+          publish_dir: ./dist
