@@ -40,9 +40,9 @@ export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 10;
-export const FOG_FAR = 42;
-export const FOG_COLOR = 0x1a1810;
+export const FOG_NEAR = 18;
+export const FOG_FAR = 48;
+export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — ~3 chunks matches FOG_FAR so distant fog is already built */
 export const GRID_RADIUS = 3;
 /** Full square synced on the title screen before play */
@@ -51,17 +51,18 @@ export const PRELOAD_RADIUS = 3;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** Low warm fill — dark rooms only; lit rooms use mid-room fill */
-export const AMBIENT_COLOR = 0xa09888;
-export const AMBIENT_INTENSITY = 0.055;
-/** Hemisphere — subtle wall tint */
-export const HEMI_SKY_COLOR = 0x6a6250;
-export const HEMI_GROUND_COLOR = 0x9a9470;
-export const HEMI_INTENSITY = 0.28;
-export const LIGHT_PANEL_COLOR = 0xfff8e8;
-export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
-/** Lit rectangle emissive look on the panel face */
-export const LIGHT_PANEL_INTENSITY = 0.48;
+/** ~4500K warm white — flat fluorescent office fill */
+export const FLUORESCENT_COLOR = 0xfff4e5;
+export const AMBIENT_COLOR = FLUORESCENT_COLOR;
+export const AMBIENT_INTENSITY = 0.48;
+/** Hemisphere — even indirect on ceiling, walls, and floor */
+export const HEMI_SKY_COLOR = 0xfff6ea;
+export const HEMI_GROUND_COLOR = 0xfff0e0;
+export const HEMI_INTENSITY = 0.62;
+export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
+export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
+/** Lit troffer face — subtle, not a spotlight */
+export const LIGHT_PANEL_INTENSITY = 0.22;
 /** Square ceiling panel — mesh footprint */
 export const PANEL_SIZE = 0.9;
 export const PANEL_W = PANEL_SIZE;
@@ -69,17 +70,20 @@ export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-export const PANEL_LIGHT_COLOR = 0xfff4d8;
-/** One soft fill at room mid-height — equal distance to floor and ceiling */
-export const ROOM_FILL_LIGHT_COLOR = 0xfff0d0;
-export const ROOM_FILL_LIGHT_INTENSITY = 11;
-export const ROOM_FILL_LIGHT_DISTANCE = CHUNK * 1.5;
+/** Soft rectangular troffer — area light, not a point source */
+export const PANEL_LIGHT_INTENSITY = 4.8;
+/** Wide upward plenum wash — keeps ceiling evenly lit between panels */
+export const CEILING_PLENUM_INTENSITY = 0.55;
+export const CEILING_PLENUM_SIZE = PANEL_SIZE * 2.8;
+/** Matte surfaces — flat fluorescent look, minimal specular */
+export const SURFACE_ROUGHNESS = 1;
+export const SURFACE_METALNESS = 0;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
-export const BLOOM_STRENGTH = 0.32;
-export const BLOOM_RADIUS = 0.3;
-export const BLOOM_THRESHOLD = 0.85;
+export const BLOOM_STRENGTH = 0.18;
+export const BLOOM_RADIUS = 0.35;
+export const BLOOM_THRESHOLD = 0.92;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
-export const TONE_MAPPING_EXPOSURE = 0.78;
+export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
