@@ -23,7 +23,6 @@ import {
   HEMI_SKY_COLOR,
   HEMI_GROUND_COLOR,
   HEMI_INTENSITY,
-  LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
   FLUORESCENT_COLOR,
@@ -80,8 +79,7 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const carpetTex = createCarpetTexture();
   const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
-
-  const _staticPanel = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
+  const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
   const materials = {
     wallTex: wallpaper,
@@ -89,7 +87,8 @@ async function init() {
     carpet: createCarpetSurfaceMaterial(floorMap),
     ceiling: createCeilingSurfaceMaterial(floorMap),
     lightPanelOn: new THREE.MeshBasicMaterial({
-      color: _staticPanel,
+      color: panelOnColor,
+      toneMapped: true,
     }),
     lightPanelOff: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_OFF_COLOR,

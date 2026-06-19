@@ -76,6 +76,7 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   );
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, y, panel.z);
+  face.renderOrder = 2;
   face.userData.panel = panel;
   panel.face = face;
   group.add(face);

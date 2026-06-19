@@ -61,8 +61,8 @@ export const HEMI_GROUND_COLOR = 0xfff0e0;
 export const HEMI_INTENSITY = 0.62;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
-/** Lit troffer face — subtle, not a spotlight */
-export const LIGHT_PANEL_INTENSITY = 0.22;
+/** Lit troffer face — bright square, glow stays inside panel bounds */
+export const LIGHT_PANEL_INTENSITY = 0.95;
 /** Square ceiling panel — mesh footprint */
 export const PANEL_SIZE = 0.9;
 export const PANEL_W = PANEL_SIZE;
@@ -70,18 +70,17 @@ export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** Soft rectangular troffer — area light, not a point source */
+/** Soft rectangular troffer — area light matches panel footprint exactly */
 export const PANEL_LIGHT_INTENSITY = 4.8;
-/** Wide upward plenum wash — keeps ceiling evenly lit between panels */
-export const CEILING_PLENUM_INTENSITY = 0.55;
-export const CEILING_PLENUM_SIZE = PANEL_SIZE * 2.8;
+/** Upward troffer wash — same square as panel, not a halo around it */
+export const CEILING_PLENUM_INTENSITY = 0.42;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
-/** Subtle bloom on bright rectangular panels (half-res for perf) */
-export const BLOOM_STRENGTH = 0.18;
-export const BLOOM_RADIUS = 0.35;
-export const BLOOM_THRESHOLD = 0.92;
+/** Subtle bloom — tight to bright panel squares only */
+export const BLOOM_STRENGTH = 0.14;
+export const BLOOM_RADIUS = 0.18;
+export const BLOOM_THRESHOLD = 0.97;
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;

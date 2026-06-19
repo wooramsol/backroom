@@ -4,10 +4,9 @@ import {
   FOG_FAR,
   FLUORESCENT_COLOR,
   PANEL_LIGHT_INTENSITY,
+  CEILING_PLENUM_INTENSITY,
   PANEL_W,
   PANEL_H,
-  CEILING_PLENUM_INTENSITY,
-  CEILING_PLENUM_SIZE,
 } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
@@ -22,7 +21,7 @@ const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
 const _nearby = [];
 const _visible = [];
 
-/** Soft rectangular troffers — down fill + wide up plenum per fixture */
+/** Rectangular troffers — down + up area lights, both panel-sized squares */
 export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
@@ -43,8 +42,8 @@ export class PanelLightPool {
       const plenum = new THREE.RectAreaLight(
         FLUORESCENT_COLOR,
         0,
-        CEILING_PLENUM_SIZE,
-        CEILING_PLENUM_SIZE,
+        PANEL_W,
+        PANEL_H,
       );
       plenum.rotation.copy(_up);
       plenum.visible = false;
@@ -155,7 +154,7 @@ export class PanelLightPool {
       light.intensity = lit;
       plenum.intensity = lit * CEILING_PLENUM_INTENSITY;
       light.position.set(fixture.wx, fixture.wy, fixture.wz);
-      plenum.position.set(fixture.wx, fixture.wy + 0.015, fixture.wz);
+      plenum.position.set(fixture.wx, fixture.wy, fixture.wz);
       light.visible = true;
       plenum.visible = true;
       this.assigned.push(fixture);
