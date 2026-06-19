@@ -10,9 +10,7 @@ function buildId() {
 
 function buildTime() {
   if (process.env.BUILD_TIME) return process.env.BUILD_TIME;
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" });
 }
 
 export default defineConfig({

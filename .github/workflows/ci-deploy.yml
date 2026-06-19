@@ -35,7 +35,7 @@ jobs:
 
       - run: npm ci
       - name: Set build time
-        run: echo "BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -97,7 +97,7 @@ jobs:
 
       - run: npm ci
       - name: Set build time
-        run: echo "BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -127,7 +127,7 @@ jobs:
 
       - run: npm ci
       - name: Set build time
-        run: echo "BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
