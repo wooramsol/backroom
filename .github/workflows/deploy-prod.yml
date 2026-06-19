@@ -47,7 +47,7 @@ jobs:
 
       - uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_access_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
           external_repository: wooramsol/backroom-live
           publish_branch: gh-pages
           publish_dir: ./dist

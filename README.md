@@ -17,9 +17,7 @@
 
 1. **개발** — 이 저장소(`backroom`) **Settings → Pages → `gh-pages` / `/(root)`**
 2. **운영** — [`backroom-live`](https://github.com/wooramsol/backroom-live) 저장소 생성 후 **Settings → Pages → `gh-pages` / `/(root)`**
-3. **운영 배포 토큰** — 이 저장소(`backroom`) **Settings → Secrets → Actions** 에 `PAGES_DEPLOY_TOKEN` 추가  
-   - GitHub **Personal Access Token** (classic) — `repo` 권한  
-   - `backroom-live` 의 `gh-pages` 브랜치에 push 할 수 있어야 함
+3. **운영 배포 토큰** — `backroom` **Settings → Secrets → Actions** 에 `PAGES_DEPLOY_TOKEN` 추가 (PAT classic, `repo` 권한)
 
 ## 로컬 실행
 
