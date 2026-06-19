@@ -174,6 +174,7 @@ export function createCeilingTileMaterial(tex) {
   return new THREE.MeshBasicMaterial({
     map: tex,
     color: 0xffffff,
+    side: THREE.DoubleSide,
   });
 }
 
