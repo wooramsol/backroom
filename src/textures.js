@@ -98,8 +98,31 @@ export function createSurfaceMaterial(map = null) {
   return createSurfaceMaterial(map);
 }
 
-/** One troffer cell — bottom.jpg tile with a warm recessed seam (reference look) */
-export function createCeilingTiledTexture(sourceTex, tileM = CEILING_TILE_M) {
+/** Single ceiling tile face — bottom.jpg, one cell */
+export function createCeilingTileFaceTexture(sourceTex) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, 0, 0, size, size);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
+/** Tiled seam backing — warm grooves between tile pieces */
+export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
   const img = sourceTex?.image;
   const size = 256;
   const canvas = document.createElement("canvas");
@@ -152,14 +175,12 @@ export function createCeilingTiledTexture(sourceTex, tileM = CEILING_TILE_M) {
   });
 }
 
-/** @deprecated */ export function createCeilingTileFaceTexture(sourceTex) {
-  const tex = createCeilingTiledTexture(sourceTex);
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
+/** @deprecated */ export function createCeilingTiledTexture(sourceTex, tileM = CEILING_TILE_M) {
+  return createCeilingSeamTexture(sourceTex, tileM);
 }
 
 /** @deprecated */ export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
-  return createCeilingTiledTexture(sourceTex, tileM);
+  return createCeilingSeamTexture(sourceTex, tileM);
 }
 
 /** @deprecated */ export function createCarpetSurfaceMaterial(map) {

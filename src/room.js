@@ -150,6 +150,8 @@ function generatePanels(rng, room) {
         panels.push({
           x: px,
           z: pz,
+          tx,
+          tz,
           on: rng.chance(narrow ? PANEL_ON_CHANCE * 0.92 : PANEL_ON_CHANCE),
           bright: 0.9 + hash(tz + zone.z0) * 0.14,
         });
