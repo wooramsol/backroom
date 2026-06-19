@@ -65,6 +65,10 @@ export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 export const LIGHT_PANEL_INTENSITY = 0.95;
 /** Square ceiling panel — mesh footprint */
 export const PANEL_SIZE = 0.9;
+/** Visible clearance between ceiling troffer tiles (metres) */
+export const CEILING_TILE_GAP_M = 0.018;
+/** Plenum visible in tile gaps */
+export const CEILING_PLENUM_COLOR = 0x3a3830;
 export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
