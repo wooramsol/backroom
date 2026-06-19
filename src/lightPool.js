@@ -18,13 +18,6 @@ const _viewDistSq = FOG_FAR * FOG_FAR;
 const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
 const _nearby = [];
 const _visible = [];
-const WALL_LIGHT_FULL = 2.4;
-
-function wallLightScale(clearance) {
-  if (!Number.isFinite(clearance) || clearance >= WALL_LIGHT_FULL) return 1;
-  const t = Math.max(0, clearance / WALL_LIGHT_FULL);
-  return 0.32 + 0.68 * t * t;
-}
 
 /** Shared RectAreaLights — nearby ring + frustum-ahead assignment */
 export class PanelLightPool {
@@ -133,8 +126,7 @@ export class PanelLightPool {
       const fixture = picks[i];
       const light = this.lights[i];
       fixture.light = light;
-      light.intensity =
-        PANEL_LIGHT_INTENSITY * fixture.panel.bright * wallLightScale(fixture.wallClear);
+      light.intensity = PANEL_LIGHT_INTENSITY * fixture.panel.bright;
       light.position.set(fixture.wx, fixture.wy, fixture.wz);
       light.visible = true;
       this.assigned.push(fixture);
