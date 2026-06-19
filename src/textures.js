@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CARPET_COLOR, PANEL_SIZE } from "./constants.js";
+import { CARPET_COLOR, PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -47,8 +47,8 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   map.repeat.set(widthM / tileW, heightM / tileH);
   const mat = new THREE.MeshStandardMaterial({
     map,
-    roughness: 0.92,
-    metalness: 0,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
     ...opts,
   });
   _wallMatCache.set(key, mat);
@@ -80,13 +80,24 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
   return t;
 }
 
-/** Carpet — floor and ceiling share the same Standard material */
+/** Carpet floor — matte */
 export function createCarpetSurfaceMaterial(map) {
   return new THREE.MeshStandardMaterial({
     map,
     color: CARPET_COLOR,
-    roughness: 0.94,
-    metalness: 0,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+    side: THREE.DoubleSide,
+  });
+}
+
+/** Ceiling — same carpet tile, full matte for flat troffer bounce */
+export function createCeilingSurfaceMaterial(map) {
+  return new THREE.MeshStandardMaterial({
+    map,
+    color: CARPET_COLOR,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }

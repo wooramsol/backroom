@@ -1,9 +1,11 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   loadWallpaperOrFallback,
   tiled,
   createCarpetSurfaceMaterial,
+  createCeilingSurfaceMaterial,
   CARPET_TILE_M,
 } from "./textures.js";
 import { World } from "./world.js";
@@ -24,6 +26,7 @@ import {
   LIGHT_PANEL_COLOR,
   LIGHT_PANEL_OFF_COLOR,
   LIGHT_PANEL_INTENSITY,
+  FLUORESCENT_COLOR,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -51,6 +54,7 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -77,12 +81,13 @@ async function init() {
   const carpetTex = createCarpetTexture();
   const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
 
-  const _staticPanel = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
+  const _staticPanel = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
   const materials = {
     wallTex: wallpaper,
     carpetTex,
     carpet: createCarpetSurfaceMaterial(floorMap),
+    ceiling: createCeilingSurfaceMaterial(floorMap),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: _staticPanel,
     }),
@@ -192,7 +197,7 @@ async function init() {
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      world.updateRoomLight(player.position);
+      world.updateLights(camera);
     }
 
     composer.render();

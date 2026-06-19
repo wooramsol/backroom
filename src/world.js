@@ -1,12 +1,8 @@
-import * as THREE from "three";
-import { CHUNK, generateRoom, appendRoomWalls, roomLitStrength } from "./room.js";
+import { CHUNK, generateRoom, appendRoomWalls } from "./room.js";
 import {
   GRID_RADIUS,
   PRELOAD_RADIUS,
   EDGE_PREFETCH,
-  ROOM_FILL_LIGHT_COLOR,
-  ROOM_FILL_LIGHT_INTENSITY,
-  ROOM_FILL_LIGHT_DISTANCE,
 } from "./constants.js";
 import {
   createRoomBuildState,
@@ -15,6 +11,7 @@ import {
   finalizeRoomBuild,
   buildRoomMesh,
 } from "./roomMesh.js";
+import { PanelLightPool } from "./lightPool.js";
 
 const PANELS_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
@@ -32,18 +29,12 @@ export class World {
     this.loadQueue = [];
     this.pendingKeys = new Set();
     this.disposeQueue = [];
+    this.fixtures = [];
     this.cellCx = NaN;
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
-
-    this.roomFillLight = new THREE.PointLight(
-      ROOM_FILL_LIGHT_COLOR,
-      0,
-      ROOM_FILL_LIGHT_DISTANCE,
-      2,
-    );
-    scene.add(this.roomFillLight);
+    this.lightPool = new PanelLightPool(scene);
   }
 
   key(cx, cz) {
@@ -124,40 +115,42 @@ export class World {
     this.pendingColliderRebuild = false;
   }
 
+  addFixtures(mesh) {
+    const f = mesh.userData.fixtures;
+    if (f?.length) {
+      this.fixtures.push(...f);
+      this.lightPool.markDirty();
+    }
+  }
+
+  removeFixtures(mesh) {
+    const f = mesh.userData.fixtures;
+    if (!f?.length) return;
+    const drop = new Set(f);
+    this.fixtures = this.fixtures.filter((item) => !drop.has(item));
+    for (const fixture of f) {
+      fixture.light = null;
+      fixture.plenumLight = null;
+    }
+    this.lightPool.dropFixtures(f);
+    this.lightPool.markDirty();
+  }
+
   consumeColliderRebuild() {
     const v = this.collidersDirty;
     this.collidersDirty = false;
     return v;
   }
 
-  roomAt(playerPos) {
-    const cx = Math.floor(playerPos.x / CHUNK);
-    const cz = Math.floor(playerPos.z / CHUNK);
-    return this.chunks.get(this.key(cx, cz))?.room ?? null;
-  }
-
-  /** One soft fill at room mid-height — equal reach to floor and ceiling */
-  updateRoomLight(playerPos) {
-    const room = this.roomAt(playerPos);
-    if (!room) {
-      this.roomFillLight.intensity = 0;
-      return;
-    }
-
-    const lit = roomLitStrength(room);
-    const h = room.height;
-    this.roomFillLight.position.set(
-      room.cx * CHUNK + CHUNK / 2,
-      h * 0.5,
-      room.cz * CHUNK + CHUNK / 2,
-    );
-    this.roomFillLight.intensity = lit * ROOM_FILL_LIGHT_INTENSITY;
+  updateLights(camera) {
+    this.lightPool.update(this.fixtures, camera);
   }
 
   attachChunk(cx, cz, room, build) {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     this.chunks.set(k, { mesh: build.group, room });
+    this.addFixtures(build.group);
   }
 
   spawnComplete(cx, cz) {
@@ -166,6 +159,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
+    this.addFixtures(mesh);
   }
 
   despawn(k) {
@@ -173,6 +167,7 @@ export class World {
     if (!entry) return;
     const { mesh } = entry;
     if (mesh) {
+      this.removeFixtures(mesh);
       this.scene.remove(mesh);
       this.disposeQueue.push(mesh);
     }
@@ -194,7 +189,6 @@ export class World {
     this.cellCz = cz;
     this.lastPrefetchEdge = this.nearPrefetchEdge(playerPos, cx, cz);
     this.spawnComplete(cx, cz);
-    this.updateRoomLight(playerPos);
   }
 
   update(playerPos) {
@@ -249,6 +243,7 @@ export class World {
   _finishPrefetchJob(job) {
     const k = this.key(job.cx, job.cz);
     if (job.build?.group) {
+      this.removeFixtures(job.build.group);
       this.scene.remove(job.build.group);
       this.disposeQueue.push(job.build.group);
     }
@@ -257,6 +252,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
+    this.addFixtures(mesh);
     this.pendingKeys.delete(k);
   }
 
@@ -312,6 +308,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
+    this.addFixtures(mesh);
     this.pendingKeys.delete(k);
   }
 
@@ -352,7 +349,8 @@ export class World {
     else this.flushColliders();
 
     this.preloading = false;
-    this.updateRoomLight(playerPos);
+    this.lightPool.markDirty();
+    this.lightPool.update(this.fixtures, camera);
     onProgress?.(total || 1, total || 1);
   }
 

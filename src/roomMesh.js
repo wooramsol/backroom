@@ -52,7 +52,7 @@ function addInnerWall(group, wallTex, h, wall) {
 }
 
 function addCeilingTiles(group, h, materials) {
-  const ceiling = new THREE.Mesh(_chunkPlane, materials.carpet);
+  const ceiling = new THREE.Mesh(_chunkPlane, materials.ceiling);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h - 0.002;
   group.add(ceiling);
@@ -68,7 +68,7 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-function addOnePanel(group, materials, h, panel) {
+function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const y = h - CEILING_TILE_THICK - 0.006;
   const face = new THREE.Mesh(
     _panelGeo,
@@ -79,6 +79,20 @@ function addOnePanel(group, materials, h, panel) {
   face.userData.panel = panel;
   panel.face = face;
   group.add(face);
+
+  if (!panel.on) return;
+
+  face.userData.fluorescent = true;
+
+  fixtures.push({
+    panel,
+    face,
+    light: null,
+    plenumLight: null,
+    wx: roomCx * CHUNK + panel.x,
+    wy: y,
+    wz: roomCz * CHUNK + panel.z,
+  });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -90,6 +104,7 @@ export function createRoomBuildState(room, materials) {
     materials,
     panelIdx: 0,
     shellDone: false,
+    fixtures: [],
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
@@ -118,7 +133,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel);
+    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz);
     state.panelIdx++;
     added++;
   }
@@ -127,8 +142,9 @@ export function buildPanelBatch(state, maxPanels) {
 }
 
 export function finalizeRoomBuild(state) {
-  const { group, room } = state;
+  const { group, room, fixtures } = state;
   group.userData.room = room;
+  group.userData.fixtures = fixtures;
   return group;
 }
 
