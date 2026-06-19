@@ -51,32 +51,29 @@ export const PRELOAD_RADIUS = 3;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** Low warm fill — lit rooms come from ceiling fixtures */
+/** Low warm fill — dark rooms only; lit rooms use mid-room fill */
 export const AMBIENT_COLOR = 0xa09888;
 export const AMBIENT_INTENSITY = 0.055;
-/** Hemisphere — sky tints floor, ground tints ceiling (down-facing carpet) */
+/** Hemisphere — subtle wall tint */
 export const HEMI_SKY_COLOR = 0x6a6250;
 export const HEMI_GROUND_COLOR = 0x9a9470;
-export const HEMI_INTENSITY = 0.4;
+export const HEMI_INTENSITY = 0.28;
 export const LIGHT_PANEL_COLOR = 0xfff8e8;
 export const LIGHT_PANEL_OFF_COLOR = 0x3a3628;
 /** Lit rectangle emissive look on the panel face */
 export const LIGHT_PANEL_INTENSITY = 0.48;
-/** Square ceiling panel — mesh + RectAreaLight footprint */
+/** Square ceiling panel — mesh footprint */
 export const PANEL_SIZE = 0.9;
 export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** RectAreaLight — same rectangle as panel face, points down */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
-export const PANEL_LIGHT_INTENSITY = 16;
-/** Room-wide soft bounce when panels are on — scales with lit panel ratio */
+/** One soft fill at room mid-height — equal distance to floor and ceiling */
 export const ROOM_FILL_LIGHT_COLOR = 0xfff0d0;
-export const ROOM_FILL_LIGHT_INTENSITY = 8.5;
-export const ROOM_FILL_LIGHT_DISTANCE = CHUNK * 1.45;
-export const CEILING_INDIRECT_EMISSIVE = 0.13;
+export const ROOM_FILL_LIGHT_INTENSITY = 11;
+export const ROOM_FILL_LIGHT_DISTANCE = CHUNK * 1.5;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
 export const BLOOM_STRENGTH = 0.32;
 export const BLOOM_RADIUS = 0.3;

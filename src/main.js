@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   createCarpetTexture,
   loadWallpaperOrFallback,
@@ -52,7 +51,6 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -194,7 +192,7 @@ async function init() {
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      world.updateLights(camera);
+      world.updateRoomLight(player.position);
     }
 
     composer.render();
