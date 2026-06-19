@@ -28,7 +28,6 @@ import {
   CAMERA_FOV,
   CAMERA_NEAR,
   ENABLE_FLUORESCENT_HUM,
-  MAX_PIXEL_RATIO,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -51,9 +50,9 @@ function syncCrosshair() {
   crosshair.style.top = `${rect.top + rect.height / 2}px`;
 }
 
-const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 RectAreaLightUniformsLib.init();
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -202,7 +201,7 @@ async function init() {
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
       const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
-      world.processLoadQueue(player.position, loadBudget, camera);
+      world.processLoadQueue(player.position, loadBudget);
     }
   }
 
