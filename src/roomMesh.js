@@ -10,14 +10,18 @@ import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
+const WALL_CORNER = WALL_T * 0.5;
+
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
-  const add = (s0, s1, segH, segY) => {
-    const slen = s1 - s0;
+  const add = (s0, s1, segH, segY, capStart = true, capEnd = true) => {
+    const es0 = capStart ? s0 - WALL_CORNER : s0;
+    const es1 = capEnd ? s1 + WALL_CORNER : s1;
+    const slen = es1 - es0;
     if (slen < 0.1) return;
-    const smid = (s0 + s1) / 2;
+    const smid = (es0 + es1) / 2;
     const geo =
       axis === "z"
         ? new THREE.BoxGeometry(slen, segH, WALL_T)
@@ -30,12 +34,22 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   };
 
   if (door) {
-    add(a0, mid - dw, DOOR_H, 0);
-    add(mid + dw, a1, DOOR_H, 0);
-    add(a0, a1, h - DOOR_H, DOOR_H);
+    add(a0, mid - dw, DOOR_H, 0, true, false);
+    add(mid + dw, a1, DOOR_H, 0, false, true);
+    add(a0, a1, h - DOOR_H, DOOR_H, true, true);
   } else {
-    add(a0, a1, h, 0);
+    add(a0, a1, h, 0, true, true);
   }
+}
+
+function addCornerPost(group, wallTex, h, x, z) {
+  const ox = x <= 0 ? -WALL_CORNER : WALL_CORNER;
+  const oz = z <= 0 ? -WALL_CORNER : WALL_CORNER;
+  const geo = new THREE.BoxGeometry(WALL_T, h, WALL_T);
+  const mat = createTiledMaterial(wallTex, WALL_T, h);
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x + ox, h / 2, z + oz);
+  group.add(m);
 }
 
 function addInnerWall(group, wallTex, h, wall) {
@@ -54,6 +68,10 @@ function addWalls(group, room, wallTex, h) {
   for (const wall of room.innerWalls) {
     addInnerWall(group, wallTex, h, wall);
   }
+  addCornerPost(group, wallTex, h, 0, 0);
+  addCornerPost(group, wallTex, h, CHUNK, 0);
+  addCornerPost(group, wallTex, h, 0, CHUNK);
+  addCornerPost(group, wallTex, h, CHUNK, CHUNK);
 }
 
 /** On panel = bright rectangle; RectAreaLight comes from the shared pool */
