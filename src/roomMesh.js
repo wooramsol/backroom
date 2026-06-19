@@ -10,7 +10,77 @@ import { createCarpetSurfaceMaterial, createTiledMaterial, tiledAt, CARPET_TILE_
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
-const WALL_CORNER = WALL_T * 0.5;
+const WALL_CORNER = WALL_T * 0.55;
+
+function addCornerFill(group, wallTex, h, x, z, sx, sz) {
+  const mx = x + sx * WALL_CORNER;
+  const mz = z + sz * WALL_CORNER;
+  const geo = new THREE.BoxGeometry(WALL_T, h, WALL_T);
+  const mat = createTiledMaterial(wallTex, WALL_T, h);
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(mx, h / 2, mz);
+  group.add(m);
+}
+
+function addCornerPost(group, wallTex, h, x, z) {
+  const ox = x <= 0 ? -WALL_CORNER : WALL_CORNER;
+  const oz = z <= 0 ? -WALL_CORNER : WALL_CORNER;
+  addCornerFill(group, wallTex, h, x, z, ox > 0 ? 1 : -1, oz > 0 ? 1 : -1);
+}
+
+function wallLineSegments(room) {
+  const segs = [
+    { axis: "z", pos: 0, a0: 0, a1: CHUNK },
+    { axis: "z", pos: CHUNK, a0: 0, a1: CHUNK },
+    { axis: "x", pos: 0, a0: 0, a1: CHUNK },
+    { axis: "x", pos: CHUNK, a0: 0, a1: CHUNK },
+  ];
+  for (const wall of room.innerWalls) {
+    segs.push({ axis: wall.axis, pos: wall.pos, a0: wall.span0, a1: wall.span1 });
+  }
+  return segs;
+}
+
+function wallJunction(zWall, xWall) {
+  const x = xWall.pos;
+  const z = zWall.pos;
+  const eps = 0.02;
+  if (x < zWall.a0 - eps || x > zWall.a1 + eps) return null;
+  if (z < xWall.a0 - eps || z > xWall.a1 + eps) return null;
+  return { x, z };
+}
+
+function addWallJunctions(group, room, wallTex, h) {
+  const segs = wallLineSegments(room);
+  const seen = new Set();
+  const fills = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ];
+
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const a = segs[i];
+      const b = segs[j];
+      if (a.axis === b.axis) continue;
+
+      const zWall = a.axis === "z" ? a : b;
+      const xWall = a.axis === "x" ? a : b;
+      const hit = wallJunction(zWall, xWall);
+      if (!hit) continue;
+
+      const key = `${Math.round(hit.x * 40)}:${Math.round(hit.z * 40)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      for (const [sx, sz] of fills) {
+        addCornerFill(group, wallTex, h, hit.x, hit.z, sx, sz);
+      }
+    }
+  }
+}
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -42,16 +112,6 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   }
 }
 
-function addCornerPost(group, wallTex, h, x, z) {
-  const ox = x <= 0 ? -WALL_CORNER : WALL_CORNER;
-  const oz = z <= 0 ? -WALL_CORNER : WALL_CORNER;
-  const geo = new THREE.BoxGeometry(WALL_T, h, WALL_T);
-  const mat = createTiledMaterial(wallTex, WALL_T, h);
-  const m = new THREE.Mesh(geo, mat);
-  m.position.set(x + ox, h / 2, z + oz);
-  group.add(m);
-}
-
 function addInnerWall(group, wallTex, h, wall) {
   if (wall.axis === "x") {
     wallSeg(group, wallTex, h, "x", wall.pos, wall.span0, wall.span1, wall.door);
@@ -72,6 +132,7 @@ function addWalls(group, room, wallTex, h) {
   addCornerPost(group, wallTex, h, CHUNK, 0);
   addCornerPost(group, wallTex, h, 0, CHUNK);
   addCornerPost(group, wallTex, h, CHUNK, CHUNK);
+  addWallJunctions(group, room, wallTex, h);
 }
 
 /** On panel = bright rectangle; RectAreaLight comes from the shared pool */
