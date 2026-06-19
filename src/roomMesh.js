@@ -15,9 +15,10 @@ function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
+  const cap = WALL_T * 0.5;
   const add = (s0, s1, segH, segY, capStart = true, capEnd = true) => {
-    const es0 = capStart ? s0 - WALL_T : s0;
-    const es1 = capEnd ? s1 + WALL_T : s1;
+    const es0 = capStart ? s0 - cap : s0;
+    const es1 = capEnd ? s1 + cap : s1;
     const slen = es1 - es0;
     if (slen < 0.1) return;
     const smid = (es0 + es1) / 2;
