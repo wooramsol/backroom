@@ -57,12 +57,13 @@ jobs:
           DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
         run: |
           TOKEN="$(printf '%s' "$DEPLOY_TOKEN" | tr -d '[:space:]')"
+          printf '%s\n' "$TOKEN" | gh auth login --with-token
+          gh auth setup-git
           cd dist
           touch .nojekyll
           git init -q
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config credential.helper "!f() { echo username=x-access-token; echo password=${TOKEN}; }; f"
           git add -A
           git commit -m "Deploy production ${BUILD_TIME} KST"
           git branch -M gh-pages
