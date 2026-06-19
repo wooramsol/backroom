@@ -2,14 +2,24 @@
 
 웹에서 가볍게 돌아다닐 수 있는 무한 백룸(Level 0) 탐험 데모입니다. Three.js로 구현했습니다.
 
-## 플레이 (배포 버전)
+## 플레이
 
-**https://wooramsol.github.io/backroom/**
+| 환경 | URL | 배포 |
+|------|-----|------|
+| **개발** | https://wooramsol.github.io/backroom/ | `main` push 시 자동 |
+| **운영 (테스트)** | https://wooramsol.github.io/backroom-live/ | 수동 (아래 참고) |
 
 - `cursor/*` 브랜치 PR → 빌드 성공 시 **자동 머지**
-- `main` push → `gh-pages` 브랜치에 **자동 배포**
+- `main` push → 개발 서버(`gh-pages`)에 **자동 배포**
+- 운영 배포는 **GitHub Actions → Deploy Production → Run workflow** 또는 에이전트에게 "운영 배포해줘" 요청
 
-> 최초 1회: GitHub 저장소 **Settings → Pages → Build from branch → `gh-pages` / `/(root)`** 선택
+### 최초 1회 설정
+
+1. **개발** — 이 저장소(`backroom`) **Settings → Pages → `gh-pages` / `/(root)`**
+2. **운영** — [`backroom-live`](https://github.com/wooramsol/backroom-live) 저장소 생성 후 **Settings → Pages → `gh-pages` / `/(root)`**
+3. **운영 배포 토큰** — 이 저장소(`backroom`) **Settings → Secrets → Actions** 에 `PAGES_DEPLOY_TOKEN` 추가  
+   - GitHub **Personal Access Token** (classic) — `repo` 권한  
+   - `backroom-live` 의 `gh-pages` 브랜치에 push 할 수 있어야 함
 
 ## 로컬 실행
 

@@ -19,6 +19,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_ID__: JSON.stringify(buildId()),
     __BUILD_TIME__: JSON.stringify(buildTime()),
+    __BUILD_ENV__: JSON.stringify(process.env.BUILD_ENV || "local"),
   },
   server: {
     host: true,
