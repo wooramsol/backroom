@@ -6,6 +6,7 @@ import {
   createCeilingTileMaterial,
   createCeilingBackingMaterial,
   loadWallpaperOrFallback,
+  loadCeilingOrFallback,
   tiled,
   createCarpetSurfaceMaterial,
   CARPET_TILE_M,
@@ -79,6 +80,7 @@ const hum = new FluorescentHum();
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
+  const ceilingTex = await loadCeilingOrFallback(loader);
   const carpetTex = createCarpetTexture();
   const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
   const ceilingBackingTex = createCeilingBackingTexture();
@@ -91,7 +93,7 @@ async function init() {
     carpet: createCarpetSurfaceMaterial(floorMap),
     ceilingBackingTex,
     ceilingBacking: createCeilingBackingMaterial(ceilingBackingTex),
-    ceilingTile: createCeilingTileMaterial(),
+    ceilingTile: createCeilingTileMaterial(ceilingTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: _staticPanel,
     }),

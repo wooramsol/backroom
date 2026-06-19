@@ -1,12 +1,15 @@
 import * as THREE from "three";
-import { CARPET_COLOR } from "./constants.js";
+import { CARPET_COLOR, PANEL_W, PANEL_H } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
+/** User ceiling troffer — one image = one light panel (PANEL_W × PANEL_H) */
+export const CEILING_URL = "./assets/backroom_ceiling.webp";
 export const WALL_TILE_W = 0.76;
 export const CARPET_TILE_M = 0.55;
-/** Acoustic drop-ceiling tile — ~60 cm (2 ft) */
-export const CEILING_TILE_M = 0.6;
+/** Acoustic troffer cell — matches fluorescent panel footprint */
+export const CEILING_TILE_W = PANEL_W;
+export const CEILING_TILE_D = PANEL_H;
 
 function canvasTex(draw, size = 256) {
   const c = document.createElement("canvas");
@@ -68,6 +71,16 @@ export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
   return t;
 }
 
+/** Rectangular tile repeat — e.g. ceiling troffers 1.2m × 0.6m */
+export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
+  const t = tex.clone();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(w / tileW, h / tileD);
+  const frac = (n) => ((n % 1) + 1) % 1;
+  t.offset.set(frac(worldX / tileW), frac(worldZ / tileD));
+  return t;
+}
+
 /** Carpet — floor and ceiling share the same Standard material */
 export function createCarpetSurfaceMaterial(map) {
   return new THREE.MeshStandardMaterial({
@@ -100,11 +113,46 @@ export function createCarpetTexture() {
   });
 }
 
-/** Ceiling — acoustic drop tile (single cell for instanced mesh) */
+/** Store troffer physical size — one image covers one light panel cell */
+export function applyCeilingTileSize(tex) {
+  tex.userData.tileW = CEILING_TILE_W;
+  tex.userData.tileH = CEILING_TILE_D;
+  return tex;
+}
+
+export function loadCeiling(loader) {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      CEILING_URL,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+        applyCeilingTileSize(tex);
+        resolve(tex);
+      },
+      undefined,
+      reject,
+    );
+  });
+}
+
+export async function loadCeilingOrFallback(loader) {
+  try {
+    return await loadCeiling(loader);
+  } catch {
+    const tex = createCeilingTileTexture();
+    applyCeilingTileSize(tex);
+    return tex;
+  }
+}
+
+/** Fallback procedural troffer tile */
 export function createCeilingTileTexture() {
   return canvasTex((ctx, size) => {
-    const inset = Math.round(size * 0.1);
-    const groove = Math.max(1, Math.round(size * 0.018));
+    const inset = Math.round(size * 0.08);
+    const groove = Math.max(1, Math.round(size * 0.02));
 
     ctx.fillStyle = "#b8b080";
     ctx.fillRect(0, 0, size, size);
@@ -116,50 +164,32 @@ export function createCeilingTileTexture() {
     ctx.fillStyle = g;
     ctx.fillRect(inset, inset, size - inset * 2, size - inset * 2);
 
-    for (let i = 0; i < 120; i++) {
-      const x = inset + Math.random() * (size - inset * 2);
-      const y = inset + Math.random() * (size - inset * 2);
-      ctx.fillStyle = `rgba(90,80,40,${0.02 + Math.random() * 0.04})`;
-      ctx.fillRect(x, y, 2, 2);
-    }
-
-    ctx.strokeStyle = "rgba(70,60,30,0.45)";
+    ctx.strokeStyle = "rgba(50,45,25,0.55)";
     ctx.lineWidth = groove;
     ctx.strokeRect(groove / 2, groove / 2, size - groove, size - groove);
   });
 }
 
-export function createCeilingTileMaterial() {
-  const map = createCeilingTileTexture();
+export function createCeilingTileMaterial(tex) {
   return new THREE.MeshStandardMaterial({
-    map,
-    color: 0xf2eed0,
+    map: tex,
+    color: 0xffffff,
     roughness: 0.92,
     metalness: 0,
   });
 }
 
-/** Continuous ceiling backing — dark grid visible between drop tiles */
+/** Dark plenum between troffers — grid lines at troffer pitch */
 export function createCeilingBackingTexture() {
   return canvasTex((ctx, size) => {
-    const tiles = 4;
-    const cell = size / tiles;
-    ctx.fillStyle = "#3a3828";
+    const cellW = size / 2;
+    const cellH = size;
+    ctx.fillStyle = "#2e2c22";
     ctx.fillRect(0, 0, size, size);
-    ctx.strokeStyle = "rgba(20,18,12,0.85)";
-    ctx.lineWidth = 2;
-    for (let y = 0; y <= tiles; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * cell);
-      ctx.lineTo(size, y * cell);
-      ctx.stroke();
-    }
-    for (let x = 0; x <= tiles; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * cell, 0);
-      ctx.lineTo(x * cell, size);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = "rgba(12,10,6,0.9)";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1, 1, cellW - 2, cellH - 2);
+    ctx.strokeRect(cellW + 1, 1, cellW - 2, cellH - 2);
   });
 }
 

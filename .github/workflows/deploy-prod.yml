@@ -36,6 +36,10 @@ jobs:
             echo "::error::Add your wallpaper at public/assets/backroom_wallpaper.webp (do not auto-generate)."
             exit 1
           fi
+          if [ ! -f public/assets/backroom_ceiling.webp ]; then
+            echo "::error::Add your ceiling texture at public/assets/backroom_ceiling.webp."
+            exit 1
+          fi
 
       - run: npm ci
       - name: Set build time
