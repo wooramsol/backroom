@@ -72,8 +72,11 @@ export const PANEL_ON_CHANCE = 0.72;
 /** RectAreaLight — same rectangle as panel face, points down */
 export const PANEL_LIGHT_COLOR = 0xfff4d8;
 export const PANEL_LIGHT_INTENSITY = 16;
-/** Upward bounce from troffers onto the ceiling underside */
-export const CEILING_BOUNCE_RATIO = 0.18;
+/** Room-wide soft bounce when panels are on — scales with lit panel ratio */
+export const ROOM_FILL_LIGHT_COLOR = 0xfff0d0;
+export const ROOM_FILL_LIGHT_INTENSITY = 8.5;
+export const ROOM_FILL_LIGHT_DISTANCE = CHUNK * 1.45;
+export const CEILING_INDIRECT_EMISSIVE = 0.13;
 /** Subtle bloom on bright rectangular panels (half-res for perf) */
 export const BLOOM_STRENGTH = 0.32;
 export const BLOOM_RADIUS = 0.3;
