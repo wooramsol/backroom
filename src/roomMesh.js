@@ -1,15 +1,10 @@
 import * as THREE from "three";
-import { CHUNK, roomLitStrength } from "./room.js";
+import { CHUNK } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
   PANEL_W,
   PANEL_H,
-  PANEL_LIGHT_COLOR,
-  ROOM_FILL_LIGHT_COLOR,
-  ROOM_FILL_LIGHT_INTENSITY,
-  ROOM_FILL_LIGHT_DISTANCE,
-  CEILING_INDIRECT_EMISSIVE,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -56,32 +51,11 @@ function addInnerWall(group, wallTex, h, wall) {
   }
 }
 
-function addCeilingTiles(group, h, materials, room) {
-  const lit = roomLitStrength(room);
-  const mat = materials.carpet.clone();
-  if (lit > 0) {
-    mat.emissive = new THREE.Color(PANEL_LIGHT_COLOR);
-    mat.emissiveIntensity = lit * CEILING_INDIRECT_EMISSIVE;
-  }
-  const ceiling = new THREE.Mesh(_chunkPlane, mat);
+function addCeilingTiles(group, h, materials) {
+  const ceiling = new THREE.Mesh(_chunkPlane, materials.carpet);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h - 0.002;
   group.add(ceiling);
-}
-
-/** Soft fill across the whole room — mimics floor/wall bounce, not panel hotspots */
-function addRoomFillLight(group, h, room) {
-  const lit = roomLitStrength(room);
-  if (lit <= 0) return;
-
-  const light = new THREE.PointLight(
-    ROOM_FILL_LIGHT_COLOR,
-    lit * ROOM_FILL_LIGHT_INTENSITY,
-    ROOM_FILL_LIGHT_DISTANCE,
-    1.5,
-  );
-  light.position.set(CHUNK / 2, h * 0.5, CHUNK / 2);
-  group.add(light);
 }
 
 function addWalls(group, room, wallTex, h) {
@@ -94,8 +68,7 @@ function addWalls(group, room, wallTex, h) {
   }
 }
 
-/** On panel = bright rectangle; RectAreaLight comes from the shared pool */
-function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
+function addOnePanel(group, materials, h, panel) {
   const y = h - CEILING_TILE_THICK - 0.006;
   const face = new THREE.Mesh(
     _panelGeo,
@@ -106,19 +79,6 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   face.userData.panel = panel;
   panel.face = face;
   group.add(face);
-
-  if (!panel.on) return;
-
-  face.userData.fluorescent = true;
-
-  fixtures.push({
-    panel,
-    face,
-    light: null,
-    wx: roomCx * CHUNK + panel.x,
-    wy: y,
-    wz: roomCz * CHUNK + panel.z,
-  });
 }
 
 export function createRoomBuildState(room, materials) {
@@ -130,7 +90,6 @@ export function createRoomBuildState(room, materials) {
     materials,
     panelIdx: 0,
     shellDone: false,
-    fixtures: [],
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
@@ -145,8 +104,7 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  addCeilingTiles(group, h, materials, room);
-  addRoomFillLight(group, h, room);
+  addCeilingTiles(group, h, materials);
 
   addWalls(group, room, materials.wallTex, h);
   state.shellDone = true;
@@ -160,7 +118,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz);
+    addOnePanel(group, materials, h, panel);
     state.panelIdx++;
     added++;
   }
@@ -169,9 +127,8 @@ export function buildPanelBatch(state, maxPanels) {
 }
 
 export function finalizeRoomBuild(state) {
-  const { group, room, fixtures } = state;
+  const { group, room } = state;
   group.userData.room = room;
-  group.userData.fixtures = fixtures;
   return group;
 }
 
