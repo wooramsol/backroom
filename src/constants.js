@@ -88,10 +88,8 @@ export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
-/** Downward troffer point light — cheaper and stable vs RectAreaLight */
-export const PANEL_LIGHT_INTENSITY = 2.4;
-export const PANEL_LIGHT_DISTANCE = 11;
-export const PANEL_LIGHT_DECAY = 2;
+/** Downward square troffer — RectAreaLight matches panel footprint */
+export const PANEL_LIGHT_INTENSITY = 4.8;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
