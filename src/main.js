@@ -4,8 +4,7 @@ import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
   createSurfaceMaterial,
-  createCeilingPlenumMaterial,
-  createCeilingTileFaceTexture,
+  createCeilingTiledTexture,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -77,15 +76,15 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
+  const ceilingTex = createCeilingTiledTexture(surfaceTex);
   const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
+    ceilingTex,
     carpet: createSurfaceMaterial(),
-    ceilingPlenum: createCeilingPlenumMaterial(),
-    ceilingTile: createSurfaceMaterial(ceilingTileTex),
+    ceiling: createSurfaceMaterial(),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: true,

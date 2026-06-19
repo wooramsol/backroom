@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_PLENUM_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -98,72 +98,68 @@ export function createSurfaceMaterial(map = null) {
   return createSurfaceMaterial(map);
 }
 
-/** Matte plenum backing visible between ceiling tile pieces */
-export function createCeilingPlenumMaterial() {
+/** One troffer cell — bottom.jpg tile with a warm recessed seam (reference look) */
+export function createCeilingTiledTexture(sourceTex, tileM = CEILING_TILE_M) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const gapPx = Math.max(2, Math.round((size * CEILING_TILE_GAP_M) / tileM * 0.5));
+  const gapHex = `#${CEILING_GAP_COLOR.toString(16).padStart(6, "0")}`;
+
+  ctx.fillStyle = gapHex;
+  ctx.fillRect(0, 0, size, size);
+
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, gapPx, gapPx, size - gapPx * 2, size - gapPx * 2);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(gapPx, gapPx, size - gapPx * 2, size - gapPx * 2);
+  }
+
+  const edge = Math.max(2, Math.round(gapPx * 0.9));
+  const shade = (x0, y0, x1, y1, x, y, w, h) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, "rgba(70,66,42,0.14)");
+    g.addColorStop(1, "rgba(70,66,42,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  };
+  const inner = gapPx;
+  const face = size - gapPx * 2;
+  shade(inner, inner, inner + edge, inner, inner, inner, edge, face);
+  shade(size - inner, inner, size - inner - edge, inner, size - inner - edge, inner, edge, face);
+  shade(inner, inner, inner, inner + edge, inner, inner, face, edge);
+  shade(inner, size - inner, inner, size - inner - edge, inner, size - inner - edge, face, edge);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.userData.tileW = tileM;
+  tex.userData.tileH = tileM;
+  return tex;
+}
+
+/** @deprecated */ export function createCeilingPlenumMaterial() {
   return new THREE.MeshStandardMaterial({
-    color: CEILING_PLENUM_COLOR,
+    color: CEILING_GAP_COLOR,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }
 
-/** Single tile face — bottom.jpg with a soft edge shade (not a hard grid line) */
-export function createCeilingTileFaceTexture(sourceTex) {
-  const img = sourceTex?.image;
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d");
-
-  if (img?.width && img?.height) {
-    ctx.drawImage(img, 0, 0, size, size);
-  } else {
-    ctx.fillStyle = "#e7e191";
-    ctx.fillRect(0, 0, size, size);
-  }
-
-  const edge = Math.max(4, Math.round(size * 0.05));
-
-  let g = ctx.createLinearGradient(0, 0, edge, 0);
-  g.addColorStop(0, "rgba(36,34,24,0.22)");
-  g.addColorStop(1, "rgba(36,34,24,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, edge, size);
-
-  g = ctx.createLinearGradient(size, 0, size - edge, 0);
-  g.addColorStop(0, "rgba(36,34,24,0.22)");
-  g.addColorStop(1, "rgba(36,34,24,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(size - edge, 0, edge, size);
-
-  g = ctx.createLinearGradient(0, 0, 0, edge);
-  g.addColorStop(0, "rgba(36,34,24,0.22)");
-  g.addColorStop(1, "rgba(36,34,24,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, edge);
-
-  g = ctx.createLinearGradient(0, size, 0, size - edge);
-  g.addColorStop(0, "rgba(36,34,24,0.22)");
-  g.addColorStop(1, "rgba(36,34,24,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, size - edge, size, edge);
-
-  const tex = new THREE.CanvasTexture(canvas);
+/** @deprecated */ export function createCeilingTileFaceTexture(sourceTex) {
+  const tex = createCeilingTiledTexture(sourceTex);
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
   return tex;
 }
 
-/** @deprecated use per-tile geometry with createCeilingTileFaceTexture */
-export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
-  const tileFace = createCeilingTileFaceTexture(sourceTex);
-  tileFace.wrapS = tileFace.wrapT = THREE.RepeatWrapping;
-  tileFace.userData.tileW = tileM;
-  tileFace.userData.tileH = tileM;
-  return tileFace;
+/** @deprecated */ export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
+  return createCeilingTiledTexture(sourceTex, tileM);
 }
 
 /** @deprecated */ export function createCarpetSurfaceMaterial(map) {

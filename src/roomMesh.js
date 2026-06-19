@@ -5,11 +5,9 @@ import {
   DOOR_H,
   PANEL_W,
   PANEL_H,
-  CEILING_TILE_FACE_M,
 } from "./constants.js";
 import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
-const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 
@@ -68,48 +66,21 @@ function addFloor(group, materials, worldX, worldZ) {
   group.add(floor);
 }
 
-function panelTileKeys(worldX, worldZ, panels, tileM) {
-  const keys = new Set();
-  for (const panel of panels) {
-    const tx = Math.floor((worldX + panel.x) / tileM);
-    const tz = Math.floor((worldZ + panel.z) / tileM);
-    keys.add(`${tx},${tz}`);
-  }
-  return keys;
-}
-
-function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
-  const ceilingY = h - 0.002;
-  const tileM = CEILING_TILE_M;
-  const half = CEILING_TILE_FACE_M / 2;
-  const litTiles = panelTileKeys(worldX, worldZ, panels, tileM);
-
-  const backing = new THREE.Mesh(_chunkPlane, materials.ceilingPlenum);
-  backing.rotation.x = Math.PI / 2;
-  backing.position.y = ceilingY;
-  group.add(backing);
-
-  const tx0 = Math.floor(worldX / tileM);
-  const tx1 = Math.floor((worldX + CHUNK - 1e-6) / tileM);
-  const tz0 = Math.floor(worldZ / tileM);
-  const tz1 = Math.floor((worldZ + CHUNK - 1e-6) / tileM);
-
-  for (let tx = tx0; tx <= tx1; tx++) {
-    for (let tz = tz0; tz <= tz1; tz++) {
-      if (litTiles.has(`${tx},${tz}`)) continue;
-
-      const px = (tx + 0.5) * tileM - worldX;
-      const pz = (tz + 0.5) * tileM - worldZ;
-      if (px - half < 0 || px + half > CHUNK || pz - half < 0 || pz + half > CHUNK) {
-        continue;
-      }
-
-      const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
-      tile.rotation.x = Math.PI / 2;
-      tile.position.set(px, ceilingY + 0.0004, pz);
-      group.add(tile);
-    }
-  }
+function addCeilingTiles(group, h, materials, worldX, worldZ) {
+  const ceilingMap = tiledAt(
+    materials.ceilingTex,
+    CEILING_TILE_M,
+    CHUNK,
+    CHUNK,
+    worldX,
+    worldZ,
+  );
+  const mat = materials.ceiling.clone();
+  mat.map = ceilingMap;
+  const ceiling = new THREE.Mesh(_chunkPlane, mat);
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = h - 0.002;
+  group.add(ceiling);
 }
 
 function addWalls(group, room, wallTex, h) {
@@ -124,7 +95,7 @@ function addWalls(group, room, wallTex, h) {
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   const ceilingY = h - 0.002;
-  const y = ceilingY + 0.0006;
+  const y = ceilingY + 0.0005;
   const face = new THREE.Mesh(
     _panelGeo,
     panel.on ? materials.lightPanelOn : materials.lightPanelOff,
@@ -173,7 +144,7 @@ export function buildRoomShell(state) {
   const h = room.height;
 
   addFloor(group, materials, state.worldX, state.worldZ);
-  addCeilingTiles(group, h, materials, state.worldX, state.worldZ, room.panels);
+  addCeilingTiles(group, h, materials, state.worldX, state.worldZ);
   addWalls(group, room, materials.wallTex, h);
   state.shellDone = true;
 }

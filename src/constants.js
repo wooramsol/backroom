@@ -69,8 +69,9 @@ export const PANEL_SIZE = 0.9;
 export const CEILING_TILE_GAP_M = 0.014;
 /** Visible tile face — sits inside one grid cell */
 export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
-/** Plenum shadow in tile gaps */
-export const CEILING_PLENUM_COLOR = 0x454238;
+/** Recessed seam between ceiling tiles — warm beige, not black */
+export const CEILING_GAP_COLOR = 0xa39a68;
+/** @deprecated */ export const CEILING_PLENUM_COLOR = CEILING_GAP_COLOR;
 export const PANEL_W = CEILING_TILE_FACE_M;
 export const PANEL_H = CEILING_TILE_FACE_M;
 /** Keep fixtures off walls — only on open ceiling area */
