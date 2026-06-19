@@ -85,10 +85,6 @@ function panelBlocked(px, pz, room) {
 
 const PANEL_MIN_GAP = 0.18;
 
-function snapCeilingGrid(v) {
-  return Math.round(v / CEILING_TILE_M) * CEILING_TILE_M;
-}
-
 function panelOverlapsExisting(px, pz, panels) {
   const halfW = PANEL_W / 2 + PANEL_MIN_GAP;
   const halfH = PANEL_H / 2 + PANEL_MIN_GAP;
@@ -113,6 +109,11 @@ function panelOverlapsExisting(px, pz, panels) {
 function generatePanels(rng, room) {
   const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
   const panels = [];
+  const worldX = room.cx * CHUNK;
+  const worldZ = room.cz * CHUNK;
+  const tileM = CEILING_TILE_M;
+  const halfW = PANEL_W / 2;
+  const halfH = PANEL_H / 2;
 
   for (const zone of room.zones) {
     const inset = zoneInset(zone);
@@ -125,25 +126,32 @@ function generatePanels(rng, room) {
     if (zw < PANEL_W || zd < PANEL_H) continue;
 
     const narrow = Math.min(zw, zd) < 5.2;
-    const minSpacing = Math.max(PANEL_W, CEILING_TILE_M) + PANEL_MIN_GAP;
-    const spacing = Math.max(
-      minSpacing,
-      narrow ? CEILING_TILE_M * 4 : room.lightSpacing,
-    );
     const skip = narrow ? 0.14 : 0.28;
+    const tileStride = Math.max(2, Math.round(room.lightSpacing / tileM));
 
-    for (let x = xLo + spacing / 2; x < xHi; x += spacing) {
-      for (let z = zLo + spacing / 2; z < zHi; z += spacing) {
-        const px = snapCeilingGrid(x);
-        const pz = snapCeilingGrid(z);
-        if (hash(px * 3.1 + pz + zone.x0 * 0.7) < skip) continue;
+    const tx0 = Math.floor((worldX + xLo + halfW) / tileM);
+    const tx1 = Math.floor((worldX + xHi - halfW) / tileM);
+    const tz0 = Math.floor((worldZ + zLo + halfH) / tileM);
+    const tz1 = Math.floor((worldZ + zHi - halfH) / tileM);
+
+    for (let tx = tx0; tx <= tx1; tx++) {
+      if (tx % tileStride !== 0) continue;
+      for (let tz = tz0; tz <= tz1; tz++) {
+        if (tz % tileStride !== 0) continue;
+        const px = (tx + 0.5) * tileM - worldX;
+        const pz = (tz + 0.5) * tileM - worldZ;
+
+        if (px - halfW < xLo || px + halfW > xHi || pz - halfH < zLo || pz + halfH > zHi) {
+          continue;
+        }
+        if (hash(tx * 3.1 + tz + zone.x0 * 0.7) < skip) continue;
         if (panelBlocked(px, pz, room)) continue;
         if (panelOverlapsExisting(px, pz, panels)) continue;
         panels.push({
           x: px,
           z: pz,
           on: rng.chance(narrow ? PANEL_ON_CHANCE * 0.92 : PANEL_ON_CHANCE),
-          bright: 0.9 + hash(z + zone.z0) * 0.14,
+          bright: 0.9 + hash(tz + zone.z0) * 0.14,
         });
       }
     }
