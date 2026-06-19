@@ -4,13 +4,11 @@ import {
   FOG_FAR,
   FLUORESCENT_COLOR,
   PANEL_LIGHT_INTENSITY,
-  CEILING_PLENUM_INTENSITY,
   PANEL_W,
   PANEL_H,
 } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
-const _up = new THREE.Euler(Math.PI / 2, 0, 0);
 const _frustum = new THREE.Frustum();
 const _projScreen = new THREE.Matrix4();
 const _point = new THREE.Vector3();
@@ -21,12 +19,11 @@ const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
 const _nearby = [];
 const _visible = [];
 
-/** Rectangular troffers — down + up area lights, both panel-sized squares */
+/** Rectangular troffers — downward area lights only (no upward plenum wash) */
 export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
     this.lights = [];
-    this.plenumLights = [];
     for (let i = 0; i < MAX_PANEL_LIGHTS; i++) {
       const light = new THREE.RectAreaLight(
         FLUORESCENT_COLOR,
@@ -38,17 +35,6 @@ export class PanelLightPool {
       light.visible = false;
       scene.add(light);
       this.lights.push(light);
-
-      const plenum = new THREE.RectAreaLight(
-        FLUORESCENT_COLOR,
-        0,
-        PANEL_W,
-        PANEL_H,
-      );
-      plenum.rotation.copy(_up);
-      plenum.visible = false;
-      scene.add(plenum);
-      this.plenumLights.push(plenum);
     }
     this.assigned = [];
     this.prevAssigned = [];
@@ -71,7 +57,6 @@ export class PanelLightPool {
   _clearAssignments() {
     for (const fixture of this.prevAssigned) {
       fixture.light = null;
-      fixture.plenumLight = null;
     }
     this.prevAssigned.length = 0;
   }
@@ -147,23 +132,17 @@ export class PanelLightPool {
     for (let i = 0; i < picks.length; i++) {
       const fixture = picks[i];
       const light = this.lights[i];
-      const plenum = this.plenumLights[i];
       const lit = PANEL_LIGHT_INTENSITY * fixture.panel.bright;
       fixture.light = light;
-      fixture.plenumLight = plenum;
       light.intensity = lit;
-      plenum.intensity = lit * CEILING_PLENUM_INTENSITY;
       light.position.set(fixture.wx, fixture.wy, fixture.wz);
-      plenum.position.set(fixture.wx, fixture.wCeiling, fixture.wz);
       light.visible = true;
-      plenum.visible = true;
       this.assigned.push(fixture);
       this.prevAssigned.push(fixture);
     }
 
     for (let i = picks.length; i < this.lights.length; i++) {
       this.lights[i].visible = false;
-      this.plenumLights[i].visible = false;
     }
   }
 }

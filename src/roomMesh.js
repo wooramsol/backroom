@@ -144,11 +144,9 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     panel,
     face,
     light: null,
-    plenumLight: null,
     wx: roomCx * CHUNK + panel.x,
     wy: y,
     wz: roomCz * CHUNK + panel.z,
-    wCeiling: ceilingY,
   });
 }
 

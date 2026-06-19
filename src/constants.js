@@ -83,7 +83,7 @@ export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 0.72;
 /** Soft rectangular troffer — area light matches panel footprint exactly */
 export const PANEL_LIGHT_INTENSITY = 4.8;
-/** Upward troffer wash onto ceiling underside (panel-sized square) */
+/** @deprecated upward plenum lights removed — caused dark coplanar ceiling */
 export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;

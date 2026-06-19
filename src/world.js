@@ -130,7 +130,6 @@ export class World {
     this.fixtures = this.fixtures.filter((item) => !drop.has(item));
     for (const fixture of f) {
       fixture.light = null;
-      fixture.plenumLight = null;
     }
     this.lightPool.dropFixtures(f);
     this.lightPool.markDirty();
