@@ -1,4 +1,5 @@
 import { createRng } from "./rng.js";
+import { CEILING_TILE_M } from "./textures.js";
 import {
   CHUNK,
   WALL_T,
@@ -84,6 +85,10 @@ function panelBlocked(px, pz, room) {
 
 const PANEL_MIN_GAP = 0.18;
 
+function snapCeilingGrid(v) {
+  return Math.round(v / CEILING_TILE_M) * CEILING_TILE_M;
+}
+
 function panelOverlapsExisting(px, pz, panels) {
   const halfW = PANEL_W / 2 + PANEL_MIN_GAP;
   const halfH = PANEL_H / 2 + PANEL_MIN_GAP;
@@ -120,21 +125,23 @@ function generatePanels(rng, room) {
     if (zw < PANEL_W || zd < PANEL_H) continue;
 
     const narrow = Math.min(zw, zd) < 5.2;
-    const minSpacing = Math.max(PANEL_W, PANEL_H) + PANEL_MIN_GAP + 0.2;
+    const minSpacing = Math.max(PANEL_W, CEILING_TILE_M) + PANEL_MIN_GAP;
     const spacing = Math.max(
       minSpacing,
-      narrow ? rng.pick([2.6, 3.0, 3.4]) : room.lightSpacing,
+      narrow ? CEILING_TILE_M * 5 : room.lightSpacing,
     );
     const skip = narrow ? 0.14 : 0.28;
 
     for (let x = xLo + spacing / 2; x < xHi; x += spacing) {
       for (let z = zLo + spacing / 2; z < zHi; z += spacing) {
-        if (hash(x * 3.1 + z + zone.x0 * 0.7) < skip) continue;
-        if (panelBlocked(x, z, room)) continue;
-        if (panelOverlapsExisting(x, z, panels)) continue;
+        const px = snapCeilingGrid(x);
+        const pz = snapCeilingGrid(z);
+        if (hash(px * 3.1 + pz + zone.x0 * 0.7) < skip) continue;
+        if (panelBlocked(px, pz, room)) continue;
+        if (panelOverlapsExisting(px, pz, panels)) continue;
         panels.push({
-          x,
-          z,
+          x: px,
+          z: pz,
           on: rng.chance(narrow ? PANEL_ON_CHANCE * 0.92 : PANEL_ON_CHANCE),
           bright: 0.9 + hash(z + zone.z0) * 0.14,
         });
