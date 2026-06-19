@@ -1,10 +1,15 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
+import { CHUNK, roomLitStrength } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
   PANEL_W,
   PANEL_H,
+  PANEL_LIGHT_COLOR,
+  ROOM_FILL_LIGHT_COLOR,
+  ROOM_FILL_LIGHT_INTENSITY,
+  ROOM_FILL_LIGHT_DISTANCE,
+  CEILING_INDIRECT_EMISSIVE,
 } from "./constants.js";
 import { createTiledMaterial } from "./textures.js";
 
@@ -51,11 +56,32 @@ function addInnerWall(group, wallTex, h, wall) {
   }
 }
 
-function addCeilingTiles(group, h, materials) {
-  const ceiling = new THREE.Mesh(_chunkPlane, materials.carpet);
+function addCeilingTiles(group, h, materials, room) {
+  const lit = roomLitStrength(room);
+  const mat = materials.carpet.clone();
+  if (lit > 0) {
+    mat.emissive = new THREE.Color(PANEL_LIGHT_COLOR);
+    mat.emissiveIntensity = lit * CEILING_INDIRECT_EMISSIVE;
+  }
+  const ceiling = new THREE.Mesh(_chunkPlane, mat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h - 0.002;
   group.add(ceiling);
+}
+
+/** Soft fill across the whole room — mimics floor/wall bounce, not panel hotspots */
+function addRoomFillLight(group, h, room) {
+  const lit = roomLitStrength(room);
+  if (lit <= 0) return;
+
+  const light = new THREE.PointLight(
+    ROOM_FILL_LIGHT_COLOR,
+    lit * ROOM_FILL_LIGHT_INTENSITY,
+    ROOM_FILL_LIGHT_DISTANCE,
+    1.5,
+  );
+  light.position.set(CHUNK / 2, h * 0.5, CHUNK / 2);
+  group.add(light);
 }
 
 function addWalls(group, room, wallTex, h) {
@@ -119,7 +145,8 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  addCeilingTiles(group, h, materials);
+  addCeilingTiles(group, h, materials, room);
+  addRoomFillLight(group, h, room);
 
   addWalls(group, room, materials.wallTex, h);
   state.shellDone = true;
