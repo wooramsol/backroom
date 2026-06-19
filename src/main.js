@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
@@ -51,6 +52,7 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;

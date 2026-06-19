@@ -4,12 +4,13 @@ import {
   FOG_FAR,
   FLUORESCENT_COLOR,
   PANEL_LIGHT_INTENSITY,
-  PANEL_POINT_LIGHT_DISTANCE,
-  PANEL_POINT_LIGHT_DECAY,
+  PANEL_W,
+  PANEL_H,
   LIGHT_POOL_MOVE_THRESHOLD,
   LIGHT_POOL_MIN_INTERVAL_MS,
 } from "./constants.js";
 
+const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
 const _frustum = new THREE.Frustum();
 const _projScreen = new THREE.Matrix4();
 const _point = new THREE.Vector3();
@@ -22,18 +23,19 @@ const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
 const _nearby = [];
 const _visible = [];
 
-/** Pooled troffer PointLights — sticky assignment, cheaper than RectAreaLight */
+/** Pooled square troffer RectAreaLights — sticky assignment, downward only */
 export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
     this.lights = [];
     for (let i = 0; i < MAX_PANEL_LIGHTS; i++) {
-      const light = new THREE.PointLight(
+      const light = new THREE.RectAreaLight(
         FLUORESCENT_COLOR,
         0,
-        PANEL_POINT_LIGHT_DISTANCE,
-        PANEL_POINT_LIGHT_DECAY,
+        PANEL_W,
+        PANEL_H,
       );
+      light.rotation.copy(_down);
       light.visible = false;
       scene.add(light);
       this.lights.push(light);
@@ -120,6 +122,7 @@ export class PanelLightPool {
     fixture.lightSlot = slot;
     light.intensity = lit;
     light.position.set(fixture.wx, fixture.lightY, fixture.wz);
+    light.rotation.copy(_down);
     light.visible = true;
   }
 
