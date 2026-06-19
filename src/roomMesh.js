@@ -1,14 +1,12 @@
 import * as THREE from "three";
-import { CHUNK, roomLitStrength } from "./room.js";
+import { CHUNK } from "./room.js";
 import {
   WALL_T,
   DOOR_H,
   PANEL_W,
   PANEL_H,
-  FLUORESCENT_COLOR,
-  CEILING_INDIRECT_EMISSIVE,
 } from "./constants.js";
-import { createTiledMaterial } from "./textures.js";
+import { createTiledMaterial, tiledAt, CARPET_TILE_M } from "./textures.js";
 
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -53,13 +51,17 @@ function addInnerWall(group, wallTex, h, wall) {
   }
 }
 
-function addCeilingTiles(group, h, materials, room) {
-  const lit = roomLitStrength(room);
+function addCeilingTiles(group, h, materials, worldX, worldZ) {
+  const ceilingMap = tiledAt(
+    materials.carpetTex,
+    CARPET_TILE_M,
+    CHUNK,
+    CHUNK,
+    worldX,
+    worldZ,
+  );
   const mat = materials.ceiling.clone();
-  if (lit > 0) {
-    mat.emissive = new THREE.Color(FLUORESCENT_COLOR);
-    mat.emissiveIntensity = lit * CEILING_INDIRECT_EMISSIVE;
-  }
+  mat.map = ceilingMap;
   const ceiling = new THREE.Mesh(_chunkPlane, mat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = h - 0.002;
@@ -130,7 +132,7 @@ export function buildRoomShell(state) {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  addCeilingTiles(group, h, materials, room);
+  addCeilingTiles(group, h, materials, state.worldX, state.worldZ);
 
   addWalls(group, room, materials.wallTex, h);
   state.shellDone = true;

@@ -74,8 +74,6 @@ export const PANEL_ON_CHANCE = 0.72;
 export const PANEL_LIGHT_INTENSITY = 4.8;
 /** Upward troffer wash onto ceiling underside (panel-sized square) */
 export const CEILING_PLENUM_INTENSITY = 1.15;
-/** Even ceiling fill between troffers in lit rooms */
-export const CEILING_INDIRECT_EMISSIVE = 0.14;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
