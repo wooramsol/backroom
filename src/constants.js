@@ -38,7 +38,7 @@ export const CEILING_TOP_INSET_M = 0.001;
 /** @deprecated kept at 0 — lowering caused wall/ceiling shadow bands */
 export const CEILING_DROP_M = 0;
 /** Flush ceiling tiles — recess is texture-only, no physical seam bands */
-export const CEILING_TILE_LIFT_M = 0;
+export const CEILING_TILE_LIFT_M = 0.002;
 export const CEILING_PANEL_LIFT_M = 0.003;
 /** Troffer emitter below the visible panel face */
 export const TROFFER_LIGHT_DROP_M = 0.018;
@@ -74,8 +74,8 @@ export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 export const LIGHT_PANEL_INTENSITY = 2.2;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
-/** Hairline gap between ceiling tile pieces (metres) */
-export const CEILING_TILE_GAP_M = 0.014;
+/** Thin physical groove between ceiling tiles only (metres) */
+export const CEILING_TILE_GAP_M = 0.008;
 /** Visible carpet tile face inside one grid cell */
 export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
 /** Recessed seam between ceiling tiles — warm beige, not black */

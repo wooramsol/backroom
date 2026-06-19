@@ -5,12 +5,14 @@ import {
   DOOR_H,
   PANEL_W,
   PANEL_H,
+  CEILING_TILE_FACE_M,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
+import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
 
-const _tileGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
+const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 
@@ -55,8 +57,8 @@ function addInnerWall(group, wallTex, h, wall) {
 
 function addFloor(group, materials, worldX, worldZ) {
   const floorMap = tiledAt(
-    materials.carpetTileTex,
-    CEILING_TILE_M,
+    materials.surfaceTex,
+    SURFACE_TILE_M,
     CHUNK,
     CHUNK,
     worldX,
@@ -78,7 +80,7 @@ function panelTileSet(panels) {
 }
 
 function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
-  const { tileY } = getCeilingLayers(h);
+  const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
   const lightCells = panelTileSet(panels);
 
@@ -89,6 +91,11 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
       if (lightCells.has(`${tx},${tz}`)) continue;
 
       const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
+
+      const backing = new THREE.Mesh(_cellBackingGeo, materials.ceilingGroove);
+      backing.rotation.x = Math.PI / 2;
+      backing.position.set(px, gapY, pz);
+      group.add(backing);
 
       const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
       tile.rotation.x = Math.PI / 2;
