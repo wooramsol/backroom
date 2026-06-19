@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "test -f public/assets/backroom_wallpaper.webp && test -f public/assets/backroom_ceiling.webp",
+    "prebuild": "test -f public/assets/backroom_wallpaper.webp && test -f public/assets/bottom.jpg",
     "build": "vite build",
     "preview": "vite preview",
     "generate:textures": "python3 scripts/generate_wallpaper.py"

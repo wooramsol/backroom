@@ -3,7 +3,8 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  createFloorCeilingMaterial,
+  createSurfaceMaterial,
+  createCeilingGridTexture,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -75,13 +76,15 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
+  const ceilingGridTex = createCeilingGridTexture(surfaceTex);
   const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
 
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
-    carpet: createFloorCeilingMaterial(wallpaper, surfaceTex),
-    ceiling: createFloorCeilingMaterial(wallpaper, surfaceTex),
+    ceilingGridTex,
+    carpet: createSurfaceMaterial(),
+    ceiling: createSurfaceMaterial(),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: true,

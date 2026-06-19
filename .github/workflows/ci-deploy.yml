@@ -32,8 +32,8 @@ jobs:
             echo "::error::Add your wallpaper at public/assets/backroom_wallpaper.webp (do not auto-generate)."
             exit 1
           fi
-          if [ ! -f public/assets/backroom_ceiling.webp ]; then
-            echo "::error::Add your floor/ceiling texture at public/assets/backroom_ceiling.webp (do not auto-generate)."
+          if [ ! -f public/assets/bottom.jpg ]; then
+            echo "::error::Add your floor/ceiling texture at public/assets/bottom.jpg (do not auto-generate)."
             exit 1
           fi
 
