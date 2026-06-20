@@ -179,9 +179,9 @@ function narrowSpan(rng, lo, hi) {
 }
 
 function hallEW(rng, forceWide = false) {
-  const wide = forceWide || rng.chance(0.38);
-  const depth = wide ? rng.range(7.8, 12.2) : narrowSpan(rng, 3.4, 5.8);
-  const z0 = rng.range(0.25, CHUNK - depth - 0.25);
+  const wide = forceWide || rng.chance(0.58);
+  const depth = wide ? rng.range(9.0, 13.4) : rng.range(4.2, 6.8);
+  const z0 = rng.range(0.2, CHUNK - depth - 0.2);
   return {
     kind: wide ? "wide-hall" : "hall",
     zones: [{ x0: 0, z0, x1: CHUNK, z1: z0 + depth }],
@@ -193,9 +193,9 @@ function hallEW(rng, forceWide = false) {
 }
 
 function hallNS(rng, forceWide = false) {
-  const wide = forceWide || rng.chance(0.38);
-  const width = wide ? rng.range(7.8, 12.2) : narrowSpan(rng, 3.4, 5.8);
-  const x0 = rng.range(0.25, CHUNK - width - 0.25);
+  const wide = forceWide || rng.chance(0.58);
+  const width = wide ? rng.range(9.0, 13.4) : rng.range(4.2, 6.8);
+  const x0 = rng.range(0.2, CHUNK - width - 0.2);
   return {
     kind: wide ? "wide-hall" : "hall",
     zones: [{ x0, z0: 0, x1: x0 + width, z1: CHUNK }],
@@ -207,8 +207,8 @@ function hallNS(rng, forceWide = false) {
 }
 
 function alcove(rng, corner) {
-  const w = rng.range(5.5, 13);
-  const d = rng.range(5.5, 13);
+  const w = rng.range(7.0, 13);
+  const d = rng.range(7.0, 13);
   const elongated = rng.chance(0.45);
   const ew = elongated && rng.chance(0.5);
   const W = ew ? Math.min(CHUNK - 0.4, w * rng.range(1.15, 1.55)) : w;
@@ -521,7 +521,7 @@ function zigzag(rng) {
 }
 
 function hallWithPockets(rng) {
-  const thick = narrowSpan(rng, 3.6, 5.2);
+  const thick = rng.range(4.0, 6.5);
   const z0 = rng.range(0.3, CHUNK - thick - 0.3);
   const pocket = rng.range(3.2, 5.2);
   const side = rng.pick(["left", "right"]);
@@ -565,7 +565,7 @@ function compoundLT(rng) {
 }
 
 function crossHall(rng) {
-  const arm = narrowSpan(rng, 3.5, 5.4);
+  const arm = rng.range(4.2, 6.8);
   const cx0 = (CHUNK - arm) / 2;
   const cz0 = (CHUNK - arm) / 2;
   return {
@@ -628,9 +628,9 @@ function diagonalSlice(rng) {
 }
 
 function forkHall(rng) {
-  const arm = narrowSpan(rng, 3.5, 5.2);
+  const arm = rng.range(4.0, 6.5);
   const cx = (CHUNK - arm) / 2;
-  const splitZ = rng.range(6.2, 9.2);
+  const splitZ = rng.range(7.5, 10.5);
   const forkX = cx + arm * rng.range(0.35, 0.65);
   return {
     kind: "fork",
@@ -722,22 +722,22 @@ export function isMazeConnected(innerWalls) {
 
 function pickShape(rng) {
   const kind = rng.pickWeighted([
-    ["full", 3],
-    ["hall-ew", 10],
-    ["hall-ns", 10],
-    ["wide-hall-ew", 5],
-    ["wide-hall-ns", 5],
-    ["alcove", 12],
-    ["L", 14],
-    ["T", 10],
-    ["triple", 9],
-    ["U", 8],
-    ["zigzag", 8],
-    ["hall-pockets", 8],
-    ["compound", 7],
-    ["cross", 10],
-    ["diag", 9],
-    ["fork", 9],
+    ["full", 18],
+    ["hall-ew", 14],
+    ["hall-ns", 14],
+    ["wide-hall-ew", 12],
+    ["wide-hall-ns", 12],
+    ["alcove", 7],
+    ["L", 7],
+    ["T", 6],
+    ["triple", 4],
+    ["U", 3],
+    ["zigzag", 3],
+    ["hall-pockets", 11],
+    ["compound", 3],
+    ["cross", 12],
+    ["diag", 4],
+    ["fork", 12],
   ]);
 
   switch (kind) {

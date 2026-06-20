@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, JAMB_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -38,6 +38,17 @@ export function applyWallpaperTileSize(tex) {
 }
 
 const _wallMatCache = new Map();
+let _jambMat;
+
+export function createJambMaterial() {
+  if (_jambMat) return _jambMat;
+  _jambMat = new THREE.MeshStandardMaterial({
+    color: JAMB_COLOR,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+  });
+  return _jambMat;
+}
 
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const key = `${widthM.toFixed(2)}|${heightM.toFixed(2)}`;
