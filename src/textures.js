@@ -419,6 +419,39 @@ function createWallpaperFallback() {
   });
 }
 
+export function createProceduralWallpaper() {
+  return configureLoadedTexture(createWallpaperFallback(), applyWallpaperTileSize);
+}
+
+export function createProceduralSurface() {
+  return configureLoadedTexture(createCarpetTexture(), applySurfaceTileSize);
+}
+
+export function buildMaterials(wallpaper, surfaceTex) {
+  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
+  const ceilingTile = createCeilingTileMaterial(ceilingTileTex);
+  return {
+    wallTex: wallpaper,
+    wall: createWallMaterial(wallpaper),
+    surfaceTex,
+    ceilingTileTex,
+    floor: createFloorMaterial(ceilingTileTex),
+    ceilingGroove: createCeilingGapMaterial(),
+    ceilingTile,
+  };
+}
+
+/** Instant materials — no network; used so local dev always starts */
+export function createProceduralMaterials() {
+  return buildMaterials(createProceduralWallpaper(), createProceduralSurface());
+}
+
+export async function loadAssetMaterials(loader) {
+  const wallpaper = await loadWallpaperOrFallback(loader);
+  const surfaceTex = await loadSurfaceOrFallback(loader);
+  return buildMaterials(wallpaper, surfaceTex);
+}
+
 export function loadWallpaper(loader) {
   return loadTextureOrFallback(
     loader,
