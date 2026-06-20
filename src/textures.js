@@ -57,16 +57,27 @@ export function createWallMaterial(tex) {
   return mat;
 }
 
-/** World-aligned wallpaper UVs so corners and chunk seams stay continuous */
-export function applyWallWorldUVs(geometry, axis, tileW, tileH, originX, originZ) {
+/** World-aligned wallpaper UVs — per-face mapping so thickness edges tile, not stretch */
+export function applyWallWorldUVs(geometry, tileW, tileH, originX, originZ) {
   const pos = geometry.getAttribute("position");
+  const normal = geometry.getAttribute("normal");
   const uv = geometry.getAttribute("uv");
   for (let i = 0; i < pos.count; i++) {
-    const lx = pos.getX(i);
-    const ly = pos.getY(i);
-    const lz = pos.getZ(i);
-    const u = axis === "z" ? (originX + lx) / tileW : (originZ + lz) / tileW;
-    const v = ly / tileH;
+    const wx = originX + pos.getX(i);
+    const wy = pos.getY(i);
+    const wz = originZ + pos.getZ(i);
+    const anx = Math.abs(normal.getX(i));
+    const any = Math.abs(normal.getY(i));
+    const anz = Math.abs(normal.getZ(i));
+    let u;
+    let v;
+    if (any > 0.5) {
+      u = wx / tileW;
+      v = wz / tileH;
+    } else {
+      v = wy / tileH;
+      u = anx >= anz ? wz / tileW : wx / tileW;
+    }
     uv.setXY(i, u, v);
   }
   uv.needsUpdate = true;
