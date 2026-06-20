@@ -23,7 +23,7 @@ import {
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
 } from "./constants.js";
-import { formatBuildLabel } from "./version.js";
+import { formatBuildLabel, formatBuildTime } from "./version.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -34,7 +34,8 @@ const buildBadge = document.getElementById("build-badge");
 const resumePrompt = document.getElementById("resume-prompt");
 
 const buildText = formatBuildLabel();
-if (buildLabel) buildLabel.textContent = buildText;
+const buildTimeText = formatBuildTime();
+if (buildLabel) buildLabel.textContent = `Build ${buildTimeText}`;
 if (buildBadge) buildBadge.textContent = buildText;
 
 function syncCrosshair() {
@@ -155,6 +156,10 @@ async function init() {
     }
   });
 
+  function syncCrosshairIfPlaying() {
+    if (started) syncCrosshair();
+  }
+
   const clock = new THREE.Clock();
   const TARGET_FRAME_MS = 16.7;
 
@@ -174,6 +179,7 @@ async function init() {
     }
     if (started) player.update(dt);
 
+    syncCrosshairIfPlaying();
     renderer.render(scene, camera);
 
     if (!world.preloading) {

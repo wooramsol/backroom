@@ -7,3 +7,7 @@ export const BUILD_ENV = __BUILD_ENV__;
 export function formatBuildLabel() {
   return `v${APP_VERSION} · ${BUILD_ID} · ${BUILD_TIME} · ${BUILD_ENV}`;
 }
+
+export function formatBuildTime() {
+  return BUILD_TIME;
+}
