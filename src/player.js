@@ -34,7 +34,6 @@ export class Player {
     this.grounded = true;
     this.onLockLost = null;
     this.onLockAcquired = null;
-    this.onMove = null;
 
     this.camera.rotation.order = "YXZ";
 
@@ -184,11 +183,9 @@ export class Player {
 
     const running = this.keys.ShiftLeft || this.keys.ShiftRight;
     const speed = running ? RUN : WALK;
-    let moved = 0;
 
     if (_move.lengthSq() > 0) {
       _move.normalize().multiplyScalar(speed * dt);
-      moved = _move.length();
       const nx = this.position.x + _move.x;
       const nz = this.position.z + _move.z;
       if (!this._insideWall(nx, nz, this.position.y)) {
@@ -203,8 +200,6 @@ export class Player {
     } else if (this.grounded) {
       this.bob *= 0.85;
     }
-
-    if (moved > 0 && this.grounded) this.onMove?.(moved, running);
 
     this.vy -= GRAVITY * dt;
     this.position.y += this.vy * dt;

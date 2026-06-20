@@ -74,8 +74,8 @@ function flushWallMeshes(group, geos, wallMat) {
 
 function addFloor(group, materials, worldX, worldZ) {
   const floorMap = tiledAt(
-    materials.carpetTileTex,
-    CEILING_TILE_M,
+    materials.ceilingTileTex,
+    CEILING_TILE_FACE_M,
     CHUNK,
     CHUNK,
     worldX,
