@@ -114,8 +114,10 @@ export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
-/** Fluorescent hum — disabled until re-enabled later */
-export const ENABLE_FLUORESCENT_HUM = false;
+/** Fluorescent hum — ceiling troffer buzz */
+export const ENABLE_FLUORESCENT_HUM = true;
+/** Flat floor albedo — unlit so troffers do not paint light pools on carpet */
+export const FLOOR_UNLIT_COLOR = 0xf0e8b0;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;
