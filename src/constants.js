@@ -90,6 +90,14 @@ export const PANEL_EDGE_INSET = 1.25;
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Cap device pixel ratio for the WebGL canvas */
 export const MAX_PIXEL_RATIO = 1;
+/** Soft overhead fill — keeps Lambert surfaces close to texture albedo */
+export const AMBIENT_LIGHT_COLOR = 0xfff6e8;
+export const AMBIENT_LIGHT_INTENSITY = 0.78;
+/** Subtle directional light for wall–floor contact shadows */
+export const SUN_LIGHT_COLOR = 0xfff0dc;
+export const SUN_LIGHT_INTENSITY = 0.32;
+export const SHADOW_MAP_SIZE = 1024;
+export const SHADOW_CAMERA_HALF = 16;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
