@@ -9,7 +9,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, tiledAt, SURFACE_TILE_M, CEILING_TILE_M } from "./textures.js";
+import { createTiledMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -57,8 +57,8 @@ function addInnerWall(group, wallTex, h, wall) {
 
 function addFloor(group, materials, worldX, worldZ) {
   const floorMap = tiledAt(
-    materials.surfaceTex,
-    SURFACE_TILE_M,
+    materials.carpetTileTex,
+    CEILING_TILE_M,
     CHUNK,
     CHUNK,
     worldX,
@@ -66,6 +66,7 @@ function addFloor(group, materials, worldX, worldZ) {
   );
   const mat = materials.carpet.clone();
   mat.map = floorMap;
+  mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);

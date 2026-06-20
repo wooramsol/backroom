@@ -3,7 +3,6 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  createSurfaceMaterial,
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
@@ -83,7 +82,8 @@ async function init() {
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
-    carpet: createSurfaceMaterial(),
+    carpetTileTex: ceilingTileTex,
+    carpet: createCeilingTileMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
