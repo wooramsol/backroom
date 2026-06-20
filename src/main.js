@@ -23,8 +23,10 @@ import {
   HEMI_SKY_COLOR,
   HEMI_GROUND_COLOR,
   HEMI_INTENSITY,
-  LIGHT_PANEL_INTENSITY,
+  LIGHT_PANEL_EMISSIVE,
   FLUORESCENT_COLOR,
+  SURFACE_ROUGHNESS,
+  SURFACE_METALNESS,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -84,7 +86,7 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
+  const panelEmissive = new THREE.Color(FLUORESCENT_COLOR);
 
   const materials = {
     wallTex: wallpaper,
@@ -94,9 +96,12 @@ async function init() {
     floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
-    lightPanelOn: new THREE.MeshBasicMaterial({
-      color: panelOnColor,
-      toneMapped: false,
+    lightPanelOn: new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: panelEmissive,
+      emissiveIntensity: LIGHT_PANEL_EMISSIVE,
+      roughness: SURFACE_ROUGHNESS,
+      metalness: SURFACE_METALNESS,
     }),
   };
 
@@ -171,7 +176,7 @@ async function init() {
       started = true;
       overlay.classList.add("hidden");
       hud.classList.add("visible");
-      vignette.classList.add("visible");
+      vignette?.classList.remove("visible");
       crosshair?.classList.add("visible");
       syncCrosshair();
       buildBadge?.classList.add("visible");

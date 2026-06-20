@@ -4,6 +4,8 @@ import {
   FOG_FAR,
   FLUORESCENT_COLOR,
   PANEL_LIGHT_INTENSITY,
+  CEILING_PLENUM_INTENSITY,
+  PLENUM_LIGHT_SCALE,
   PANEL_W,
   PANEL_H,
   LIGHT_POOL_MOVE_THRESHOLD,
@@ -12,6 +14,7 @@ import {
 } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
+const _up = new THREE.Euler(Math.PI / 2, 0, 0);
 const _frustum = new THREE.Frustum();
 const _projScreen = new THREE.Matrix4();
 const _point = new THREE.Vector3();
@@ -23,24 +26,29 @@ const _viewDistSq = FOG_FAR * FOG_FAR;
 const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
 const _nearby = [];
 const _visible = [];
+const _plenumW = PANEL_W * PLENUM_LIGHT_SCALE;
+const _plenumH = PANEL_H * PLENUM_LIGHT_SCALE;
 
-/** Pooled square troffer RectAreaLights — sticky assignment, downward only */
+/** Pooled troffer RectAreaLights — downward room fill + upward ceiling plenum wash */
 export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
     this.lights = [];
+    this.plenumLights = [];
     for (let i = 0; i < MAX_PANEL_LIGHTS; i++) {
-      const light = new THREE.RectAreaLight(
-        FLUORESCENT_COLOR,
-        0,
-        PANEL_W,
-        PANEL_H,
-      );
+      const light = new THREE.RectAreaLight(FLUORESCENT_COLOR, 0, PANEL_W, PANEL_H);
       light.rotation.copy(_down);
       light.visible = false;
       light.layers.set(LAYER_LIT);
       scene.add(light);
       this.lights.push(light);
+
+      const plenum = new THREE.RectAreaLight(FLUORESCENT_COLOR, 0, _plenumW, _plenumH);
+      plenum.rotation.copy(_up);
+      plenum.visible = false;
+      plenum.layers.set(LAYER_LIT);
+      scene.add(plenum);
+      this.plenumLights.push(plenum);
     }
     this.prevAssigned = [];
     this.dirty = true;
@@ -62,6 +70,7 @@ export class PanelLightPool {
 
   _clearFixture(fixture) {
     fixture.light = null;
+    fixture.plenumLight = null;
     fixture.lightSlot = -1;
   }
 
@@ -118,14 +127,20 @@ export class PanelLightPool {
     return picks;
   }
 
-  _applyLight(slot, fixture, lit) {
+  _applyLight(slot, fixture, downLit, upLit) {
     const light = this.lights[slot];
+    const plenum = this.plenumLights[slot];
     fixture.light = light;
+    fixture.plenumLight = plenum;
     fixture.lightSlot = slot;
-    light.intensity = lit;
+    light.intensity = downLit;
     light.position.set(fixture.wx, fixture.lightY, fixture.wz);
     light.rotation.copy(_down);
     light.visible = true;
+    plenum.intensity = upLit;
+    plenum.position.set(fixture.wx, fixture.plenumY, fixture.wz);
+    plenum.rotation.copy(_up);
+    plenum.visible = true;
   }
 
   _assignSticky(camera, picks) {
@@ -183,10 +198,13 @@ export class PanelLightPool {
       const fixture = assignments[slot];
       if (!fixture) {
         this.lights[slot].visible = false;
+        this.plenumLights[slot].visible = false;
         continue;
       }
-      const lit = PANEL_LIGHT_INTENSITY * fixture.panel.bright;
-      this._applyLight(slot, fixture, lit);
+      const bright = fixture.panel.bright;
+      const downLit = PANEL_LIGHT_INTENSITY * bright;
+      const upLit = CEILING_PLENUM_INTENSITY * bright;
+      this._applyLight(slot, fixture, downLit, upLit);
       this.prevAssigned.push(fixture);
     }
   }
