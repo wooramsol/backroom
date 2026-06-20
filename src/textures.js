@@ -49,10 +49,8 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshLambertMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     ...opts,
   });
   _wallMatCache.set(key, mat);
@@ -88,20 +86,16 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshLambertMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }
 
 /** Matte ceiling carpet — underside only */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshLambertMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
   });
 }
 
@@ -226,10 +220,8 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
 
 /** Warm seam backing under carpet tiles — underside only */
 export function createCeilingGapMaterial() {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshLambertMaterial({
     color: CEILING_GAP_COLOR,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     depthWrite: false,
   });
 }
