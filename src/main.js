@@ -3,6 +3,7 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
+  createSurfaceMaterial,
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
@@ -82,8 +83,7 @@ async function init() {
   const materials = {
     wallTex: wallpaper,
     surfaceTex,
-    carpetTileTex: ceilingTileTex,
-    carpet: createCeilingTileMaterial(ceilingTileTex),
+    carpet: createSurfaceMaterial(),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
@@ -122,7 +122,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
+  const { composer, bloom, smaa } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -201,7 +201,7 @@ async function init() {
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
       const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
-      world.processLoadQueue(player.position, loadBudget, camera);
+      world.processLoadQueue(player.position, loadBudget);
     }
   }
 
@@ -212,7 +212,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
+    resizeBloomPipeline(renderer, composer, bloom, smaa, w, h);
     syncCrosshair();
   });
 }

@@ -95,12 +95,6 @@ export const PANEL_LIGHT_INTENSITY = 4.8;
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
 export const LIGHT_POOL_MIN_INTERVAL_MS = 90;
-/** Faster rebuild when only the view direction changes */
-export const LIGHT_LOOK_INTERVAL_MS = 50;
-/** cos(angle) — panels ahead of walk direction are pre-lit */
-export const LIGHT_PREWARM_DOT = 0.55;
-/** Keep recently seen panels lit briefly */
-export const LIGHT_GRACE_MS = 3200;
 /** @deprecated upward plenum lights removed — caused dark coplanar ceiling */
 export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
