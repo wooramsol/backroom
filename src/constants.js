@@ -53,10 +53,10 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 18;
 export const FOG_FAR = 48;
 export const FOG_COLOR = 0x3a3830;
-/** Loaded cells around player — ~3 chunks matches FOG_FAR so distant fog is already built */
-export const GRID_RADIUS = 3;
+/** Loaded cells around player — 2-ring keeps ~35 m built, matches fog */
+export const GRID_RADIUS = 2;
 /** Full square synced on the title screen before play */
-export const PRELOAD_RADIUS = 3;
+export const PRELOAD_RADIUS = 2;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
@@ -106,6 +106,8 @@ export const BLOOM_RADIUS = 0.18;
 export const BLOOM_THRESHOLD = 0.82;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
+/** Cap device pixel ratio for the WebGL canvas */
+export const MAX_PIXEL_RATIO = 1;
 /** Bloom buffer scale — can stay low; scene pass is full res */
 export const BLOOM_RESOLUTION_SCALE = 0.5;
 export const TONE_MAPPING_EXPOSURE = 0.92;
