@@ -6,7 +6,6 @@ import {
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
-  createJambMaterial,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -82,7 +81,6 @@ async function init() {
 
   const materials = {
     wallTex: wallpaper,
-    jamb: createJambMaterial(),
     surfaceTex,
     carpetTileTex: ceilingTileTex,
     carpet: createCeilingTileMaterial(ceilingTileTex),

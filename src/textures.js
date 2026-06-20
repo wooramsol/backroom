@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, JAMB_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, WALL_T } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -38,16 +38,25 @@ export function applyWallpaperTileSize(tex) {
 }
 
 const _wallMatCache = new Map();
-let _jambMat;
+const _jambSurfCache = new Map();
 
-export function createJambMaterial() {
-  if (_jambMat) return _jambMat;
-  _jambMat = new THREE.MeshStandardMaterial({
-    color: JAMB_COLOR,
+/** Door jamb face — floor/carpet texture (not wallpaper) */
+export function createJambSurfaceMaterial(floorTex, widthM, heightM) {
+  const key = `jamb|${widthM.toFixed(2)}|${heightM.toFixed(2)}`;
+  const cached = _jambSurfCache.get(key);
+  if (cached) return cached;
+
+  const map = floorTex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  const tileM = floorTex.userData?.tileW ?? SURFACE_TILE_M;
+  map.repeat.set(widthM / tileM, heightM / tileM);
+  const mat = new THREE.MeshStandardMaterial({
+    map,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
   });
-  return _jambMat;
+  _jambSurfCache.set(key, mat);
+  return mat;
 }
 
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
@@ -70,10 +79,11 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   return mat;
 }
 
-/** Box wall with one door-facing side face plain (문 측면만 단색) */
-export function createWallBoxMaterials(wallTex, widthM, heightM, jambMat, doorFaceIndex) {
+/** Box wall with one door-facing side face using floor texture */
+export function createWallBoxMaterials(wallTex, floorTex, widthM, heightM, doorFaceIndex) {
   const wallMat = createTiledMaterial(wallTex, widthM, heightM);
   if (doorFaceIndex < 0) return wallMat;
+  const jambMat = createJambSurfaceMaterial(floorTex, WALL_T, heightM);
   const mats = [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat];
   mats[doorFaceIndex] = jambMat;
   return mats;

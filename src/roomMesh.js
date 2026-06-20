@@ -9,7 +9,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, createWallBoxMaterials, tiledAt, CEILING_TILE_M, createJambMaterial } from "./textures.js";
+import { createTiledMaterial, createWallBoxMaterials, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -25,7 +25,7 @@ function doorJambFaceIndex(axis, side) {
   return side === "left" ? 4 : 5;
 }
 
-function wallSeg(group, wallTex, jambMat, h, axis, pos, a0, a1, door) {
+function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
@@ -41,7 +41,7 @@ function wallSeg(group, wallTex, jambMat, h, axis, pos, a0, a1, door) {
         ? new THREE.BoxGeometry(slen, segH, WALL_T)
         : new THREE.BoxGeometry(WALL_T, segH, slen);
     const mat = jambSide
-      ? createWallBoxMaterials(wallTex, slen, segH, jambMat, doorJambFaceIndex(axis, jambSide))
+      ? createWallBoxMaterials(wallTex, floorTex, slen, segH, doorJambFaceIndex(axis, jambSide))
       : createTiledMaterial(wallTex, slen, segH);
     const m = new THREE.Mesh(geo, mat);
     if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
@@ -58,11 +58,11 @@ function wallSeg(group, wallTex, jambMat, h, axis, pos, a0, a1, door) {
   }
 }
 
-function addInnerWall(group, wallTex, jambMat, h, wall) {
+function addInnerWall(group, wallTex, floorTex, h, wall) {
   if (wall.axis === "x") {
-    wallSeg(group, wallTex, jambMat, h, "x", wall.pos, wall.span0, wall.span1, wall.door);
+    wallSeg(group, wallTex, floorTex, h, "x", wall.pos, wall.span0, wall.span1, wall.door);
   } else {
-    wallSeg(group, wallTex, jambMat, h, "z", wall.pos, wall.span0, wall.span1, wall.door);
+    wallSeg(group, wallTex, floorTex, h, "z", wall.pos, wall.span0, wall.span1, wall.door);
   }
 }
 
@@ -132,13 +132,13 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 }
 
 function addWalls(group, room, materials, h) {
-  const { wallTex, jamb } = materials;
-  wallSeg(group, wallTex, jamb, h, "z", 0, 0, CHUNK, room.doors.north);
-  wallSeg(group, wallTex, jamb, h, "z", CHUNK, 0, CHUNK, room.doors.south);
-  wallSeg(group, wallTex, jamb, h, "x", 0, 0, CHUNK, room.doors.west);
-  wallSeg(group, wallTex, jamb, h, "x", CHUNK, 0, CHUNK, room.doors.east);
+  const { wallTex, carpetTileTex } = materials;
+  wallSeg(group, wallTex, carpetTileTex, h, "z", 0, 0, CHUNK, room.doors.north);
+  wallSeg(group, wallTex, carpetTileTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
+  wallSeg(group, wallTex, carpetTileTex, h, "x", 0, 0, CHUNK, room.doors.west);
+  wallSeg(group, wallTex, carpetTileTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
   for (const wall of room.innerWalls) {
-    addInnerWall(group, wallTex, jamb, h, wall);
+    addInnerWall(group, wallTex, carpetTileTex, h, wall);
   }
 }
 
