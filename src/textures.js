@@ -1,5 +1,19 @@
 import * as THREE from "three";
-import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import {
+  PANEL_SIZE,
+  CEILING_TILE_GAP_M,
+  CEILING_GAP_COLOR,
+  CHUNK,
+  CHUNK_HW,
+  FAKE_SHADOW_CEILING_BAND,
+  FAKE_SHADOW_CEILING_DARK,
+  FAKE_SHADOW_FLOOR_BAND,
+  FAKE_SHADOW_FLOOR_DARK,
+  FAKE_SHADOW_CORNER_RADIUS,
+  FAKE_SHADOW_CORNER_DARK,
+  FAKE_SHADOW_FLOOR_EDGE_M,
+  FAKE_SHADOW_FLOOR_EDGE_DARK,
+} from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -48,9 +62,102 @@ export function createWallMaterial(tex) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  mat = new THREE.MeshBasicMaterial({ map });
+  mat = new THREE.MeshBasicMaterial({ map, vertexColors: true });
   _wallMatCache.set(tex, mat);
   return mat;
+}
+
+function _innerWallDist(lx, lz, wall) {
+  if (wall.axis === "z") {
+    if (lx >= wall.span0 && lx <= wall.span1) return Math.abs(lz - wall.pos);
+    const d0 = Math.hypot(lx - wall.span0, lz - wall.pos);
+    const d1 = Math.hypot(lx - wall.span1, lz - wall.pos);
+    return Math.min(d0, d1);
+  }
+  if (lz >= wall.span0 && lz <= wall.span1) return Math.abs(lx - wall.pos);
+  const d0 = Math.hypot(lx - wall.pos, lz - wall.span0);
+  const d1 = Math.hypot(lx - wall.pos, lz - wall.span1);
+  return Math.min(d0, d1);
+}
+
+/** Baked vertex shading — ceiling cornice + corners, no GPU lights */
+export function applyFakeWallShadows(geometry, roomH, originX, originZ, innerWalls = []) {
+  const pos = geometry.getAttribute("position");
+  const normal = geometry.getAttribute("normal");
+  const colors = new Float32Array(pos.count * 3);
+  const cornerR = FAKE_SHADOW_CORNER_RADIUS;
+  const outerCorners = [
+    [0, 0],
+    [CHUNK, 0],
+    [0, CHUNK],
+    [CHUNK, CHUNK],
+  ];
+
+  for (let i = 0; i < pos.count; i++) {
+    const wx = originX + pos.getX(i);
+    const wy = pos.getY(i);
+    const wz = originZ + pos.getZ(i);
+    const lx = wx - originX;
+    const lz = wz - originZ;
+    const any = Math.abs(normal.getY(i));
+
+    let b = 1;
+
+    if (any < 0.5) {
+      const yNorm = wy / roomH;
+      if (yNorm > 1 - FAKE_SHADOW_CEILING_BAND) {
+        const f = (yNorm - (1 - FAKE_SHADOW_CEILING_BAND)) / FAKE_SHADOW_CEILING_BAND;
+        b = Math.min(b, THREE.MathUtils.lerp(1, FAKE_SHADOW_CEILING_DARK, f));
+      }
+      if (yNorm < FAKE_SHADOW_FLOOR_BAND) {
+        const f = 1 - yNorm / FAKE_SHADOW_FLOOR_BAND;
+        b = Math.min(b, THREE.MathUtils.lerp(1, FAKE_SHADOW_FLOOR_DARK, f * 0.85));
+      }
+
+      for (const wall of innerWalls) {
+        const d = _innerWallDist(lx, lz, wall);
+        if (d < cornerR) {
+          b = Math.min(b, THREE.MathUtils.lerp(FAKE_SHADOW_CORNER_DARK, 1, d / cornerR));
+        }
+      }
+      for (const [cx, cz] of outerCorners) {
+        const d = Math.hypot(lx - cx, lz - cz);
+        if (d < cornerR * 1.15) {
+          b = Math.min(b, THREE.MathUtils.lerp(FAKE_SHADOW_CORNER_DARK, 1, d / (cornerR * 1.15)));
+        }
+      }
+    } else if (any > 0.5) {
+      b = 0.9;
+    }
+
+    colors[i * 3] = b;
+    colors[i * 3 + 1] = b;
+    colors[i * 3 + 2] = b;
+  }
+
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+}
+
+/** Darken floor near walls — light falls from ceiling, edges stay in shadow */
+export function applyFakeFloorShadows(geometry) {
+  const pos = geometry.getAttribute("position");
+  const colors = new Float32Array(pos.count * 3);
+  const edgeM = FAKE_SHADOW_FLOOR_EDGE_M;
+
+  for (let i = 0; i < pos.count; i++) {
+    const lx = pos.getX(i) + CHUNK_HW;
+    const lz = CHUNK_HW - pos.getZ(i);
+    const edgeDist = Math.min(lx, CHUNK - lx, lz, CHUNK - lz);
+    let b = 1;
+    if (edgeDist < edgeM) {
+      b = THREE.MathUtils.lerp(FAKE_SHADOW_FLOOR_EDGE_DARK, 1, edgeDist / edgeM);
+    }
+    colors[i * 3] = b;
+    colors[i * 3 + 1] = b;
+    colors[i * 3 + 2] = b;
+  }
+
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 }
 
 /** World-aligned wallpaper UVs — per-face mapping so thickness edges tile, not stretch */
@@ -136,6 +243,7 @@ export function createFloorMaterial(ceilingTileTex) {
   return new THREE.MeshBasicMaterial({
     map: ceilingTileTex,
     side: THREE.DoubleSide,
+    vertexColors: true,
   });
 }
 

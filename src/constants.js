@@ -86,6 +86,16 @@ export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
+/** Fake ceiling-down shadows on walls (no lights) */
+export const FAKE_SHADOW_CEILING_BAND = 0.14;
+export const FAKE_SHADOW_CEILING_DARK = 0.52;
+export const FAKE_SHADOW_FLOOR_BAND = 0.1;
+export const FAKE_SHADOW_FLOOR_DARK = 0.72;
+export const FAKE_SHADOW_CORNER_RADIUS = 0.45;
+export const FAKE_SHADOW_CORNER_DARK = 0.48;
+/** Floor perimeter shadow under walls */
+export const FAKE_SHADOW_FLOOR_EDGE_M = 0.4;
+export const FAKE_SHADOW_FLOOR_EDGE_DARK = 0.58;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Cap device pixel ratio for the WebGL canvas */
