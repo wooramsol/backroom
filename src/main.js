@@ -16,14 +16,11 @@ import {
   FOG_COLOR,
   FOG_NEAR,
   FOG_FAR,
-  LIGHT_PANEL_COLOR,
-  SCENE_BRIGHTNESS,
-  PANEL_BRIGHTNESS_BOOST,
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
 } from "./constants.js";
-import { formatBuildLabel } from "./version.js";
+import { formatBuildLabel, formatBuildTime } from "./version.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -34,7 +31,8 @@ const buildBadge = document.getElementById("build-badge");
 const resumePrompt = document.getElementById("resume-prompt");
 
 const buildText = formatBuildLabel();
-if (buildLabel) buildLabel.textContent = buildText;
+const buildTimeText = formatBuildTime();
+if (buildLabel) buildLabel.textContent = `Build ${buildTimeText}`;
 if (buildBadge) buildBadge.textContent = buildText;
 
 function syncCrosshair() {
@@ -64,9 +62,7 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(
-    SCENE_BRIGHTNESS * PANEL_BRIGHTNESS_BOOST,
-  );
+  const trofferTile = createCeilingTileMaterial(ceilingTileTex);
 
   const materials = {
     wallTex: wallpaper,
@@ -75,8 +71,8 @@ async function init() {
     ceilingTileTex,
     floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile: createCeilingTileMaterial(ceilingTileTex),
-    lightPanelOn: new THREE.MeshBasicMaterial({ color: panelColor }),
+    ceilingTile: trofferTile,
+    lightPanelOn: trofferTile,
   };
 
   const world = new World(scene, materials);
@@ -155,6 +151,10 @@ async function init() {
     }
   });
 
+  function syncCrosshairIfPlaying() {
+    if (started) syncCrosshair();
+  }
+
   const clock = new THREE.Clock();
   const TARGET_FRAME_MS = 16.7;
 
@@ -174,6 +174,7 @@ async function init() {
     }
     if (started) player.update(dt);
 
+    syncCrosshairIfPlaying();
     renderer.render(scene, camera);
 
     if (!world.preloading) {

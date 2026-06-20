@@ -67,12 +67,6 @@ export const EDGE_PREFETCH = 0.55;
 /** ~4500K warm white — flat fluorescent office fill */
 export const FLUORESCENT_COLOR = 0xfff4e5;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
-/** Global albedo scale — MeshBasic unlit; tuned to reference fluorescent wash */
-export const SCENE_BRIGHTNESS = 0.76;
-/** Troffer face slightly brighter than wall/ceiling tiles */
-export const PANEL_BRIGHTNESS_BOOST = 1.04;
-/** Ceiling groove vs tile faces */
-export const GAP_BRIGHTNESS_SCALE = 0.93;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** @deprecated use LIGHT_PANEL_COLOR */
 export const LIGHT_PANEL_EMISSIVE = 0;
