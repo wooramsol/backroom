@@ -52,10 +52,10 @@ export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 22;
-export const FOG_FAR = 52;
-/** Light beige haze — keeps depth without dark horror corners */
-export const FOG_COLOR = 0x9a9478;
+export const FOG_NEAR = 38;
+export const FOG_FAR = 58;
+/** Warm yellow-beige — matches wallpaper, less gray haze */
+export const FOG_COLOR = 0xd8d0a8;
 /** Loaded cells around player — 2-ring keeps ~35 m built, matches fog */
 export const GRID_RADIUS = 2;
 /** Full square synced on the title screen before play */
@@ -68,8 +68,6 @@ export const EDGE_PREFETCH = 0.55;
 export const FLUORESCENT_COLOR = 0xfff4e5;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
-/** Global scene albedo scale — 0.2 = 20% brightness */
-export const SCENE_BRIGHTNESS = 0.2;
 /** @deprecated use LIGHT_PANEL_COLOR */
 export const LIGHT_PANEL_EMISSIVE = 0;
 /** @deprecated use LIGHT_PANEL_EMISSIVE */

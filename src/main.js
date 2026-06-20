@@ -62,7 +62,7 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const trofferTile = createCeilingTileMaterial(ceilingTileTex);
+  const ceilingTile = createCeilingTileMaterial(ceilingTileTex);
 
   const materials = {
     wallTex: wallpaper,
@@ -71,8 +71,7 @@ async function init() {
     ceilingTileTex,
     floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile: trofferTile,
-    lightPanelOn: trofferTile,
+    ceilingTile,
   };
 
   const world = new World(scene, materials);
