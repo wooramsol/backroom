@@ -153,7 +153,7 @@ function addWalls(group, room, materials, h, originX, originZ) {
 }
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
-  const { panelFaceY, lightY, plenumY } = getCeilingLayers(h);
+  const { panelFaceY, lightY } = getCeilingLayers(h);
   const face = new THREE.Mesh(_panelGeo, materials.lightPanelOn);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, panelFaceY, panel.z);
@@ -167,13 +167,11 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     panel,
     face,
     light: null,
-    plenumLight: null,
     lightSlot: -1,
     wx: roomCx * CHUNK + panel.x,
     wy: panelFaceY,
     wz: roomCz * CHUNK + panel.z,
     lightY,
-    plenumY,
   });
 }
 

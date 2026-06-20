@@ -11,7 +11,6 @@ import {
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
-import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
   EYE_H,
@@ -23,10 +22,7 @@ import {
   HEMI_SKY_COLOR,
   HEMI_GROUND_COLOR,
   HEMI_INTENSITY,
-  LIGHT_PANEL_EMISSIVE,
-  FLUORESCENT_COLOR,
-  SURFACE_ROUGHNESS,
-  SURFACE_METALNESS,
+  LIGHT_PANEL_COLOR,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -86,7 +82,7 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelEmissive = new THREE.Color(FLUORESCENT_COLOR);
+  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(1.1);
 
   const materials = {
     wallTex: wallpaper,
@@ -96,13 +92,7 @@ async function init() {
     floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
-    lightPanelOn: new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: panelEmissive,
-      emissiveIntensity: LIGHT_PANEL_EMISSIVE,
-      roughness: SURFACE_ROUGHNESS,
-      metalness: SURFACE_METALNESS,
-    }),
+    lightPanelOn: new THREE.MeshBasicMaterial({ color: panelColor }),
   };
 
   const world = new World(scene, materials);
@@ -135,8 +125,6 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
-
   let started = false;
   let ready = false;
   const hint = document.querySelector("#overlay .hint");
@@ -153,7 +141,7 @@ async function init() {
       }
     })
     .then(() => {
-      for (let i = 0; i < 5; i++) composer.render();
+      renderer.render(scene, camera);
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
@@ -203,7 +191,7 @@ async function init() {
     }
     if (started) player.update(dt);
 
-    composer.render();
+    renderer.render(scene, camera);
 
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
@@ -219,7 +207,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
+    renderer.setSize(w, h);
     syncCrosshair();
   });
 }
