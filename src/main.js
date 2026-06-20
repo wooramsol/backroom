@@ -102,9 +102,6 @@ async function init() {
       emissiveIntensity: LIGHT_PANEL_EMISSIVE,
       roughness: SURFACE_ROUGHNESS,
       metalness: SURFACE_METALNESS,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
     }),
   };
 

@@ -15,7 +15,7 @@ import { createWallMaterial, applyWallWorldUVs, tiledAt, CEILING_TILE_M } from "
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
-const _panelGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
+const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _identQuat = new THREE.Quaternion();
@@ -121,14 +121,13 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
+      if (lightCells.has(`${tx},${tz}`)) continue;
+
       const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
-      const isPanel = lightCells.has(`${tx},${tz}`);
 
       _pos.set(px, gapY, pz);
       _mat4.compose(_pos, _ceilRot, _scale);
       backingTransforms.push(_mat4.clone());
-
-      if (isPanel) continue;
 
       _pos.set(px, tileY, pz);
       _mat4.compose(_pos, _ceilRot, _scale);

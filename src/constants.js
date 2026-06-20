@@ -75,7 +75,7 @@ export const HEMI_INTENSITY = 0.92;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Troffer face — slightly brighter than ceiling, not a spotlight */
-export const LIGHT_PANEL_EMISSIVE = 0.38;
+export const LIGHT_PANEL_EMISSIVE = 0.32;
 /** @deprecated use LIGHT_PANEL_EMISSIVE */
 export const LIGHT_PANEL_INTENSITY = 1.05;
 /** Square ceiling grid cell — troffer bay spacing */
@@ -87,9 +87,7 @@ export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
 /** Recessed seam between ceiling tiles — warm beige, stays visible not black */
 export const CEILING_GAP_COLOR = 0xb8b088;
 /** @deprecated */ export const CEILING_PLENUM_COLOR = CEILING_GAP_COLOR;
-/** Lit troffer face — same size as ceiling tile face inside the grid cell */
-export const PANEL_FACE_M = CEILING_TILE_FACE_M;
-/** Troffer bay / groove cell and RectAreaLight footprint */
+/** Lit troffer replaces the whole grid cell — mesh and lights match PANEL_SIZE */
 export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
@@ -100,8 +98,8 @@ export const PANEL_ON_CHANCE = 1;
 export const PANEL_LIGHT_INTENSITY = 2.4;
 /** Upward plenum wash — keeps ceiling tiles between panels evenly lit */
 export const CEILING_PLENUM_INTENSITY = 3.6;
-/** Wider than panel footprint for diffuse ceiling spill */
-export const PLENUM_LIGHT_SCALE = 1.18;
+/** Upward plenum matches troffer cell — no overspill past grid */
+export const PLENUM_LIGHT_SCALE = 1;
 /** Soft glow on non-panel ceiling tiles */
 export const CEILING_TILE_EMISSIVE = 0.14;
 /** Rebuild pooled lights after the camera moves this far (metres) */
