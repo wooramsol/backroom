@@ -10,11 +10,11 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createWallMaterial, applyWallWorldUVs, applyFakeWallShadows, applyFakeFloorShadows, tiledAt, CEILING_TILE_M } from "./textures.js";
+import { createWallMaterial, applyWallWorldUVs, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
-const _floorGeo = new THREE.PlaneGeometry(CHUNK, CHUNK, 12, 12);
+const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _identQuat = new THREE.Quaternion();
 const _pos = new THREE.Vector3();
@@ -63,11 +63,8 @@ function addInnerWall(geos, wallTex, wallMat, originX, originZ, h, wall) {
   }
 }
 
-function flushWallMeshes(group, geos, wallMat, roomH, originX, originZ, innerWalls) {
+function flushWallMeshes(group, geos, wallMat) {
   if (!geos.length) return;
-  for (const geo of geos) {
-    applyFakeWallShadows(geo, roomH, originX, originZ, innerWalls);
-  }
   const merged = mergeGeometries(geos, false);
   for (const geo of geos) geo.dispose();
   if (merged) group.add(new THREE.Mesh(merged, wallMat));
@@ -86,9 +83,7 @@ function addFloor(group, materials, worldX, worldZ) {
   const mat = materials.floor.clone();
   mat.map = floorMap;
   mat.side = THREE.DoubleSide;
-  const floorGeo = _floorGeo.clone();
-  applyFakeFloorShadows(floorGeo);
-  const floor = new THREE.Mesh(floorGeo, mat);
+  const floor = new THREE.Mesh(_chunkPlane, mat);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 }
@@ -140,7 +135,7 @@ function addWalls(group, room, materials, h, originX, originZ) {
   for (const wall of room.innerWalls) {
     addInnerWall(geos, materials.wallTex, wallMat, originX, originZ, h, wall);
   }
-  flushWallMeshes(group, geos, wallMat, h, originX, originZ, room.innerWalls);
+  flushWallMeshes(group, geos, wallMat);
 }
 
 export function createRoomBuildState(room, materials) {
