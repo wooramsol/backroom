@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, WALL_T } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -79,13 +79,24 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   return mat;
 }
 
-/** Box wall with one door-facing side face using floor texture */
-export function createWallBoxMaterials(wallTex, floorTex, widthM, heightM, doorFaceIndex) {
-  const wallMat = createTiledMaterial(wallTex, widthM, heightM);
-  if (doorFaceIndex < 0) return wallMat;
-  const jambMat = createJambSurfaceMaterial(floorTex, WALL_T, heightM);
+/** Jamb-only box — unspecified faces use a small floor tile */
+export function createJambCapMaterials(floorTex, faceSpecs) {
+  const fallback = createJambSurfaceMaterial(floorTex, WALL_T, WALL_T);
+  const mats = [fallback, fallback, fallback, fallback, fallback, fallback];
+  for (const { index, w, h } of faceSpecs) {
+    mats[index] = createJambSurfaceMaterial(floorTex, w, h);
+  }
+  return mats;
+}
+
+/** Box wall with door jamb faces using floor texture */
+export function createWallBoxMaterials(wallTex, floorTex, slen, segH, jambFaces) {
+  const wallMat = createTiledMaterial(wallTex, slen, segH);
+  if (!jambFaces?.length) return wallMat;
   const mats = [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat];
-  mats[doorFaceIndex] = jambMat;
+  for (const { index, w, h } of jambFaces) {
+    mats[index] = createJambSurfaceMaterial(floorTex, w, h);
+  }
   return mats;
 }
 

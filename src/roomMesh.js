@@ -9,7 +9,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, createWallBoxMaterials, tiledAt, CEILING_TILE_M } from "./textures.js";
+import { createTiledMaterial, createWallBoxMaterials, createJambCapMaterials, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -20,9 +20,40 @@ const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
 
-function doorJambFaceIndex(axis, side) {
-  if (axis === "z") return side === "left" ? 0 : 1;
-  return side === "left" ? 4 : 5;
+const _jambCapGeo = new THREE.BoxGeometry(WALL_T, DOOR_H, WALL_T);
+
+function doorJambOpeningFaces(axis, side, segH) {
+  if (axis === "z") {
+    return [{ index: side === "left" ? 0 : 1, w: WALL_T, h: segH }];
+  }
+  return [{ index: side === "left" ? 4 : 5, w: WALL_T, h: segH }];
+}
+
+/** Thin boxes at door edges — wall-thickness sides (문 측면) */
+function addDoorJambSideCaps(group, floorTex, axis, pos, mid, dw, segY, segH) {
+  const t = WALL_T;
+  const y = segY + segH / 2;
+  const sideFaces =
+    axis === "z"
+      ? [
+          { index: 4, w: t, h: segH },
+          { index: 5, w: t, h: segH },
+        ]
+      : [
+          { index: 0, w: t, h: segH },
+          { index: 1, w: t, h: segH },
+        ];
+  const mat = createJambCapMaterials(floorTex, sideFaces);
+
+  const place = (along) => {
+    const m = new THREE.Mesh(_jambCapGeo, mat);
+    if (axis === "z") m.position.set(along, y, pos);
+    else m.position.set(pos, y, along);
+    group.add(m);
+  };
+
+  place(mid - dw);
+  place(mid + dw);
 }
 
 function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door) {
@@ -41,7 +72,7 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door) {
         ? new THREE.BoxGeometry(slen, segH, WALL_T)
         : new THREE.BoxGeometry(WALL_T, segH, slen);
     const mat = jambSide
-      ? createWallBoxMaterials(wallTex, floorTex, slen, segH, doorJambFaceIndex(axis, jambSide))
+      ? createWallBoxMaterials(wallTex, floorTex, slen, segH, doorJambOpeningFaces(axis, jambSide, segH))
       : createTiledMaterial(wallTex, slen, segH);
     const m = new THREE.Mesh(geo, mat);
     if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
@@ -52,6 +83,7 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door) {
   if (door) {
     add(a0, mid - dw, DOOR_H, 0, true, false, "left");
     add(mid + dw, a1, DOOR_H, 0, false, true, "right");
+    addDoorJambSideCaps(group, floorTex, axis, pos, mid, dw, 0, DOOR_H);
     add(a0, a1, h - DOOR_H, DOOR_H, true, true);
   } else {
     add(a0, a1, h, 0, true, true);
@@ -132,13 +164,13 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 }
 
 function addWalls(group, room, materials, h) {
-  const { wallTex, carpetTileTex } = materials;
-  wallSeg(group, wallTex, carpetTileTex, h, "z", 0, 0, CHUNK, room.doors.north);
-  wallSeg(group, wallTex, carpetTileTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
-  wallSeg(group, wallTex, carpetTileTex, h, "x", 0, 0, CHUNK, room.doors.west);
-  wallSeg(group, wallTex, carpetTileTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
+  const { wallTex, surfaceTex } = materials;
+  wallSeg(group, wallTex, surfaceTex, h, "z", 0, 0, CHUNK, room.doors.north);
+  wallSeg(group, wallTex, surfaceTex, h, "z", CHUNK, 0, CHUNK, room.doors.south);
+  wallSeg(group, wallTex, surfaceTex, h, "x", 0, 0, CHUNK, room.doors.west);
+  wallSeg(group, wallTex, surfaceTex, h, "x", CHUNK, 0, CHUNK, room.doors.east);
   for (const wall of room.innerWalls) {
-    addInnerWall(group, wallTex, carpetTileTex, h, wall);
+    addInnerWall(group, wallTex, surfaceTex, h, wall);
   }
 }
 
