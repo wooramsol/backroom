@@ -43,7 +43,7 @@ function wallSegCollect(geos, wallTex, wallMat, originX, originZ, h, axis, pos, 
     else _pos.set(pos, segY + segH / 2, smid);
     _mat4.compose(_pos, _identQuat, _scale);
     geo.applyMatrix4(_mat4);
-    applyWallWorldUVs(geo, axis, tileW, tileH, originX, originZ);
+    applyWallWorldUVs(geo, tileW, tileH, originX, originZ);
     geos.push(geo);
   };
 
