@@ -15,19 +15,26 @@ const _frustum = new THREE.Frustum();
 const _projScreen = new THREE.Matrix4();
 const _point = new THREE.Vector3();
 const _lastPos = new THREE.Vector3();
+const _lastQuat = new THREE.Quaternion();
 const _moveThresholdSq = LIGHT_POOL_MOVE_THRESHOLD * LIGHT_POOL_MOVE_THRESHOLD;
+const _lookThreshold = 0.12;
 const _viewDistSq = FOG_FAR * FOG_FAR;
 const _keepDistSq = LIGHT_KEEP_RADIUS * LIGHT_KEEP_RADIUS;
 const _nearby = [];
 const _visible = [];
 
-/** Pooled downward RectAreaLights — one lit ceiling tile per room */
+/** Pooled square troffer RectAreaLights — sticky assignment, downward only */
 export class PanelLightPool {
   constructor(scene) {
     this.scene = scene;
     this.lights = [];
     for (let i = 0; i < MAX_PANEL_LIGHTS; i++) {
-      const light = new THREE.RectAreaLight(FLUORESCENT_COLOR, 0, PANEL_W, PANEL_H);
+      const light = new THREE.RectAreaLight(
+        FLUORESCENT_COLOR,
+        0,
+        PANEL_W,
+        PANEL_H,
+      );
       light.rotation.copy(_down);
       light.visible = false;
       scene.add(light);
@@ -37,6 +44,7 @@ export class PanelLightPool {
     this.dirty = true;
     this._lastUpdateAt = 0;
     _lastPos.set(NaN, NaN, NaN);
+    _lastQuat.set(NaN, NaN, NaN, NaN);
   }
 
   dropFixtures(removed) {
@@ -93,8 +101,9 @@ export class PanelLightPool {
     const picked = new Set();
 
     for (let i = 0; i < _nearby.length && picks.length < k; i++) {
-      picks.push(_nearby[i].fixture);
-      picked.add(_nearby[i].fixture);
+      const { fixture } = _nearby[i];
+      picks.push(fixture);
+      picked.add(fixture);
     }
 
     for (let i = 0; i < _visible.length && picks.length < k; i++) {
@@ -146,13 +155,19 @@ export class PanelLightPool {
 
   update(fixtures, camera) {
     const now = performance.now();
-    const posMoved = _lastPos.distanceToSquared(camera.position) > _moveThresholdSq;
+    const posMoved =
+      Number.isNaN(_lastPos.x) ||
+      _lastPos.distanceToSquared(camera.position) > _moveThresholdSq;
+    const looked =
+      Number.isNaN(_lastQuat.x) ||
+      1 - Math.abs(_lastQuat.dot(camera.quaternion)) > _lookThreshold;
     const due = now - this._lastUpdateAt >= LIGHT_POOL_MIN_INTERVAL_MS;
-    if (!this.dirty && !(posMoved && due)) return;
+    if (!this.dirty && !((posMoved || looked) && due)) return;
 
     this.dirty = false;
     this._lastUpdateAt = now;
     _lastPos.copy(camera.position);
+    _lastQuat.copy(camera.quaternion);
 
     for (const fixture of this.prevAssigned) {
       this._clearFixture(fixture);

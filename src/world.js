@@ -300,6 +300,7 @@ export class World {
     if (this.pendingColliderRebuild) this.rebuildColliders();
   }
 
+  /** Sync full build — used during title-screen preload to avoid in-game hitches */
   _spawnChunkComplete(cx, cz) {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
@@ -311,6 +312,7 @@ export class World {
     this.pendingKeys.delete(k);
   }
 
+  /** Fully build the visible preload square before gameplay. */
   async preloadAround(camera, onProgress) {
     const playerPos = camera.position;
     const cx = Math.floor(playerPos.x / CHUNK);
