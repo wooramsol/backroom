@@ -11,6 +11,7 @@ import {
   finalizeRoomBuild,
   buildRoomMesh,
 } from "./roomMesh.js";
+import { PanelLightPool } from "./lightPool.js";
 
 const PANELS_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
@@ -28,10 +29,12 @@ export class World {
     this.loadQueue = [];
     this.pendingKeys = new Set();
     this.disposeQueue = [];
+    this.fixtures = [];
     this.cellCx = NaN;
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
+    this.lightPool = new PanelLightPool(scene);
   }
 
   key(cx, cz) {
@@ -112,16 +115,42 @@ export class World {
     this.pendingColliderRebuild = false;
   }
 
+  addFixtures(mesh) {
+    const f = mesh.userData.fixtures;
+    if (f?.length) {
+      this.fixtures.push(...f);
+      this.lightPool.markDirty();
+    }
+  }
+
+  removeFixtures(mesh) {
+    const f = mesh.userData.fixtures;
+    if (!f?.length) return;
+    const drop = new Set(f);
+    this.fixtures = this.fixtures.filter((item) => !drop.has(item));
+    for (const fixture of f) {
+      fixture.light = null;
+      fixture.lightSlot = -1;
+    }
+    this.lightPool.dropFixtures(f);
+    this.lightPool.markDirty();
+  }
+
   consumeColliderRebuild() {
     const v = this.collidersDirty;
     this.collidersDirty = false;
     return v;
   }
 
+  updateLights(camera) {
+    this.lightPool.update(this.fixtures, camera);
+  }
+
   attachChunk(cx, cz, room, build) {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     this.chunks.set(k, { mesh: build.group, room });
+    this.addFixtures(build.group);
   }
 
   spawnComplete(cx, cz) {
@@ -130,6 +159,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
+    this.addFixtures(mesh);
   }
 
   despawn(k) {
@@ -137,6 +167,7 @@ export class World {
     if (!entry) return;
     const { mesh } = entry;
     if (mesh) {
+      this.removeFixtures(mesh);
       this.scene.remove(mesh);
       this.disposeQueue.push(mesh);
     }
@@ -212,6 +243,7 @@ export class World {
   _finishPrefetchJob(job) {
     const k = this.key(job.cx, job.cz);
     if (job.build?.group) {
+      this.removeFixtures(job.build.group);
       this.scene.remove(job.build.group);
       this.disposeQueue.push(job.build.group);
     }
@@ -220,6 +252,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
+    this.addFixtures(mesh);
     this.pendingKeys.delete(k);
   }
 
@@ -267,7 +300,6 @@ export class World {
     if (this.pendingColliderRebuild) this.rebuildColliders();
   }
 
-  /** Sync full build — used during title-screen preload to avoid in-game hitches */
   _spawnChunkComplete(cx, cz) {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
@@ -275,10 +307,10 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
+    this.addFixtures(mesh);
     this.pendingKeys.delete(k);
   }
 
-  /** Fully build the visible preload square before gameplay. */
   async preloadAround(camera, onProgress) {
     const playerPos = camera.position;
     const cx = Math.floor(playerPos.x / CHUNK);
@@ -315,6 +347,8 @@ export class World {
     else this.flushColliders();
 
     this.preloading = false;
+    this.lightPool.markDirty();
+    this.lightPool.update(this.fixtures, camera);
     onProgress?.(total || 1, total || 1);
   }
 
