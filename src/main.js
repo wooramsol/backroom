@@ -16,9 +16,6 @@ import {
   FOG_COLOR,
   FOG_NEAR,
   FOG_FAR,
-  LIGHT_PANEL_COLOR,
-  SCENE_BRIGHTNESS,
-  PANEL_BRIGHTNESS_BOOST,
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
@@ -65,9 +62,7 @@ async function init() {
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(
-    SCENE_BRIGHTNESS * PANEL_BRIGHTNESS_BOOST,
-  );
+  const trofferTile = createCeilingTileMaterial(ceilingTileTex);
 
   const materials = {
     wallTex: wallpaper,
@@ -76,8 +71,8 @@ async function init() {
     ceilingTileTex,
     floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile: createCeilingTileMaterial(ceilingTileTex),
-    lightPanelOn: new THREE.MeshBasicMaterial({ color: panelColor }),
+    ceilingTile: trofferTile,
+    lightPanelOn: trofferTile,
   };
 
   const world = new World(scene, materials);
