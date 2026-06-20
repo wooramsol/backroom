@@ -57,27 +57,80 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
+let startupReady = false;
+
 async function init() {
-  const loader = new THREE.TextureLoader();
-  const wallpaper = await loadWallpaperOrFallback(loader);
-  const surfaceTex = await loadSurfaceOrFallback(loader);
-  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const ceilingTile = createCeilingTileMaterial(ceilingTileTex);
+  const hint = document.querySelector("#overlay .hint");
+  const defaultHint =
+    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
 
-  const materials = {
-    wallTex: wallpaper,
-    wall: createWallMaterial(wallpaper),
-    surfaceTex,
-    ceilingTileTex,
-    floor: createFloorMaterial(ceilingTileTex),
-    ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile,
-  };
+  let started = false;
+  let world;
+  let player;
 
-  const world = new World(scene, materials);
-  const player = new Player(camera, renderer.domElement);
-  world.init(player.position);
-  player.connect();
+  function markReady(message) {
+    if (startupReady) return;
+    startupReady = true;
+    renderer.domElement.style.visibility = "visible";
+    overlay.style.cursor = "pointer";
+    if (hint) hint.innerHTML = message || defaultHint;
+    syncCrosshair();
+  }
+
+  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
+  overlay.style.cursor = "wait";
+
+  overlay.addEventListener("click", () => {
+    if (!startupReady) return;
+    player?.requestLock();
+    if (!started) {
+      started = true;
+      overlay.classList.add("hidden");
+      hud.classList.add("visible");
+      vignette?.classList.remove("visible");
+      crosshair?.classList.add("visible");
+      syncCrosshair();
+      buildBadge?.classList.add("visible");
+    }
+  });
+
+  try {
+    const loader = new THREE.TextureLoader();
+    const wallpaper = await loadWallpaperOrFallback(loader);
+    const surfaceTex = await loadSurfaceOrFallback(loader);
+    const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
+    const ceilingTile = createCeilingTileMaterial(ceilingTileTex);
+
+    const materials = {
+      wallTex: wallpaper,
+      wall: createWallMaterial(wallpaper),
+      surfaceTex,
+      ceilingTileTex,
+      floor: createFloorMaterial(ceilingTileTex),
+      ceilingGroove: createCeilingGapMaterial(),
+      ceilingTile,
+    };
+
+    world = new World(scene, materials);
+    player = new Player(camera, renderer.domElement);
+    world.init(player.position);
+    player.connect();
+
+    await world.preloadAround(camera, (done, total) => {
+      if (hint && !startupReady) {
+        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
+      }
+    });
+
+    renderer.render(scene, camera);
+    player.setColliders(world.getColliders());
+    markReady(defaultHint);
+  } catch (err) {
+    console.error(err);
+    markReady(
+      `${defaultHint}<br/><span style="opacity:0.55;font-size:0.9em">Load warning — click to play anyway</span>`,
+    );
+  }
 
   function showResumePrompt() {
     if (!resumePrompt) return;
@@ -92,63 +145,19 @@ async function init() {
   }
 
   function tryResumeLock() {
-    if (!ready || !started) return;
-    if (!player.isLocked()) player.requestLock();
+    if (!startupReady || !started) return;
+    if (player && !player.isLocked()) player.requestLock();
   }
 
-  player.onLockLost = () => {
-    if (started) showResumePrompt();
-  };
-  player.onLockAcquired = hideResumePrompt;
+  if (player) {
+    player.onLockLost = () => {
+      if (started) showResumePrompt();
+    };
+    player.onLockAcquired = hideResumePrompt;
+  }
 
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
-
-  let started = false;
-  let ready = false;
-  const hint = document.querySelector("#overlay .hint");
-  const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
-
-  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
-  overlay.style.cursor = "wait";
-
-  world
-    .preloadAround(camera, (done, total) => {
-      if (hint && !ready) {
-        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
-      }
-    })
-    .then(() => {
-      renderer.render(scene, camera);
-      player.setColliders(world.getColliders());
-      ready = true;
-      renderer.domElement.style.visibility = "visible";
-      syncCrosshair();
-      overlay.style.cursor = "pointer";
-      if (hint) hint.innerHTML = defaultHint;
-    })
-    .catch((err) => {
-      console.error(err);
-      ready = true;
-      renderer.domElement.style.visibility = "visible";
-      overlay.style.cursor = "pointer";
-      if (hint) hint.textContent = "Load error — please refresh.";
-    });
-
-  overlay.addEventListener("click", () => {
-    if (!ready) return;
-    player.requestLock();
-    if (!started) {
-      started = true;
-      overlay.classList.add("hidden");
-      hud.classList.add("visible");
-      vignette?.classList.remove("visible");
-      crosshair?.classList.add("visible");
-      syncCrosshair();
-      buildBadge?.classList.add("visible");
-    }
-  });
 
   function syncCrosshairIfPlaying() {
     if (started) syncCrosshair();
@@ -159,6 +168,8 @@ async function init() {
 
   function animate() {
     requestAnimationFrame(animate);
+    if (!world || !player) return;
+
     const frameStart = performance.now();
     const dt = Math.min(clock.getDelta(), 0.05);
 
@@ -197,6 +208,12 @@ async function init() {
 
 init().catch((err) => {
   console.error(err);
+  startupReady = true;
   const hint = document.querySelector("#overlay .hint");
-  if (hint) hint.textContent = "Load error — please refresh.";
+  if (hint) {
+    hint.innerHTML =
+      'Click to start<br /><span style="opacity:0.55">Startup error — refresh or check public/assets/</span>';
+  }
+  overlay.style.cursor = "pointer";
+  renderer.domElement.style.visibility = "visible";
 });
