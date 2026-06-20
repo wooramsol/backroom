@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
@@ -11,27 +10,16 @@ import {
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
-import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
   EYE_H,
   FOG_COLOR,
   FOG_NEAR,
   FOG_FAR,
-  AMBIENT_COLOR,
-  AMBIENT_INTENSITY,
-  HEMI_SKY_COLOR,
-  HEMI_GROUND_COLOR,
-  HEMI_INTENSITY,
-  LIGHT_PANEL_EMISSIVE,
-  FLUORESCENT_COLOR,
-  SURFACE_ROUGHNESS,
-  SURFACE_METALNESS,
-  TONE_MAPPING_EXPOSURE,
+  LIGHT_PANEL_COLOR,
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
-  LAYER_FLOOR,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -55,12 +43,10 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden";
 document.body.appendChild(renderer.domElement);
 
@@ -71,22 +57,12 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
-const ambient = new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY);
-ambient.layers.enable(LAYER_FLOOR);
-scene.add(ambient);
-
-const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
-hemi.layers.enable(LAYER_FLOOR);
-scene.add(hemi);
-
-camera.layers.enable(LAYER_FLOOR);
-
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelEmissive = new THREE.Color(FLUORESCENT_COLOR);
+  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(1.08);
 
   const materials = {
     wallTex: wallpaper,
@@ -96,13 +72,7 @@ async function init() {
     floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
-    lightPanelOn: new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: panelEmissive,
-      emissiveIntensity: LIGHT_PANEL_EMISSIVE,
-      roughness: SURFACE_ROUGHNESS,
-      metalness: SURFACE_METALNESS,
-    }),
+    lightPanelOn: new THREE.MeshBasicMaterial({ color: panelColor }),
   };
 
   const world = new World(scene, materials);
@@ -135,8 +105,6 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
-
   let started = false;
   let ready = false;
   const hint = document.querySelector("#overlay .hint");
@@ -153,7 +121,7 @@ async function init() {
       }
     })
     .then(() => {
-      for (let i = 0; i < 5; i++) composer.render();
+      renderer.render(scene, camera);
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
@@ -199,11 +167,10 @@ async function init() {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
-      world.updateLights(camera);
     }
     if (started) player.update(dt);
 
-    composer.render();
+    renderer.render(scene, camera);
 
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
@@ -219,7 +186,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
+    renderer.setSize(w, h);
     syncCrosshair();
   });
 }

@@ -66,16 +66,10 @@ export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 export const EDGE_PREFETCH = 0.55;
 /** ~4500K warm white — flat fluorescent office fill */
 export const FLUORESCENT_COLOR = 0xfff4e5;
-export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.78;
-/** Hemisphere — ground color lights ceiling tiles (normals face down) */
-export const HEMI_SKY_COLOR = 0xfff8ec;
-export const HEMI_GROUND_COLOR = 0xfffaf0;
-export const HEMI_INTENSITY = 0.92;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
-/** Troffer face — slightly brighter than ceiling, not a spotlight */
-export const LIGHT_PANEL_EMISSIVE = 0.32;
+/** @deprecated use LIGHT_PANEL_COLOR */
+export const LIGHT_PANEL_EMISSIVE = 0;
 /** @deprecated use LIGHT_PANEL_EMISSIVE */
 export const LIGHT_PANEL_INTENSITY = 1.05;
 /** Square ceiling grid cell — troffer bay spacing */
@@ -92,41 +86,13 @@ export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
-/** @deprecated all troffers are lit */
-export const PANEL_ON_CHANCE = 1;
-/** Downward troffer fill — soft, wide; ambient carries most of the room */
-export const PANEL_LIGHT_INTENSITY = 2.4;
-/** Upward plenum wash — keeps ceiling tiles between panels evenly lit */
-export const CEILING_PLENUM_INTENSITY = 3.6;
-/** Upward plenum matches troffer cell — no overspill past grid */
-export const PLENUM_LIGHT_SCALE = 1;
-/** Soft glow on non-panel ceiling tiles */
-export const CEILING_TILE_EMISSIVE = 0.14;
-/** Rebuild pooled lights after the camera moves this far (metres) */
-export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
-/** Minimum ms between pool rebuilds while moving */
-export const LIGHT_POOL_MIN_INTERVAL_MS = 120;
-/** Matte surfaces — flat fluorescent look, minimal specular */
-export const SURFACE_ROUGHNESS = 1;
-export const SURFACE_METALNESS = 0;
-/** Very subtle bloom — avoid spotlight halos on panels */
-export const BLOOM_STRENGTH = 0.07;
-export const BLOOM_RADIUS = 0.22;
-export const BLOOM_THRESHOLD = 0.94;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Cap device pixel ratio for the WebGL canvas */
 export const MAX_PIXEL_RATIO = 1;
-/** Bloom buffer scale — can stay low; scene pass is full res */
-export const BLOOM_RESOLUTION_SCALE = 0.5;
-export const TONE_MAPPING_EXPOSURE = 1.04;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
-/** Scene layer — walls, ceiling, troffers (RectAreaLight targets) */
-export const LAYER_LIT = 0;
-/** Floor layer — same Standard shading, no troffer RectAreaLights */
-export const LAYER_FLOOR = 1;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;
