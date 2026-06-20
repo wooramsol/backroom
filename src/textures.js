@@ -37,11 +37,44 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
-const _wallMatCache = new Map();
+const _wallMatCache = new WeakMap();
+const _tiledMatCache = new Map();
+
+/** Single wall material — UVs are set in world tile units on each geometry */
+export function createWallMaterial(tex) {
+  let mat = _wallMatCache.get(tex);
+  if (mat) return mat;
+
+  const map = tex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(1, 1);
+  mat = new THREE.MeshStandardMaterial({
+    map,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+  });
+  _wallMatCache.set(tex, mat);
+  return mat;
+}
+
+/** World-aligned wallpaper UVs so corners and chunk seams stay continuous */
+export function applyWallWorldUVs(geometry, axis, tileW, tileH, originX, originZ) {
+  const pos = geometry.getAttribute("position");
+  const uv = geometry.getAttribute("uv");
+  for (let i = 0; i < pos.count; i++) {
+    const lx = pos.getX(i);
+    const ly = pos.getY(i);
+    const lz = pos.getZ(i);
+    const u = axis === "z" ? (originX + lx) / tileW : (originZ + lz) / tileW;
+    const v = ly / tileH;
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+}
 
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const key = `${widthM.toFixed(2)}|${heightM.toFixed(2)}`;
-  const cached = _wallMatCache.get(key);
+  const cached = _tiledMatCache.get(key);
   if (cached) return cached;
 
   const map = tex.clone();
@@ -55,7 +88,7 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
     metalness: SURFACE_METALNESS,
     ...opts,
   });
-  _wallMatCache.set(key, mat);
+  _tiledMatCache.set(key, mat);
   return mat;
 }
 
