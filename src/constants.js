@@ -41,6 +41,8 @@ export const CEILING_DROP_M = 0;
 export const CEILING_GROOVE_DEPTH_M = 0.009;
 export const CEILING_TILE_LIFT_M = CEILING_GROOVE_DEPTH_M;
 export const CEILING_PANEL_LIFT_M = CEILING_GROOVE_DEPTH_M + 0.001;
+/** Tiny lift so troffer face clears coplanar ceiling tiles (avoids z-fight) */
+export const CEILING_PANEL_FACE_EPS_M = 0.0008;
 /** Troffer emitter below the visible panel face */
 export const TROFFER_LIGHT_DROP_M = 0.018;
 /** Keep the eye this far from wall surfaces (near + margin) */
@@ -85,7 +87,9 @@ export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
 /** Recessed seam between ceiling tiles — warm beige, stays visible not black */
 export const CEILING_GAP_COLOR = 0xb8b088;
 /** @deprecated */ export const CEILING_PLENUM_COLOR = CEILING_GAP_COLOR;
-/** Lit troffer replaces the whole grid cell */
+/** Lit troffer face — same size as ceiling tile face inside the grid cell */
+export const PANEL_FACE_M = CEILING_TILE_FACE_M;
+/** Troffer bay / groove cell and RectAreaLight footprint */
 export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
