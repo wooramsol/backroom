@@ -112,6 +112,8 @@ export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
+/** Plain paint on door jambs — no wallpaper texture */
+export const JAMB_COLOR = 0xe8e4c8;
 /** Fluorescent hum — disabled until re-enabled later */
 export const ENABLE_FLUORESCENT_HUM = false;
 
