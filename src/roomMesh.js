@@ -15,7 +15,7 @@ import { createWallMaterial, applyWallWorldUVs, tiledAt, CEILING_TILE_M } from "
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
-const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _panelGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _identQuat = new THREE.Quaternion();
@@ -121,13 +121,14 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
-      if (lightCells.has(`${tx},${tz}`)) continue;
-
       const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
+      const isPanel = lightCells.has(`${tx},${tz}`);
 
       _pos.set(px, gapY, pz);
       _mat4.compose(_pos, _ceilRot, _scale);
       backingTransforms.push(_mat4.clone());
+
+      if (isPanel) continue;
 
       _pos.set(px, tileY, pz);
       _mat4.compose(_pos, _ceilRot, _scale);
@@ -153,11 +154,11 @@ function addWalls(group, room, materials, h, originX, originZ) {
 }
 
 function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
-  const { panelY, lightY, tileY } = getCeilingLayers(h);
+  const { panelFaceY, lightY, plenumY } = getCeilingLayers(h);
   const face = new THREE.Mesh(_panelGeo, materials.lightPanelOn);
   face.rotation.x = Math.PI / 2;
-  face.position.set(panel.x, panelY, panel.z);
-  face.renderOrder = 1;
+  face.position.set(panel.x, panelFaceY, panel.z);
+  face.renderOrder = 3;
   face.userData.panel = panel;
   face.userData.fluorescent = true;
   panel.face = face;
@@ -170,24 +171,24 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
     plenumLight: null,
     lightSlot: -1,
     wx: roomCx * CHUNK + panel.x,
-    wy: panelY,
+    wy: panelFaceY,
     wz: roomCz * CHUNK + panel.z,
     lightY,
-    plenumY: tileY,
+    plenumY,
   });
 }
 
 function finalizePanelInstances(group, fixtures, materials, h) {
   if (fixtures.length < 2) return;
 
-  const { panelY } = getCeilingLayers(h);
+  const { panelFaceY } = getCeilingLayers(h);
   const mesh = new THREE.InstancedMesh(_panelGeo, materials.lightPanelOn, fixtures.length);
-  mesh.renderOrder = 1;
+  mesh.renderOrder = 3;
   mesh.userData.fluorescent = true;
 
   for (let i = 0; i < fixtures.length; i++) {
     const fixture = fixtures[i];
-    _pos.set(fixture.panel.x, panelY, fixture.panel.z);
+    _pos.set(fixture.panel.x, panelFaceY, fixture.panel.z);
     _mat4.compose(_pos, _ceilRot, _scale);
     mesh.setMatrixAt(i, _mat4);
     group.remove(fixture.face);
