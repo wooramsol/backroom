@@ -68,6 +68,8 @@ export const EDGE_PREFETCH = 0.55;
 export const FLUORESCENT_COLOR = 0xfff4e5;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
+/** Global scene albedo scale — 0.5 = 50% brightness */
+export const SCENE_BRIGHTNESS = 0.5;
 /** @deprecated use LIGHT_PANEL_COLOR */
 export const LIGHT_PANEL_EMISSIVE = 0;
 /** @deprecated use LIGHT_PANEL_EMISSIVE */
