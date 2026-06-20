@@ -14,6 +14,7 @@ import { createWallMaterial, applyWallWorldUVs, tiledAt, CEILING_TILE_M } from "
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _identQuat = new THREE.Quaternion();
@@ -67,12 +68,7 @@ function flushWallMeshes(group, geos, wallMat) {
   if (!geos.length) return;
   const merged = mergeGeometries(geos, false);
   for (const geo of geos) geo.dispose();
-  if (merged) {
-    const mesh = new THREE.Mesh(merged, wallMat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    group.add(mesh);
-  }
+  if (merged) group.add(new THREE.Mesh(merged, wallMat));
   geos.length = 0;
 }
 
@@ -90,26 +86,32 @@ function addFloor(group, materials, worldX, worldZ) {
   mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
   floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
   group.add(floor);
 }
 
-function addInstancedCeiling(group, geometry, material, transforms, renderOrder = 0, { castShadow = false, receiveShadow = true } = {}) {
+function addInstancedCeiling(group, geometry, material, transforms, renderOrder = 0) {
   if (!transforms.length) return;
   const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
   for (let i = 0; i < transforms.length; i++) {
     mesh.setMatrixAt(i, transforms[i]);
   }
   mesh.instanceMatrix.needsUpdate = true;
-  mesh.castShadow = castShadow;
-  mesh.receiveShadow = receiveShadow;
   if (renderOrder) mesh.renderOrder = renderOrder;
   group.add(mesh);
 }
 
-function addCeilingTiles(group, h, materials, worldX, worldZ) {
+function panelTileSet(panels) {
+  const keys = new Set();
+  for (const panel of panels) {
+    keys.add(`${panel.tx},${panel.tz}`);
+  }
+  return keys;
+}
+
+function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
   const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
+  const lightCells = panelTileSet(panels);
 
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
   const backingTransforms = [];
@@ -117,6 +119,8 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
+      if (lightCells.has(`${tx},${tz}`)) continue;
+
       const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
 
       _pos.set(px, gapY, pz);
@@ -129,13 +133,34 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
     }
   }
 
-  addInstancedCeiling(group, _cellBackingGeo, materials.ceilingGroove, backingTransforms, 0, {
-    castShadow: false,
-    receiveShadow: true,
-  });
-  addInstancedCeiling(group, _tileGeo, materials.ceilingTile, tileTransforms, 2, {
-    castShadow: false,
-    receiveShadow: true,
+  addInstancedCeiling(group, _cellBackingGeo, materials.ceilingGroove, backingTransforms);
+  addInstancedCeiling(group, _tileGeo, materials.ceilingTile, tileTransforms, 2);
+}
+
+function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
+  const { panelY, lightY } = getCeilingLayers(h);
+  const face = new THREE.Mesh(
+    _panelGeo,
+    panel.on ? materials.lightPanelOn : materials.lightPanelOff,
+  );
+  face.rotation.x = Math.PI / 2;
+  face.position.set(panel.x, panelY, panel.z);
+  face.renderOrder = 3;
+  face.userData.panel = panel;
+  panel.face = face;
+  group.add(face);
+
+  if (!panel.on) return;
+
+  fixtures.push({
+    panel,
+    face,
+    light: null,
+    lightSlot: -1,
+    wx: roomCx * CHUNK + panel.x,
+    wy: panelY,
+    wz: roomCz * CHUNK + panel.z,
+    lightY,
   });
 }
 
@@ -159,7 +184,9 @@ export function createRoomBuildState(room, materials) {
     room,
     group,
     materials,
+    panelIdx: 0,
     shellDone: false,
+    fixtures: [],
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
@@ -171,19 +198,31 @@ export function buildRoomShell(state) {
   const h = room.height;
 
   addFloor(group, materials, state.worldX, state.worldZ);
-  addCeilingTiles(group, h, materials, state.worldX, state.worldZ);
+  addCeilingTiles(group, h, materials, state.worldX, state.worldZ, room.panels);
   addWalls(group, room, materials, h, state.worldX, state.worldZ);
   state.shellDone = true;
 }
 
-/** @deprecated troffer panels removed — shell build is complete */
-export function buildPanelBatch() {
-  return true;
+/** @returns whether all panels are built */
+export function buildPanelBatch(state, maxPanels = Infinity) {
+  const { room, group, materials } = state;
+  const h = room.height;
+  let added = 0;
+
+  while (state.panelIdx < room.panels.length && added < maxPanels) {
+    const panel = room.panels[state.panelIdx];
+    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz);
+    state.panelIdx++;
+    added++;
+  }
+
+  return state.panelIdx >= room.panels.length;
 }
 
 export function finalizeRoomBuild(state) {
-  const { group, room } = state;
+  const { group, room, fixtures } = state;
   group.userData.room = room;
+  group.userData.fixtures = fixtures;
   return group;
 }
 
@@ -191,5 +230,6 @@ export function finalizeRoomBuild(state) {
 export function buildRoomMesh(room, materials) {
   const state = createRoomBuildState(room, materials);
   buildRoomShell(state);
+  buildPanelBatch(state, room.panels.length);
   return finalizeRoomBuild(state);
 }

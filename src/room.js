@@ -108,12 +108,12 @@ function panelOverlapsExisting(px, pz, panels) {
 }
 
 function generatePanels(rng, room) {
-  const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
-  const panels = [];
   const worldX = room.cx * CHUNK;
   const worldZ = room.cz * CHUNK;
   const tileM = CEILING_TILE_M;
   const halfCell = PANEL_SIZE / 2;
+  const candidates = [];
+  const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
   for (const zone of room.zones) {
     const inset = zoneInset(zone);
@@ -121,41 +121,32 @@ function generatePanels(rng, room) {
     const xHi = zone.x1 - inset;
     const zLo = zone.z0 + inset;
     const zHi = zone.z1 - inset;
-    const zw = xHi - xLo;
-    const zd = zHi - zLo;
-    if (zw < PANEL_SIZE || zd < PANEL_SIZE) continue;
-
-    const narrow = Math.min(zw, zd) < 5.2;
-    const skip = narrow ? 0.14 : 0.28;
-    const tileStride = Math.max(2, Math.round(room.lightSpacing / tileM));
-
-    const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
 
     for (let tx = tx0; tx <= tx1; tx++) {
-      if (tx % tileStride !== 0) continue;
       for (let tz = tz0; tz <= tz1; tz++) {
-        if (tz % tileStride !== 0) continue;
         const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
-
         if (px - halfCell < xLo || px + halfCell > xHi || pz - halfCell < zLo || pz + halfCell > zHi) {
           continue;
         }
-        if (hash(tx * 3.1 + tz + zone.x0 * 0.7) < skip) continue;
         if (panelBlocked(px, pz, room)) continue;
-        if (panelOverlapsExisting(px, pz, panels)) continue;
-        panels.push({
-          x: px,
-          z: pz,
-          tx,
-          tz,
-          on: true,
-          bright: 0.9 + hash(tz + zone.z0) * 0.14,
-        });
+        candidates.push({ x: px, z: pz, tx, tz });
       }
     }
   }
 
-  return panels;
+  if (!candidates.length) return [];
+
+  const pick = rng.pick(candidates);
+  return [
+    {
+      x: pick.x,
+      z: pick.z,
+      tx: pick.tx,
+      tz: pick.tz,
+      on: true,
+      bright: 0.92 + rng.range(0, 0.1),
+    },
+  ];
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {

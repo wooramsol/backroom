@@ -70,8 +70,18 @@ export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** @deprecated use LIGHT_PANEL_COLOR */
 export const LIGHT_PANEL_EMISSIVE = 0;
-/** @deprecated use LIGHT_PANEL_EMISSIVE */
-export const LIGHT_PANEL_INTENSITY = 1.05;
+/** Panel face brightness multiplier */
+export const LIGHT_PANEL_INTENSITY = 1.08;
+/** RectAreaLight intensity — one tile lights the whole room */
+export const PANEL_LIGHT_INTENSITY = 7.5;
+export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
+export const LIGHT_POOL_MIN_INTERVAL_MS = 90;
+/** Low ambient so ceiling tiles read as the main light source */
+export const AMBIENT_COLOR = FLUORESCENT_COLOR;
+export const AMBIENT_INTENSITY = 0.34;
+export const HEMI_SKY_COLOR = 0xfff8ec;
+export const HEMI_GROUND_COLOR = 0xe8e0c8;
+export const HEMI_INTENSITY = 0.4;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
@@ -90,14 +100,6 @@ export const PANEL_EDGE_INSET = 1.25;
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Cap device pixel ratio for the WebGL canvas */
 export const MAX_PIXEL_RATIO = 1;
-/** Soft overhead fill — keeps Lambert surfaces close to texture albedo */
-export const AMBIENT_LIGHT_COLOR = 0xfff6e8;
-export const AMBIENT_LIGHT_INTENSITY = 0.78;
-/** Subtle directional light for wall–floor contact shadows */
-export const SUN_LIGHT_COLOR = 0xfff0dc;
-export const SUN_LIGHT_INTENSITY = 0.32;
-export const SHADOW_MAP_SIZE = 1024;
-export const SHADOW_CAMERA_HALF = 16;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
