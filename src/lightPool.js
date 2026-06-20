@@ -8,6 +8,7 @@ import {
   PANEL_H,
   LIGHT_POOL_MOVE_THRESHOLD,
   LIGHT_POOL_MIN_INTERVAL_MS,
+  LAYER_LIT,
 } from "./constants.js";
 
 const _down = new THREE.Euler(-Math.PI / 2, 0, 0);
@@ -37,6 +38,7 @@ export class PanelLightPool {
       );
       light.rotation.copy(_down);
       light.visible = false;
+      light.layers.set(LAYER_LIT);
       scene.add(light);
       this.lights.push(light);
     }
