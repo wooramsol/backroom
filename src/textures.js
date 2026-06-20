@@ -1,10 +1,16 @@
 import * as THREE from "three";
 import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
+/** Vite public/ assets — works for local dev and GitHub Pages base path */
+function assetUrl(file) {
+  const base = import.meta.env.BASE_URL || "/";
+  return `${base}assets/${file}`;
+}
+
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
-export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
+export const WALLPAPER_URL = assetUrl("backroom_wallpaper.webp");
 /** User floor/ceiling surface */
-export const BOTTOM_URL = "./assets/bottom.jpg";
+export const BOTTOM_URL = assetUrl("bottom.jpg");
 /** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
 /** @deprecated */ export const CEILING_URL = BOTTOM_URL;
 export const WALL_TILE_W = 0.76;
@@ -318,32 +324,32 @@ export function applySurfaceTileSize(tex) {
   return applySurfaceTileSize(tex);
 }
 
+function configureLoadedTexture(tex, applyTileSize) {
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  applyTileSize(tex);
+  return tex;
+}
+
+async function loadTextureOrFallback(loader, url, applyTileSize, createFallback, label) {
+  try {
+    const tex = await loader.loadAsync(url);
+    return configureLoadedTexture(tex, applyTileSize);
+  } catch (err) {
+    console.warn(`[textures] ${label} missing (${url}) — using fallback`, err);
+    const tex = createFallback();
+    return configureLoadedTexture(tex, applyTileSize);
+  }
+}
+
 export function loadSurface(loader) {
-  return new Promise((resolve, reject) => {
-    loader.load(
-      BOTTOM_URL,
-      (tex) => {
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.minFilter = THREE.LinearFilter;
-        tex.generateMipmaps = false;
-        applySurfaceTileSize(tex);
-        resolve(tex);
-      },
-      undefined,
-      reject,
-    );
-  });
+  return loadTextureOrFallback(loader, BOTTOM_URL, applySurfaceTileSize, createCarpetTexture, "floor/ceiling");
 }
 
 export async function loadSurfaceOrFallback(loader) {
-  try {
-    return await loadSurface(loader);
-  } catch {
-    const tex = createCarpetTexture();
-    applySurfaceTileSize(tex);
-    return tex;
-  }
+  return loadSurface(loader);
 }
 
 /** @deprecated */ export function loadCeiling(loader) {
@@ -406,33 +412,56 @@ export function createCeilingTexture() {
   return createCeilingTileTexture();
 }
 
-export function loadWallpaper(loader) {
-  return new Promise((resolve, reject) => {
-    loader.load(
-      WALLPAPER_URL,
-      (tex) => {
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.minFilter = THREE.LinearFilter;
-        tex.generateMipmaps = false;
-        applyWallpaperTileSize(tex);
-        resolve(tex);
-      },
-      undefined,
-      reject
-    );
+function createWallpaperFallback() {
+  return canvasTex((ctx, size) => {
+    ctx.fillStyle = "#e5e4ad";
+    ctx.fillRect(0, 0, size, size);
   });
 }
 
+export function createProceduralWallpaper() {
+  return configureLoadedTexture(createWallpaperFallback(), applyWallpaperTileSize);
+}
+
+export function createProceduralSurface() {
+  return configureLoadedTexture(createCarpetTexture(), applySurfaceTileSize);
+}
+
+export function buildMaterials(wallpaper, surfaceTex) {
+  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
+  const ceilingTile = createCeilingTileMaterial(ceilingTileTex);
+  return {
+    wallTex: wallpaper,
+    wall: createWallMaterial(wallpaper),
+    surfaceTex,
+    ceilingTileTex,
+    floor: createFloorMaterial(ceilingTileTex),
+    ceilingGroove: createCeilingGapMaterial(),
+    ceilingTile,
+  };
+}
+
+/** Instant materials — no network; used so local dev always starts */
+export function createProceduralMaterials() {
+  return buildMaterials(createProceduralWallpaper(), createProceduralSurface());
+}
+
+export async function loadAssetMaterials(loader) {
+  const wallpaper = await loadWallpaperOrFallback(loader);
+  const surfaceTex = await loadSurfaceOrFallback(loader);
+  return buildMaterials(wallpaper, surfaceTex);
+}
+
+export function loadWallpaper(loader) {
+  return loadTextureOrFallback(
+    loader,
+    WALLPAPER_URL,
+    applyWallpaperTileSize,
+    createWallpaperFallback,
+    "wallpaper",
+  );
+}
+
 export async function loadWallpaperOrFallback(loader) {
-  try {
-    return await loadWallpaper(loader);
-  } catch {
-    const tex = canvasTex((ctx, size) => {
-      ctx.fillStyle = "#e5e4ad";
-      ctx.fillRect(0, 0, size, size);
-    });
-    applyWallpaperTileSize(tex);
-    return tex;
-  }
+  return loadWallpaper(loader);
 }

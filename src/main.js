@@ -1,12 +1,7 @@
 import * as THREE from "three";
 import {
-  loadWallpaperOrFallback,
-  loadSurfaceOrFallback,
-  createWallMaterial,
-  createFloorMaterial,
-  createCeilingGapMaterial,
-  createCeilingTileFaceTexture,
-  createCeilingTileMaterial,
+  createProceduralMaterials,
+  loadAssetMaterials,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -57,27 +52,32 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
+window.addEventListener("unhandledrejection", (event) => {
+  const target = event.reason?.target;
+  if (target?.tagName === "IMG") {
+    console.warn("[textures] suppressed image load rejection");
+    event.preventDefault();
+  }
+});
+
 async function init() {
-  const loader = new THREE.TextureLoader();
-  const wallpaper = await loadWallpaperOrFallback(loader);
-  const surfaceTex = await loadSurfaceOrFallback(loader);
-  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const ceilingTile = createCeilingTileMaterial(ceilingTileTex);
+  const hint = document.querySelector("#overlay .hint");
+  const defaultHint =
+    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
 
-  const materials = {
-    wallTex: wallpaper,
-    wall: createWallMaterial(wallpaper),
-    surfaceTex,
-    ceilingTileTex,
-    floor: createFloorMaterial(ceilingTileTex),
-    ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile,
-  };
-
+  let started = false;
+  let materials = createProceduralMaterials();
   const world = new World(scene, materials);
   const player = new Player(camera, renderer.domElement);
   world.init(player.position);
   player.connect();
+
+  function markReady(message) {
+    renderer.domElement.style.visibility = "visible";
+    overlay.style.cursor = "pointer";
+    if (hint) hint.innerHTML = message || defaultHint;
+    syncCrosshair();
+  }
 
   function showResumePrompt() {
     if (!resumePrompt) return;
@@ -92,7 +92,7 @@ async function init() {
   }
 
   function tryResumeLock() {
-    if (!ready || !started) return;
+    if (!started) return;
     if (!player.isLocked()) player.requestLock();
   }
 
@@ -104,40 +104,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  let started = false;
-  let ready = false;
-  const hint = document.querySelector("#overlay .hint");
-  const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
-
-  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
-  overlay.style.cursor = "wait";
-
-  world
-    .preloadAround(camera, (done, total) => {
-      if (hint && !ready) {
-        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
-      }
-    })
-    .then(() => {
-      renderer.render(scene, camera);
-      player.setColliders(world.getColliders());
-      ready = true;
-      renderer.domElement.style.visibility = "visible";
-      syncCrosshair();
-      overlay.style.cursor = "pointer";
-      if (hint) hint.innerHTML = defaultHint;
-    })
-    .catch((err) => {
-      console.error(err);
-      ready = true;
-      renderer.domElement.style.visibility = "visible";
-      overlay.style.cursor = "pointer";
-      if (hint) hint.textContent = "Load error — please refresh.";
-    });
-
   overlay.addEventListener("click", () => {
-    if (!ready) return;
     player.requestLock();
     if (!started) {
       started = true;
@@ -149,6 +116,34 @@ async function init() {
       buildBadge?.classList.add("visible");
     }
   });
+
+  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
+  overlay.style.cursor = "wait";
+  markReady(defaultHint);
+
+  const loader = new THREE.TextureLoader();
+  loadAssetMaterials(loader)
+    .then((assetMaterials) => {
+      materials = assetMaterials;
+      world.materials = materials;
+    })
+    .catch((err) => console.warn("[textures] asset upgrade skipped", err));
+
+  try {
+    await world.preloadAround(camera, (done, total) => {
+      if (hint && !started) {
+        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
+      }
+    });
+    renderer.render(scene, camera);
+    player.setColliders(world.getColliders());
+    markReady(defaultHint);
+  } catch (err) {
+    console.error(err);
+    markReady(
+      `${defaultHint}<br/><span style="opacity:0.55;font-size:0.9em">Room build warning — click to play anyway</span>`,
+    );
+  }
 
   function syncCrosshairIfPlaying() {
     if (started) syncCrosshair();
@@ -198,5 +193,10 @@ async function init() {
 init().catch((err) => {
   console.error(err);
   const hint = document.querySelector("#overlay .hint");
-  if (hint) hint.textContent = "Load error — please refresh.";
+  if (hint) {
+    hint.innerHTML =
+      'Click to start<br /><span style="opacity:0.55">Startup error — refresh the page</span>';
+  }
+  overlay.style.cursor = "pointer";
+  renderer.domElement.style.visibility = "visible";
 });
