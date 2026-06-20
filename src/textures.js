@@ -70,6 +70,15 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   return mat;
 }
 
+/** Box wall with one door-facing side face plain (문 측면만 단색) */
+export function createWallBoxMaterials(wallTex, widthM, heightM, jambMat, doorFaceIndex) {
+  const wallMat = createTiledMaterial(wallTex, widthM, heightM);
+  if (doorFaceIndex < 0) return wallMat;
+  const mats = [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat];
+  mats[doorFaceIndex] = jambMat;
+  return mats;
+}
+
 export function tiled(tex, tileM, w, h) {
   const t = tex.clone();
   t.wrapS = t.wrapT = THREE.RepeatWrapping;

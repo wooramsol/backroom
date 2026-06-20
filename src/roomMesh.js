@@ -9,7 +9,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, tiledAt, CEILING_TILE_M, createJambMaterial } from "./textures.js";
+import { createTiledMaterial, createWallBoxMaterials, tiledAt, CEILING_TILE_M, createJambMaterial } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -20,12 +20,17 @@ const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
 
+function doorJambFaceIndex(axis, side) {
+  if (axis === "z") return side === "left" ? 0 : 1;
+  return side === "left" ? 4 : 5;
+}
+
 function wallSeg(group, wallTex, jambMat, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
   const cap = WALL_T * 0.5;
-  const add = (s0, s1, segH, segY, capStart = true, capEnd = true, plainJamb = false) => {
+  const add = (s0, s1, segH, segY, capStart = true, capEnd = true, jambSide = null) => {
     const es0 = capStart ? s0 - cap : s0;
     const es1 = capEnd ? s1 + cap : s1;
     const slen = es1 - es0;
@@ -35,7 +40,9 @@ function wallSeg(group, wallTex, jambMat, h, axis, pos, a0, a1, door) {
       axis === "z"
         ? new THREE.BoxGeometry(slen, segH, WALL_T)
         : new THREE.BoxGeometry(WALL_T, segH, slen);
-    const mat = plainJamb ? jambMat : createTiledMaterial(wallTex, slen, segH);
+    const mat = jambSide
+      ? createWallBoxMaterials(wallTex, slen, segH, jambMat, doorJambFaceIndex(axis, jambSide))
+      : createTiledMaterial(wallTex, slen, segH);
     const m = new THREE.Mesh(geo, mat);
     if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
     else m.position.set(pos, segY + segH / 2, smid);
@@ -43,11 +50,11 @@ function wallSeg(group, wallTex, jambMat, h, axis, pos, a0, a1, door) {
   };
 
   if (door) {
-    add(a0, mid - dw, DOOR_H, 0, true, false, true);
-    add(mid + dw, a1, DOOR_H, 0, false, true, true);
-    add(a0, a1, h - DOOR_H, DOOR_H, true, true, false);
+    add(a0, mid - dw, DOOR_H, 0, true, false, "left");
+    add(mid + dw, a1, DOOR_H, 0, false, true, "right");
+    add(a0, a1, h - DOOR_H, DOOR_H, true, true);
   } else {
-    add(a0, a1, h, 0, true, true, false);
+    add(a0, a1, h, 0, true, true);
   }
 }
 
