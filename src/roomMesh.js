@@ -81,9 +81,8 @@ function addFloor(group, materials, worldX, worldZ) {
     worldX,
     worldZ,
   );
-  const mat = materials.carpet.clone();
+  const mat = materials.floor.clone();
   mat.map = floorMap;
-  mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);

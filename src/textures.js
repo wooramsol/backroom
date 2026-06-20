@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, FLOOR_UNLIT_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -146,6 +146,14 @@ export function createCeilingTileMaterial(map) {
     map,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
+  });
+}
+
+/** Flat floor — ignores dynamic lights (no troffer pools, cheaper shading) */
+export function createFloorMaterial() {
+  return new THREE.MeshBasicMaterial({
+    side: THREE.DoubleSide,
+    color: FLOOR_UNLIT_COLOR,
   });
 }
 
