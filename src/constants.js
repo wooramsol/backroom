@@ -66,8 +66,6 @@ export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 export const EDGE_PREFETCH = 0.55;
 /** ~4500K warm white — flat fluorescent office fill */
 export const FLUORESCENT_COLOR = 0xfff4e5;
-export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.95;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** @deprecated use LIGHT_PANEL_COLOR */
@@ -88,9 +86,11 @@ export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
-/** @deprecated all troffers are lit */
-export const PANEL_ON_CHANCE = 1;
-/** Matte surfaces — flat fluorescent look */
+/** Troffer RectAreaLight intensity — no ambient fill */
+export const PANEL_LIGHT_INTENSITY = 4.2;
+/** Floor layer — unlit MeshBasic, skips area lights */
+export const LAYER_FLOOR = 1;
+/** Matte — RectAreaLight targets */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */

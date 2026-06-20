@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -48,7 +48,11 @@ export function createWallMaterial(tex) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  mat = new THREE.MeshLambertMaterial({ map });
+  mat = new THREE.MeshStandardMaterial({
+    map,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+  });
   _wallMatCache.set(tex, mat);
   return mat;
 }
@@ -89,8 +93,10 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshLambertMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     map,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
     ...opts,
   });
   _tiledMatCache.set(key, mat);
@@ -126,15 +132,21 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
-  return new THREE.MeshLambertMaterial({
+  return new THREE.MeshStandardMaterial({
     map,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }
 
-/** Matte ceiling carpet — underside only */
+/** Ceiling carpet — receives troffer RectAreaLights */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshLambertMaterial({ map });
+  return new THREE.MeshStandardMaterial({
+    map,
+    roughness: SURFACE_ROUGHNESS,
+    metalness: SURFACE_METALNESS,
+  });
 }
 
 /** Floor — unlit texture, no ceiling-light pools or reflections */

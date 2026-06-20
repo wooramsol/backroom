@@ -7,6 +7,9 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
+  FLUORESCENT_COLOR,
+  PANEL_LIGHT_INTENSITY,
+  LAYER_FLOOR,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -85,6 +88,7 @@ function addFloor(group, materials, worldX, worldZ) {
   mat.map = floorMap;
   mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
+  floor.layers.set(LAYER_FLOOR);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 }
@@ -151,16 +155,26 @@ function addWalls(group, room, materials, h, originX, originZ) {
 }
 
 function addOnePanel(group, materials, h, panel, panelFaces) {
-  const { panelFaceY } = getCeilingLayers(h);
+  const { panelFaceY, lightY } = getCeilingLayers(h);
   const face = new THREE.Mesh(_panelGeo, materials.lightPanelOn);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, panelFaceY, panel.z);
   face.renderOrder = 3;
   face.userData.panel = panel;
-  face.userData.fluorescent = true;
   panel.face = face;
   group.add(face);
-  panelFaces.push({ panel, face });
+
+  const light = new THREE.RectAreaLight(
+    FLUORESCENT_COLOR,
+    PANEL_LIGHT_INTENSITY * panel.bright,
+    PANEL_W,
+    PANEL_H,
+  );
+  light.rotation.x = -Math.PI / 2;
+  light.position.set(panel.x, lightY, panel.z);
+  group.add(light);
+
+  panelFaces.push({ panel, face, light });
 }
 
 function finalizePanelInstances(group, panelFaces, materials, h) {
@@ -169,7 +183,6 @@ function finalizePanelInstances(group, panelFaces, materials, h) {
   const { panelFaceY } = getCeilingLayers(h);
   const mesh = new THREE.InstancedMesh(_panelGeo, materials.lightPanelOn, panelFaces.length);
   mesh.renderOrder = 3;
-  mesh.userData.fluorescent = true;
 
   for (let i = 0; i < panelFaces.length; i++) {
     const entry = panelFaces[i];

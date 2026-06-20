@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
@@ -16,12 +17,11 @@ import {
   FOG_COLOR,
   FOG_NEAR,
   FOG_FAR,
-  AMBIENT_COLOR,
-  AMBIENT_INTENSITY,
   LIGHT_PANEL_COLOR,
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
+  LAYER_FLOOR,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -45,6 +45,7 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -58,8 +59,7 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
-
-scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
+camera.layers.enable(LAYER_FLOOR);
 
 async function init() {
   const loader = new THREE.TextureLoader();
