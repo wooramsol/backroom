@@ -14,6 +14,12 @@ import {
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
+  AMBIENT_LIGHT_COLOR,
+  AMBIENT_LIGHT_INTENSITY,
+  SUN_LIGHT_COLOR,
+  SUN_LIGHT_INTENSITY,
+  SHADOW_MAP_SIZE,
+  SHADOW_CAMERA_HALF,
 } from "./constants.js";
 import { formatBuildLabel, formatBuildTime } from "./version.js";
 
@@ -42,12 +48,31 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden";
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(FOG_COLOR);
 scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
+
+const ambientLight = new THREE.AmbientLight(AMBIENT_LIGHT_COLOR, AMBIENT_LIGHT_INTENSITY);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(SUN_LIGHT_COLOR, SUN_LIGHT_INTENSITY);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 42;
+sunLight.shadow.camera.left = -SHADOW_CAMERA_HALF;
+sunLight.shadow.camera.right = SHADOW_CAMERA_HALF;
+sunLight.shadow.camera.top = SHADOW_CAMERA_HALF;
+sunLight.shadow.camera.bottom = -SHADOW_CAMERA_HALF;
+sunLight.shadow.bias = -0.00035;
+sunLight.shadow.normalBias = 0.02;
+scene.add(sunLight);
+scene.add(sunLight.target);
 
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
@@ -149,6 +174,14 @@ async function init() {
     if (started) syncCrosshair();
   }
 
+  function updateSunLight() {
+    const x = player.position.x;
+    const z = player.position.z;
+    sunLight.position.set(x + 4, 13, z + 8);
+    sunLight.target.position.set(x, 0, z);
+    sunLight.target.updateMatrixWorld();
+  }
+
   const clock = new THREE.Clock();
   const TARGET_FRAME_MS = 16.7;
 
@@ -168,6 +201,7 @@ async function init() {
     }
     if (started) player.update(dt);
 
+    updateSunLight();
     syncCrosshairIfPlaying();
     renderer.render(scene, camera);
 

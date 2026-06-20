@@ -67,7 +67,12 @@ function flushWallMeshes(group, geos, wallMat) {
   if (!geos.length) return;
   const merged = mergeGeometries(geos, false);
   for (const geo of geos) geo.dispose();
-  if (merged) group.add(new THREE.Mesh(merged, wallMat));
+  if (merged) {
+    const mesh = new THREE.Mesh(merged, wallMat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  }
   geos.length = 0;
 }
 
@@ -85,16 +90,19 @@ function addFloor(group, materials, worldX, worldZ) {
   mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
   floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
   group.add(floor);
 }
 
-function addInstancedCeiling(group, geometry, material, transforms, renderOrder = 0) {
+function addInstancedCeiling(group, geometry, material, transforms, renderOrder = 0, { castShadow = false, receiveShadow = true } = {}) {
   if (!transforms.length) return;
   const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
   for (let i = 0; i < transforms.length; i++) {
     mesh.setMatrixAt(i, transforms[i]);
   }
   mesh.instanceMatrix.needsUpdate = true;
+  mesh.castShadow = castShadow;
+  mesh.receiveShadow = receiveShadow;
   if (renderOrder) mesh.renderOrder = renderOrder;
   group.add(mesh);
 }
@@ -121,8 +129,14 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
     }
   }
 
-  addInstancedCeiling(group, _cellBackingGeo, materials.ceilingGroove, backingTransforms);
-  addInstancedCeiling(group, _tileGeo, materials.ceilingTile, tileTransforms, 2);
+  addInstancedCeiling(group, _cellBackingGeo, materials.ceilingGroove, backingTransforms, 0, {
+    castShadow: false,
+    receiveShadow: true,
+  });
+  addInstancedCeiling(group, _tileGeo, materials.ceilingTile, tileTransforms, 2, {
+    castShadow: false,
+    receiveShadow: true,
+  });
 }
 
 function addWalls(group, room, materials, h, originX, originZ) {
