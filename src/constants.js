@@ -86,13 +86,6 @@ export const PANEL_W = PANEL_SIZE;
 export const PANEL_H = PANEL_SIZE;
 /** Keep fixtures off walls — only on open ceiling area */
 export const PANEL_EDGE_INSET = 1.25;
-/** Troffer RectAreaLight intensity — no ambient fill */
-export const PANEL_LIGHT_INTENSITY = 4.2;
-/** Floor layer — unlit MeshBasic, skips area lights */
-export const LAYER_FLOOR = 1;
-/** Matte — RectAreaLight targets */
-export const SURFACE_ROUGHNESS = 1;
-export const SURFACE_METALNESS = 0;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Cap device pixel ratio for the WebGL canvas */

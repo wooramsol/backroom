@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, SURFACE_ROUGHNESS, SURFACE_METALNESS } from "./constants.js";
+import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -48,11 +48,7 @@ export function createWallMaterial(tex) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  mat = new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-  });
+  mat = new THREE.MeshBasicMaterial({ map });
   _wallMatCache.set(tex, mat);
   return mat;
 }
@@ -93,12 +89,7 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-    ...opts,
-  });
+  const mat = new THREE.MeshBasicMaterial({ map, ...opts });
   _tiledMatCache.set(key, mat);
   return mat;
 }
@@ -132,21 +123,12 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
-  return new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-    side: THREE.DoubleSide,
-  });
+  return new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide });
 }
 
-/** Ceiling carpet — receives troffer RectAreaLights */
+/** Ceiling carpet — unlit */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-  });
+  return new THREE.MeshBasicMaterial({ map });
 }
 
 /** Floor — unlit texture, no ceiling-light pools or reflections */
