@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, SCENE_BRIGHTNESS, GAP_BRIGHTNESS_SCALE } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -39,6 +39,14 @@ export function applyWallpaperTileSize(tex) {
 
 const _wallMatCache = new WeakMap();
 const _tiledMatCache = new Map();
+const _sceneTint = new THREE.Color().setScalar(SCENE_BRIGHTNESS);
+
+function dimBasic(opts = {}) {
+  return new THREE.MeshBasicMaterial({
+    color: _sceneTint,
+    ...opts,
+  });
+}
 
 /** Single wall material — UVs are set in world tile units on each geometry */
 export function createWallMaterial(tex) {
@@ -48,7 +56,7 @@ export function createWallMaterial(tex) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  mat = new THREE.MeshBasicMaterial({ map });
+  mat = dimBasic({ map });
   _wallMatCache.set(tex, mat);
   return mat;
 }
@@ -89,7 +97,7 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshBasicMaterial({ map, ...opts });
+  const mat = dimBasic({ map, ...opts });
   _tiledMatCache.set(key, mat);
   return mat;
 }
@@ -123,17 +131,17 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
-  return new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide });
+  return dimBasic({ map, side: THREE.DoubleSide });
 }
 
 /** Ceiling carpet — unlit */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshBasicMaterial({ map });
+  return dimBasic({ map });
 }
 
 /** Floor — unlit texture, no ceiling-light pools or reflections */
 export function createFloorMaterial(ceilingTileTex) {
-  return new THREE.MeshBasicMaterial({
+  return dimBasic({
     map: ceilingTileTex,
     side: THREE.DoubleSide,
   });
@@ -260,8 +268,9 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
 
 /** Warm seam backing under carpet tiles — underside only */
 export function createCeilingGapMaterial() {
+  const gapTint = new THREE.Color(CEILING_GAP_COLOR).multiplyScalar(SCENE_BRIGHTNESS * GAP_BRIGHTNESS_SCALE);
   return new THREE.MeshBasicMaterial({
-    color: CEILING_GAP_COLOR,
+    color: gapTint,
     depthWrite: false,
   });
 }
