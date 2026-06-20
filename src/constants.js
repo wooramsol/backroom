@@ -64,11 +64,11 @@ export const EDGE_PREFETCH = 0.55;
 /** ~4500K warm white — flat fluorescent office fill */
 export const FLUORESCENT_COLOR = 0xfff4e5;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.54;
+export const AMBIENT_INTENSITY = 0.48;
 /** Hemisphere — even indirect on ceiling, walls, and floor */
 export const HEMI_SKY_COLOR = 0xfff6ea;
 export const HEMI_GROUND_COLOR = 0xfff0e0;
-export const HEMI_INTENSITY = 0.66;
+export const HEMI_INTENSITY = 0.62;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */
@@ -89,14 +89,12 @@ export const PANEL_H = PANEL_SIZE;
 export const PANEL_EDGE_INSET = 1.25;
 /** @deprecated all troffers are lit */
 export const PANEL_ON_CHANCE = 1;
-/** Downward troffer — pooled PointLights for flat, even room fill */
-export const PANEL_LIGHT_INTENSITY = 18;
-export const PANEL_POINT_LIGHT_DISTANCE = 9.5;
-export const PANEL_POINT_LIGHT_DECAY = 2;
+/** Downward square troffer — RectAreaLight matches panel footprint */
+export const PANEL_LIGHT_INTENSITY = 4.8;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
-export const LIGHT_POOL_MIN_INTERVAL_MS = 90;
+export const LIGHT_POOL_MIN_INTERVAL_MS = 120;
 /** @deprecated upward plenum lights removed — caused dark coplanar ceiling */
 export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */

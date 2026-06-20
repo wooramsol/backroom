@@ -15,6 +15,10 @@ const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _panelGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
+const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+const _pos = new THREE.Vector3();
+const _scale = new THREE.Vector3(1, 1, 1);
+const _mat4 = new THREE.Matrix4();
 
 function wallSeg(group, wallTex, h, axis, pos, a0, a1, door) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
@@ -72,6 +76,17 @@ function addFloor(group, materials, worldX, worldZ) {
   group.add(floor);
 }
 
+function addInstancedCeiling(group, geometry, material, transforms, renderOrder = 0) {
+  if (!transforms.length) return;
+  const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
+  for (let i = 0; i < transforms.length; i++) {
+    mesh.setMatrixAt(i, transforms[i]);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  if (renderOrder) mesh.renderOrder = renderOrder;
+  group.add(mesh);
+}
+
 function panelTileSet(panels) {
   const keys = new Set();
   for (const panel of panels) {
@@ -86,6 +101,8 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
   const lightCells = panelTileSet(panels);
 
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
+  const backingTransforms = [];
+  const tileTransforms = [];
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
@@ -93,18 +110,18 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 
       const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
 
-      const backing = new THREE.Mesh(_cellBackingGeo, materials.ceilingGroove);
-      backing.rotation.x = Math.PI / 2;
-      backing.position.set(px, gapY, pz);
-      group.add(backing);
+      _pos.set(px, gapY, pz);
+      _mat4.compose(_pos, _ceilRot, _scale);
+      backingTransforms.push(_mat4.clone());
 
-      const tile = new THREE.Mesh(_tileGeo, materials.ceilingTile);
-      tile.rotation.x = Math.PI / 2;
-      tile.position.set(px, tileY, pz);
-      tile.renderOrder = 2;
-      group.add(tile);
+      _pos.set(px, tileY, pz);
+      _mat4.compose(_pos, _ceilRot, _scale);
+      tileTransforms.push(_mat4.clone());
     }
   }
+
+  addInstancedCeiling(group, _cellBackingGeo, materials.ceilingGroove, backingTransforms);
+  addInstancedCeiling(group, _tileGeo, materials.ceilingTile, tileTransforms, 2);
 }
 
 function addWalls(group, room, wallTex, h) {

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
@@ -50,6 +51,7 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -120,7 +122,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, smaa } = createBloomPipeline(renderer, scene, camera);
+  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -210,7 +212,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, smaa, w, h);
+    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
     syncCrosshair();
   });
 }
