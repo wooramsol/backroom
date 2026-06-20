@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, FLUORESCENT_COLOR, CEILING_TILE_EMISSIVE } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -146,6 +146,8 @@ export function createCeilingTileMaterial(map) {
     map,
     roughness: SURFACE_ROUGHNESS,
     metalness: SURFACE_METALNESS,
+    emissive: FLUORESCENT_COLOR,
+    emissiveIntensity: CEILING_TILE_EMISSIVE,
   });
 }
 
