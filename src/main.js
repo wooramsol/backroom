@@ -11,7 +11,6 @@ import {
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
-import { GameAudio } from "./audio.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
@@ -29,7 +28,6 @@ import {
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
-  ENABLE_FLUORESCENT_HUM,
   MAX_PIXEL_RATIO,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
@@ -73,8 +71,6 @@ camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
 scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
 
-const audio = new GameAudio();
-
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
@@ -86,9 +82,8 @@ async function init() {
     wallTex: wallpaper,
     wall: createWallMaterial(wallpaper),
     surfaceTex,
-    carpetTileTex: ceilingTileTex,
-    carpet: createCeilingTileMaterial(ceilingTileTex),
-    floor: createFloorMaterial(),
+    ceilingTileTex,
+    floor: createFloorMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
@@ -122,13 +117,7 @@ async function init() {
   player.onLockLost = () => {
     if (started) showResumePrompt();
   };
-  player.onLockAcquired = () => {
-    hideResumePrompt();
-    if (audio.ctx?.state === "suspended") void audio.ctx.resume();
-  };
-  player.onMove = (distance, running) => {
-    if (started) audio.onMove(distance, running);
-  };
+  player.onLockAcquired = hideResumePrompt;
 
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
@@ -178,19 +167,16 @@ async function init() {
       crosshair?.classList.add("visible");
       syncCrosshair();
       buildBadge?.classList.add("visible");
-      if (ENABLE_FLUORESCENT_HUM) audio.start();
     }
   });
 
   const clock = new THREE.Clock();
-  let lightT = 0;
   const TARGET_FRAME_MS = 16.7;
 
   function animate() {
     requestAnimationFrame(animate);
     const frameStart = performance.now();
     const dt = Math.min(clock.getDelta(), 0.05);
-    lightT += dt;
 
     world.tick(dt);
     if (!world.preloading) {
@@ -202,10 +188,7 @@ async function init() {
       }
       world.updateLights(camera);
     }
-    if (started) {
-      player.update(dt);
-      if (ENABLE_FLUORESCENT_HUM) audio.tickHum(lightT);
-    }
+    if (started) player.update(dt);
 
     composer.render();
 
