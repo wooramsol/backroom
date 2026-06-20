@@ -3,6 +3,7 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
+  createWallMaterial,
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
@@ -82,6 +83,7 @@ async function init() {
 
   const materials = {
     wallTex: wallpaper,
+    wall: createWallMaterial(wallpaper),
     surfaceTex,
     carpetTileTex: ceilingTileTex,
     carpet: createCeilingTileMaterial(ceilingTileTex),
