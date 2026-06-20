@@ -67,11 +67,7 @@ export const EDGE_PREFETCH = 0.55;
 /** ~4500K warm white — flat fluorescent office fill */
 export const FLUORESCENT_COLOR = 0xfff4e5;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.55;
-/** Hemisphere — ground color lights ceiling tiles (normals face down) */
-export const HEMI_SKY_COLOR = 0xfff8ec;
-export const HEMI_GROUND_COLOR = 0xfffaf0;
-export const HEMI_INTENSITY = 0.65;
+export const AMBIENT_INTENSITY = 0.95;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** @deprecated use LIGHT_PANEL_COLOR */
@@ -94,27 +90,16 @@ export const PANEL_H = PANEL_SIZE;
 export const PANEL_EDGE_INSET = 1.25;
 /** @deprecated all troffers are lit */
 export const PANEL_ON_CHANCE = 1;
-/** Downward troffer fill — soft, wide; ambient carries most of the room */
-export const PANEL_LIGHT_INTENSITY = 2.8;
-/** Rebuild pooled lights after the camera moves this far (metres) */
-export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
-/** Minimum ms between pool rebuilds while moving */
-export const LIGHT_POOL_MIN_INTERVAL_MS = 120;
-/** Matte surfaces — flat fluorescent look, minimal specular */
+/** Matte surfaces — flat fluorescent look */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Cap device pixel ratio for the WebGL canvas */
 export const MAX_PIXEL_RATIO = 1;
-export const TONE_MAPPING_EXPOSURE = 1.04;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
-/** Scene layer — walls, ceiling, troffers (RectAreaLight targets) */
-export const LAYER_LIT = 0;
-/** Floor layer — same Standard shading, no troffer RectAreaLights */
-export const LAYER_FLOOR = 1;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

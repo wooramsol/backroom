@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
@@ -19,15 +18,10 @@ import {
   FOG_FAR,
   AMBIENT_COLOR,
   AMBIENT_INTENSITY,
-  HEMI_SKY_COLOR,
-  HEMI_GROUND_COLOR,
-  HEMI_INTENSITY,
   LIGHT_PANEL_COLOR,
-  TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
-  LAYER_FLOOR,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -51,12 +45,10 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden";
 document.body.appendChild(renderer.domElement);
 
@@ -67,22 +59,14 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
-const ambient = new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY);
-ambient.layers.enable(LAYER_FLOOR);
-scene.add(ambient);
-
-const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
-hemi.layers.enable(LAYER_FLOOR);
-scene.add(hemi);
-
-camera.layers.enable(LAYER_FLOOR);
+scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
 
 async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(1.1);
+  const panelColor = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(1.08);
 
   const materials = {
     wallTex: wallpaper,
@@ -187,7 +171,6 @@ async function init() {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
-      world.updateLights(camera);
     }
     if (started) player.update(dt);
 

@@ -7,7 +7,6 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
-  LAYER_FLOOR,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -86,7 +85,6 @@ function addFloor(group, materials, worldX, worldZ) {
   mat.map = floorMap;
   mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
-  floor.layers.set(LAYER_FLOOR);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 }
@@ -152,8 +150,8 @@ function addWalls(group, room, materials, h, originX, originZ) {
   flushWallMeshes(group, geos, wallMat);
 }
 
-function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
-  const { panelFaceY, lightY } = getCeilingLayers(h);
+function addOnePanel(group, materials, h, panel, panelFaces) {
+  const { panelFaceY } = getCeilingLayers(h);
   const face = new THREE.Mesh(_panelGeo, materials.lightPanelOn);
   face.rotation.x = Math.PI / 2;
   face.position.set(panel.x, panelFaceY, panel.z);
@@ -162,35 +160,25 @@ function addOnePanel(group, materials, h, panel, fixtures, roomCx, roomCz) {
   face.userData.fluorescent = true;
   panel.face = face;
   group.add(face);
-
-  fixtures.push({
-    panel,
-    face,
-    light: null,
-    lightSlot: -1,
-    wx: roomCx * CHUNK + panel.x,
-    wy: panelFaceY,
-    wz: roomCz * CHUNK + panel.z,
-    lightY,
-  });
+  panelFaces.push({ panel, face });
 }
 
-function finalizePanelInstances(group, fixtures, materials, h) {
-  if (fixtures.length < 2) return;
+function finalizePanelInstances(group, panelFaces, materials, h) {
+  if (panelFaces.length < 2) return;
 
   const { panelFaceY } = getCeilingLayers(h);
-  const mesh = new THREE.InstancedMesh(_panelGeo, materials.lightPanelOn, fixtures.length);
+  const mesh = new THREE.InstancedMesh(_panelGeo, materials.lightPanelOn, panelFaces.length);
   mesh.renderOrder = 3;
   mesh.userData.fluorescent = true;
 
-  for (let i = 0; i < fixtures.length; i++) {
-    const fixture = fixtures[i];
-    _pos.set(fixture.panel.x, panelFaceY, fixture.panel.z);
+  for (let i = 0; i < panelFaces.length; i++) {
+    const entry = panelFaces[i];
+    _pos.set(entry.panel.x, panelFaceY, entry.panel.z);
     _mat4.compose(_pos, _ceilRot, _scale);
     mesh.setMatrixAt(i, _mat4);
-    group.remove(fixture.face);
-    fixture.face = mesh;
-    fixture.panel.face = mesh;
+    group.remove(entry.face);
+    entry.face = mesh;
+    entry.panel.face = mesh;
   }
 
   mesh.instanceMatrix.needsUpdate = true;
@@ -206,7 +194,7 @@ export function createRoomBuildState(room, materials) {
     materials,
     panelIdx: 0,
     shellDone: false,
-    fixtures: [],
+    panelFaces: [],
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
@@ -231,7 +219,7 @@ export function buildPanelBatch(state, maxPanels) {
 
   while (state.panelIdx < room.panels.length && added < maxPanels) {
     const panel = room.panels[state.panelIdx];
-    addOnePanel(group, materials, h, panel, state.fixtures, room.cx, room.cz);
+    addOnePanel(group, materials, h, panel, state.panelFaces);
     state.panelIdx++;
     added++;
   }
@@ -240,10 +228,9 @@ export function buildPanelBatch(state, maxPanels) {
 }
 
 export function finalizeRoomBuild(state) {
-  const { group, room, fixtures } = state;
-  finalizePanelInstances(group, fixtures, state.materials, room.height);
+  const { group, room, panelFaces } = state;
+  finalizePanelInstances(group, panelFaces, state.materials, room.height);
   group.userData.room = room;
-  group.userData.fixtures = fixtures;
   return group;
 }
 

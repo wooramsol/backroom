@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -48,11 +48,7 @@ export function createWallMaterial(tex) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  mat = new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-  });
+  mat = new THREE.MeshLambertMaterial({ map });
   _wallMatCache.set(tex, mat);
   return mat;
 }
@@ -93,10 +89,8 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshLambertMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     ...opts,
   });
   _tiledMatCache.set(key, mat);
@@ -132,26 +126,23 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshLambertMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     side: THREE.DoubleSide,
   });
 }
 
 /** Matte ceiling carpet — underside only */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-  });
+  return new THREE.MeshLambertMaterial({ map });
 }
 
-/** Floor — same Standard material as ceiling tiles */
+/** Floor — unlit texture, no ceiling-light pools or reflections */
 export function createFloorMaterial(ceilingTileTex) {
-  return createCeilingTileMaterial(ceilingTileTex);
+  return new THREE.MeshBasicMaterial({
+    map: ceilingTileTex,
+    side: THREE.DoubleSide,
+  });
 }
 
 /** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {
@@ -275,10 +266,8 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
 
 /** Warm seam backing under carpet tiles — underside only */
 export function createCeilingGapMaterial() {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     color: CEILING_GAP_COLOR,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     depthWrite: false,
   });
 }
