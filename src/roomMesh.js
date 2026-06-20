@@ -7,6 +7,7 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
+  LAYER_FLOOR,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -83,7 +84,9 @@ function addFloor(group, materials, worldX, worldZ) {
   );
   const mat = materials.floor.clone();
   mat.map = floorMap;
+  mat.side = THREE.DoubleSide;
   const floor = new THREE.Mesh(_chunkPlane, mat);
+  floor.layers.set(LAYER_FLOOR);
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 }

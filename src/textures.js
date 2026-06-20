@@ -149,14 +149,9 @@ export function createCeilingTileMaterial(map) {
   });
 }
 
-/** Flat floor — same ceiling tile texture, unlit (no troffer pools on carpet) */
+/** Floor — same Standard material as ceiling tiles */
 export function createFloorMaterial(ceilingTileTex) {
-  const map = ceilingTileTex.clone();
-  map.wrapS = map.wrapT = THREE.RepeatWrapping;
-  return new THREE.MeshBasicMaterial({
-    map,
-    side: THREE.DoubleSide,
-  });
+  return createCeilingTileMaterial(ceilingTileTex);
 }
 
 /** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {

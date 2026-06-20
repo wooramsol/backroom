@@ -114,8 +114,10 @@ export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
-/** Fluorescent hum — off */
-export const ENABLE_FLUORESCENT_HUM = false;
+/** Scene layer — walls, ceiling, troffers (RectAreaLight targets) */
+export const LAYER_LIT = 0;
+/** Floor layer — same Standard shading, no troffer RectAreaLights */
+export const LAYER_FLOOR = 1;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

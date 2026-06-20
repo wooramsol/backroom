@@ -29,6 +29,7 @@ import {
   CAMERA_FOV,
   CAMERA_NEAR,
   MAX_PIXEL_RATIO,
+  LAYER_FLOOR,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -68,8 +69,15 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
-scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
-scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
+const ambient = new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY);
+ambient.layers.enable(LAYER_FLOOR);
+scene.add(ambient);
+
+const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
+hemi.layers.enable(LAYER_FLOOR);
+scene.add(hemi);
+
+camera.layers.enable(LAYER_FLOOR);
 
 async function init() {
   const loader = new THREE.TextureLoader();
