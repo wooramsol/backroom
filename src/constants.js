@@ -72,7 +72,7 @@ export const PRELOAD_RADIUS = 2;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
-export const EDGE_PREFETCH = 0.55;
+export const EDGE_PREFETCH = 0.72;
 /** ~2700K warm bulb — slightly yellow vs flat white */
 export const FLUORESCENT_COLOR = 0xfff0d8;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
@@ -112,8 +112,8 @@ export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
-/** Main scene render scale — 1.0 was ~4× heavier than the old 0.5 pipeline */
-export const RENDER_RESOLUTION_SCALE = 0.72;
+/** Internal render scale — direct renderer, no post-processing passes */
+export const RENDER_RESOLUTION_SCALE = 0.55;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */

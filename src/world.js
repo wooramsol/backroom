@@ -6,14 +6,12 @@ import {
 } from "./constants.js";
 import {
   createRoomBuildState,
-  buildRoomShell,
-  buildPanelBatch,
+  advanceRoomShell,
   finalizeRoomBuild,
   buildRoomMesh,
 } from "./roomMesh.js";
 import { flushDisposeQueue, disposeChunkRoot } from "./sceneDispose.js";
 
-const PANELS_PER_FRAME = 12;
 const PRELOAD_BATCH = 1;
 
 export class World {
@@ -254,14 +252,11 @@ export class World {
       return;
     }
 
-    if (!job.build.shellDone) {
-      buildRoomShell(job.build);
-      this.scene.add(job.build.group);
+    if (job.build.shellPhase < 2) {
+      if (!job.build.group.parent) this.scene.add(job.build.group);
+      advanceRoomShell(job.build);
       return;
     }
-
-    const done = buildPanelBatch(job.build, PANELS_PER_FRAME);
-    if (!done) return;
 
     this.attachChunk(job.cx, job.cz, job.room, job.build);
     this.loadQueue.shift();

@@ -29,6 +29,7 @@ export class Player {
     this.keys = {};
     this.locked = false;
     this.colliders = [];
+    this._active = [];
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
@@ -99,6 +100,7 @@ export class Player {
 
   setColliders(colliders) {
     this.colliders = colliders;
+    this._active = [];
   }
 
   _unstuck() {
@@ -112,7 +114,6 @@ export class Player {
     this.camera.up.set(0, 1, 0);
     _lookEuler.set(this.pitch, this.yaw, 0);
     this.camera.quaternion.setFromEuler(_lookEuler);
-    this.camera.updateMatrixWorld(true);
   }
 
   /** Walk axes = horizontal center-ray of the camera (matches crosshair) */
@@ -124,9 +125,23 @@ export class Player {
     _right.crossVectors(_fwd, _up).normalize();
   }
 
+  _activeColliders(px, pz) {
+    const out = this._active;
+    out.length = 0;
+    const pad = CHUNK * 1.1;
+    for (const c of this.colliders) {
+      if (px + pad < c.minX || px - pad > c.maxX || pz + pad < c.minZ || pz - pad > c.maxZ) {
+        continue;
+      }
+      out.push(c);
+    }
+    return out;
+  }
+
   _insideWall(px, pz, y) {
     const r = PLAYER_R;
-    for (const c of this.colliders) {
+    const nearby = this._activeColliders(px, pz);
+    for (const c of nearby) {
       if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
       if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
         continue;
@@ -139,10 +154,10 @@ export class Player {
   _pushOut(px, pz) {
     const r = PLAYER_R;
     const y = this.position.y;
-
-    for (let n = 0; n < 14; n++) {
+    for (let n = 0; n < 10; n++) {
       let hit = false;
-      for (const c of this.colliders) {
+      const nearby = this._activeColliders(px, pz);
+      for (const c of nearby) {
         if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
         if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
           continue;

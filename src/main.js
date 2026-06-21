@@ -8,7 +8,6 @@ import { createGameMaterials } from "./gameMaterials.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
   EYE_H,
@@ -25,8 +24,8 @@ import {
   CAMERA_NEAR,
   CAMERA_FAR,
   ENABLE_FLUORESCENT_HUM,
+  RENDER_RESOLUTION_SCALE,
 } from "./constants.js";
-import { updateFilmNoise } from "./filmNoise.js";
 import { formatBuildLabel } from "./version.js";
 
 const overlay = document.getElementById("overlay");
@@ -49,7 +48,7 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1) * RENDER_RESOLUTION_SCALE);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -106,8 +105,6 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const pipeline = createBloomPipeline(renderer, scene, camera);
-
   let started = false;
   let ready = false;
   const hint = document.querySelector("#overlay .hint");
@@ -155,12 +152,10 @@ async function init() {
   });
 
   const clock = new THREE.Clock();
-  let lightT = 0;
 
   function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
-    lightT += dt;
 
     world.tick(dt);
     if (!world.preloading) {
@@ -173,13 +168,10 @@ async function init() {
     }
     if (started) {
       player.update(dt);
-      if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
+      if (ENABLE_FLUORESCENT_HUM) hum.tick(performance.now() * 0.001);
     }
 
     if (ready) {
-      pipeline.render();
-      updateFilmNoise(pipeline.noise, lightT);
-    } else {
       renderer.render(scene, camera);
     }
 
@@ -195,7 +187,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, pipeline, w, h);
+    renderer.setSize(w, h);
     syncCrosshair();
   });
 }
