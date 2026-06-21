@@ -6,6 +6,7 @@ import {
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
+  createDoorJambMaterial,
 } from "./textures.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -50,9 +51,9 @@ function syncCrosshair() {
   crosshair.style.top = `${rect.top + rect.height / 2}px`;
 }
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 RectAreaLightUniformsLib.init();
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -86,6 +87,7 @@ async function init() {
     carpet: createCeilingTileMaterial(ceilingTileTex),
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(ceilingTileTex),
+    jamb: createDoorJambMaterial(createCeilingTileMaterial(ceilingTileTex), ceilingTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: false,

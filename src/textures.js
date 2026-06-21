@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, WALL_T } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -96,33 +96,18 @@ export function createSurfaceMaterial(map = null) {
   });
 }
 
-/** Door jamb — same material family as floor carpet */
-export function createJambMaterial(floorTex, w, h, worldX, worldZ, carpetBase) {
-  const map = tiledAt(floorTex, CEILING_TILE_M, w, h, worldX, worldZ);
+/** Shared door-trim material — carpet look, drawn in front of wall boxes */
+export function createDoorJambMaterial(carpetBase, floorTex) {
+  const map = floorTex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(2, 2);
   const mat = carpetBase.clone();
   mat.map = map;
-  mat.side = THREE.DoubleSide;
+  mat.side = THREE.FrontSide;
+  mat.polygonOffset = true;
+  mat.polygonOffsetFactor = -1;
+  mat.polygonOffsetUnits = -1;
   return mat;
-}
-
-/** One jamb face uses floor carpet; rest stays wallpaper */
-export function createWallBoxMaterials(
-  wallTex,
-  floorTex,
-  slen,
-  segH,
-  doorFaceIndex,
-  worldX,
-  worldZ,
-  carpetBase,
-  faceW = WALL_T,
-  faceH = segH,
-) {
-  const wallMat = createTiledMaterial(wallTex, slen, segH);
-  if (doorFaceIndex < 0) return wallMat;
-  const mats = [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat];
-  mats[doorFaceIndex] = createJambMaterial(floorTex, faceW, faceH, worldX, worldZ, carpetBase);
-  return mats;
 }
 
 /** Matte ceiling carpet — underside only */
