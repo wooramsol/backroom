@@ -41,43 +41,59 @@ export function bakeWallUV(geo, spanU, spanV, tileW, tileH, worldU0 = 0, worldV0
 }
 
 /**
- * Box wall UV — main faces world-aligned; thin edge faces continue the
- * wallpaper strip from the adjoining wall face (like real paste overlap).
+ * Box wall UV — main faces world-aligned; edge/cap faces crop wallpaper to
+ * the physical face size (wall thickness metres), continuing from the
+ * adjoining wall surface like cut wallpaper strips.
  */
-export function bakeWallBoxUV(geo, axis, spanU, spanV, tileW, tileH, worldU0 = 0, worldV0 = 0) {
+export function bakeWallBoxUV(
+  geo,
+  axis,
+  spanU,
+  spanV,
+  tileW,
+  tileH,
+  worldU0 = 0,
+  worldV0 = 0,
+  wallT = WALL_T,
+) {
   const pos = geo.attributes.position;
   const uv = geo.attributes.uv;
   const halfU = spanU / 2;
   const halfV = spanV / 2;
-  const halfT = WALL_T / 2;
+  const halfT = wallT / 2;
   const eps = 1e-4;
 
   for (let i = 0; i < pos.count; i++) {
     const lx = pos.getX(i);
     const ly = pos.getY(i);
     const lz = pos.getZ(i);
-    const worldY = worldV0 + ly + halfV;
     let u;
-    let v = worldY / tileH;
+    let v;
 
     if (axis === "z") {
       if (Math.abs(lz) >= halfT - eps) {
         u = (worldU0 + lx + halfU) / tileW;
+        v = (worldV0 + ly + halfV) / tileH;
       } else if (Math.abs(lx) >= halfU - eps) {
-        const edgeU = worldU0 + (lx > 0 ? spanU : 0);
-        u = edgeU / tileW;
+        const edgeWorldU = worldU0 + (lx > 0 ? spanU : 0);
+        u = (edgeWorldU + (lz + halfT)) / tileW;
+        v = (worldV0 + ly + halfV) / tileH;
       } else {
         u = (worldU0 + lx + halfU) / tileW;
-        v = (worldV0 + (ly > 0 ? spanV : 0)) / tileH;
+        const edgeWorldV = worldV0 + (ly > 0 ? spanV : 0);
+        v = (edgeWorldV + (lz + halfT)) / tileH;
       }
     } else if (Math.abs(lx) >= halfT - eps) {
       u = (worldU0 + lz + halfU) / tileW;
+      v = (worldV0 + ly + halfV) / tileH;
     } else if (Math.abs(lz) >= halfU - eps) {
-      const edgeU = worldU0 + (lz > 0 ? spanU : 0);
-      u = edgeU / tileW;
+      const edgeWorldU = worldU0 + (lz > 0 ? spanU : 0);
+      u = (edgeWorldU + (lx + halfT)) / tileW;
+      v = (worldV0 + ly + halfV) / tileH;
     } else {
       u = (worldU0 + lz + halfU) / tileW;
-      v = (worldV0 + (ly > 0 ? spanV : 0)) / tileH;
+      const edgeWorldV = worldV0 + (ly > 0 ? spanV : 0);
+      v = (edgeWorldV + (lx + halfT)) / tileH;
     }
 
     uv.setXY(i, u, v);

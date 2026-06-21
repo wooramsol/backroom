@@ -155,7 +155,7 @@ function narrowSpan(rng, lo, hi) {
 /** Same E–W corridor band across chunks in a row (shared cz) */
 function alignedBandEW(cz) {
   const lane = createRng(0, cz, 88);
-  const depth = lane.range(CHUNK * 0.3, CHUNK * 0.46);
+  const depth = lane.range(CHUNK * 0.18, CHUNK * 0.28);
   const maxZ0 = CHUNK - depth - 0.6;
   const z0 = lane.range(1.2, Math.max(1.2, maxZ0));
   return { z0, depth };
@@ -164,7 +164,7 @@ function alignedBandEW(cz) {
 /** Same N–S corridor band across chunks in a column (shared cx) */
 function alignedBandNS(cx) {
   const lane = createRng(cx, 0, 88);
-  const width = lane.range(CHUNK * 0.3, CHUNK * 0.46);
+  const width = lane.range(CHUNK * 0.18, CHUNK * 0.28);
   const maxX0 = CHUNK - width - 0.6;
   const x0 = lane.range(1.2, Math.max(1.2, maxX0));
   return { x0, width };
@@ -199,13 +199,13 @@ function hallNS(rng, cx, cz) {
 }
 
 function compactL(rng, voidCorner) {
-  const shape = lShape(rng, voidCorner, rng.range(4.0, 7.8), rng.range(4.0, 7.8));
+  const shape = lShape(rng, voidCorner, rng.range(3.2, 5.8), rng.range(3.2, 5.8));
   return { ...shape, kind: "compact-L" };
 }
 
 function smallAlcove(rng, corner) {
-  const w = rng.range(4.5, 8.5);
-  const d = rng.range(4.5, 8.5);
+  const w = rng.range(3.2, 5.8);
+  const d = rng.range(3.2, 5.8);
   const shapes = {
     se: {
       zones: [{ x0: CHUNK - w, z0: CHUNK - d, x1: CHUNK, z1: CHUNK }],
@@ -868,8 +868,8 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
 
 function pickSizeTier(rng) {
   return rng.pickWeighted([
-    ["small", 68],
-    ["medium", 32],
+    ["small", 85],
+    ["medium", 15],
   ]);
 }
 
