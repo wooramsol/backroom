@@ -66,7 +66,11 @@ const mixShader = {
     uniform sampler2D bloomTexture;
     varying vec2 vUv;
     void main() {
-      gl_FragColor = texture2D(baseTexture, vUv) + texture2D(bloomTexture, vUv);
+      vec4 base = texture2D(baseTexture, vUv);
+      vec3 bloomCol = texture2D(bloomTexture, vUv).rgb;
+      float bloomAmt = max(bloomCol.r, max(bloomCol.g, bloomCol.b));
+      vec3 glow = vec3(1.0, 0.99, 0.96) * bloomAmt;
+      gl_FragColor = base + vec4(glow, 1.0);
     }
   `,
 };

@@ -73,14 +73,15 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** ~2200K warm incandescent bulb — amber, not white */
-export const FLUORESCENT_COLOR = 0xffc070;
-export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.52;
-/** Hemisphere — even indirect on ceiling, walls, and floor */
-export const HEMI_SKY_COLOR = 0xffd090;
-export const HEMI_GROUND_COLOR = 0xffa850;
-export const HEMI_INTENSITY = 0.66;
+/** ~2700K soft bulb — slightly warm white */
+export const FLUORESCENT_COLOR = 0xffe4c8;
+/** Neutral fill — avoids orange cast on wallpaper */
+export const AMBIENT_COLOR = 0xfff6ec;
+export const AMBIENT_INTENSITY = 0.5;
+/** Hemisphere — soft white bounce, not amber */
+export const HEMI_SKY_COLOR = 0xfff8f0;
+export const HEMI_GROUND_COLOR = 0xfff0e4;
+export const HEMI_INTENSITY = 0.62;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */
@@ -114,10 +115,10 @@ export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Layer mask — only troffer meshes enable this for selective bloom */
 export const BLOOM_LAYER = 1;
-/** Troffer glow — selective bloom pass in postfx.js */
-export const BLOOM_STRENGTH = 0.28;
-export const BLOOM_RADIUS = 0.26;
-export const BLOOM_THRESHOLD = 0.62;
+/** Troffer glow — tight, desaturated in postfx mix */
+export const BLOOM_STRENGTH = 0.2;
+export const BLOOM_RADIUS = 0.16;
+export const BLOOM_THRESHOLD = 0.74;
 /** Lit troffer panels per chunk */
 export const PANELS_PER_CHUNK = 2;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
