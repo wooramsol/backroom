@@ -110,9 +110,21 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 export function bakeSurfaceUV(geo, tileM, worldX, worldZ) {
   const pos = geo.attributes.position;
   const uv = geo.attributes.uv;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getZ(i);
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  }
+  /** Floor plane lies in XY before mesh rotation — Z is flat, use Y for world Z */
+  const xyPlane = zMax - zMin < 1e-4;
+
   for (let i = 0; i < pos.count; i++) {
     const u = (worldX + pos.getX(i)) / tileM;
-    const v = (worldZ + pos.getZ(i)) / tileM;
+    const v = xyPlane
+      ? (worldZ - pos.getY(i)) / tileM
+      : (worldZ + pos.getZ(i)) / tileM;
     uv.setXY(i, u, v);
   }
   uv.needsUpdate = true;

@@ -15,6 +15,7 @@ import { buildMergedWallGeometry } from "./wallBuilder.js";
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 _cellBackingGeo.userData.shared = true;
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
+_chunkPlane.translate(CHUNK / 2, CHUNK / 2, 0);
 _chunkPlane.userData.shared = true;
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _pos = new THREE.Vector3();
