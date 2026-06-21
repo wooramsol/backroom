@@ -1,13 +1,9 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  createCeilingGapMaterial,
-  createCeilingTileFaceTexture,
-  createCeilingTileMaterial,
-  createDoorJambMaterial,
 } from "./textures.js";
+import { createGameMaterials } from "./gameMaterials.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
@@ -23,8 +19,6 @@ import {
   HEMI_SKY_COLOR,
   HEMI_GROUND_COLOR,
   HEMI_INTENSITY,
-  LIGHT_PANEL_INTENSITY,
-  FLUORESCENT_COLOR,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -52,7 +46,6 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -77,22 +70,7 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
-
-  const materials = {
-    wallTex: wallpaper,
-    surfaceTex,
-    carpetTileTex: ceilingTileTex,
-    carpet: createCeilingTileMaterial(ceilingTileTex),
-    ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile: createCeilingTileMaterial(ceilingTileTex),
-    jamb: createDoorJambMaterial(createCeilingTileMaterial(ceilingTileTex), ceilingTileTex),
-    lightPanelOn: new THREE.MeshBasicMaterial({
-      color: panelOnColor,
-      toneMapped: false,
-    }),
-  };
+  const materials = createGameMaterials(wallpaper, surfaceTex);
 
   const world = new World(scene, materials);
   const player = new Player(camera, renderer.domElement);
@@ -124,7 +102,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
+  const { composer, fxaa } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -191,7 +169,6 @@ async function init() {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
-      world.updateLights(camera);
     }
     if (started) {
       player.update(dt);
@@ -214,7 +191,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
+    resizeBloomPipeline(renderer, composer, null, fxaa, w, h);
     syncCrosshair();
   });
 }

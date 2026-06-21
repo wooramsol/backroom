@@ -53,10 +53,10 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 18;
 export const FOG_FAR = 48;
 export const FOG_COLOR = 0x3a3830;
-/** Loaded cells around player — ~3 chunks matches FOG_FAR so distant fog is already built */
-export const GRID_RADIUS = 3;
+/** Loaded cells around player — 5×5 ring matches FOG_FAR */
+export const GRID_RADIUS = 2;
 /** Full square synced on the title screen before play */
-export const PRELOAD_RADIUS = 3;
+export const PRELOAD_RADIUS = 2;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
@@ -64,11 +64,11 @@ export const EDGE_PREFETCH = 0.55;
 /** ~4500K warm white — flat fluorescent office fill */
 export const FLUORESCENT_COLOR = 0xfff4e5;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.48;
+export const AMBIENT_INTENSITY = 0.58;
 /** Hemisphere — even indirect on ceiling, walls, and floor */
 export const HEMI_SKY_COLOR = 0xfff6ea;
 export const HEMI_GROUND_COLOR = 0xfff0e0;
-export const HEMI_INTENSITY = 0.62;
+export const HEMI_INTENSITY = 0.72;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */

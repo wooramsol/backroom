@@ -37,6 +37,14 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
+/** Wallpaper with 1×1 repeat — UVs are baked on merged wall geometry */
+export function createBakedWallMaterial(tex) {
+  const map = tex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(1, 1);
+  return new THREE.MeshBasicMaterial({ map });
+}
+
 const _wallMatCache = new Map();
 
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
@@ -49,10 +57,8 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshBasicMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     ...opts,
   });
   _wallMatCache.set(key, mat);
@@ -88,11 +94,9 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
   });
 }
 
@@ -112,11 +116,7 @@ export function createDoorJambMaterial(carpetBase, floorTex) {
 
 /** Matte ceiling carpet — underside only */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-  });
+  return new THREE.MeshBasicMaterial({ map });
 }
 
 /** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {
@@ -240,10 +240,8 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
 
 /** Warm seam backing under carpet tiles — underside only */
 export function createCeilingGapMaterial() {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     color: CEILING_GAP_COLOR,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
     depthWrite: false,
   });
 }
