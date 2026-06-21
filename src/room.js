@@ -152,38 +152,26 @@ function narrowSpan(rng, lo, hi) {
   return Math.max(min, rng.range(lo, hi));
 }
 
-function tierScale(tier) {
-  if (tier === "medium") return 0.42;
-  return 0.3;
-}
-
-function tierSpan(rng, tier, lo, hi, narrow = false) {
-  const s = tierScale(tier);
-  const a = CHUNK * lo * s;
-  const b = CHUNK * hi * s;
-  return narrow ? narrowSpan(rng, a, b) : rng.range(a, b);
-}
-
 /** Same E–W corridor band across chunks in a row (shared cz) */
-function alignedBandEW(cz, tier = "small") {
+function alignedBandEW(cz) {
   const lane = createRng(0, cz, 88);
-  const depth = Math.max(MIN_ZONE_DIM_SMALL, tierSpan(lane, tier, 0.09, 0.15));
+  const depth = lane.range(CHUNK * 0.3, CHUNK * 0.46);
   const maxZ0 = CHUNK - depth - 0.6;
   const z0 = lane.range(1.2, Math.max(1.2, maxZ0));
   return { z0, depth };
 }
 
 /** Same N–S corridor band across chunks in a column (shared cx) */
-function alignedBandNS(cx, tier = "small") {
+function alignedBandNS(cx) {
   const lane = createRng(cx, 0, 88);
-  const width = Math.max(MIN_ZONE_DIM_SMALL, tierSpan(lane, tier, 0.12, 0.2));
+  const width = lane.range(CHUNK * 0.3, CHUNK * 0.46);
   const maxX0 = CHUNK - width - 0.6;
   const x0 = lane.range(1.2, Math.max(1.2, maxX0));
   return { x0, width };
 }
 
-function hallEW(rng, cx, cz, tier = "small") {
-  const band = alignedBandEW(cz, tier);
+function hallEW(rng, cx, cz) {
+  const band = alignedBandEW(cz);
   const depth = band.depth;
   const z0 = band.z0;
   return {
@@ -196,8 +184,8 @@ function hallEW(rng, cx, cz, tier = "small") {
   };
 }
 
-function hallNS(rng, cx, cz, tier = "small") {
-  const band = alignedBandNS(cx, tier);
+function hallNS(rng, cx, cz) {
+  const band = alignedBandNS(cx);
   const width = band.width;
   const x0 = band.x0;
   return {
@@ -210,59 +198,14 @@ function hallNS(rng, cx, cz, tier = "small") {
   };
 }
 
-function compactL(rng, corner, tier = "small") {
-  const s = tierScale(tier);
-  const arm = Math.max(MIN_ZONE_DIM_SMALL + 0.6, rng.range(4.5 * s, 7.2 * s));
-  const thick = Math.max(MIN_ZONE_DIM_SMALL, rng.range(2.4 * s, 3.6 * s));
-  const shapes = {
-    se: {
-      zones: [
-        { x0: CHUNK - arm, z0: CHUNK - thick, x1: CHUNK, z1: CHUNK },
-        { x0: CHUNK - thick, z0: CHUNK - arm, x1: CHUNK, z1: CHUNK - thick },
-      ],
-      innerWalls: [
-        { axis: "z", pos: CHUNK - thick, span0: CHUNK - arm, span1: CHUNK, door: doorSpec(rng, arm) },
-        { axis: "x", pos: CHUNK - thick, span0: CHUNK - arm, span1: CHUNK, door: null },
-      ],
-    },
-    sw: {
-      zones: [
-        { x0: 0, z0: CHUNK - thick, x1: arm, z1: CHUNK },
-        { x0: 0, z0: CHUNK - arm, x1: thick, z1: CHUNK - thick },
-      ],
-      innerWalls: [
-        { axis: "z", pos: CHUNK - thick, span0: 0, span1: arm, door: doorSpec(rng, arm) },
-        { axis: "x", pos: thick, span0: CHUNK - arm, span1: CHUNK, door: null },
-      ],
-    },
-    ne: {
-      zones: [
-        { x0: CHUNK - arm, z0: 0, x1: CHUNK, z1: thick },
-        { x0: CHUNK - thick, z0: 0, x1: CHUNK, z1: arm },
-      ],
-      innerWalls: [
-        { axis: "z", pos: thick, span0: CHUNK - arm, span1: CHUNK, door: doorSpec(rng, arm) },
-        { axis: "x", pos: CHUNK - thick, span0: 0, span1: arm, door: null },
-      ],
-    },
-    nw: {
-      zones: [
-        { x0: 0, z0: 0, x1: arm, z1: thick },
-        { x0: 0, z0: 0, x1: thick, z1: arm },
-      ],
-      innerWalls: [
-        { axis: "z", pos: thick, span0: 0, span1: arm, door: doorSpec(rng, arm) },
-        { axis: "x", pos: thick, span0: 0, span1: arm, door: null },
-      ],
-    },
-  };
-  return { kind: "compact-L", ...shapes[corner] };
+function compactL(rng, voidCorner) {
+  const shape = lShape(rng, voidCorner, rng.range(4.0, 7.8), rng.range(4.0, 7.8));
+  return { ...shape, kind: "compact-L" };
 }
 
-function smallAlcove(rng, corner, tier = "small") {
-  const s = tierScale(tier);
-  const w = Math.max(MIN_ZONE_DIM_SMALL, rng.range(2.4 * s, 4.6 * s));
-  const d = Math.max(MIN_ZONE_DIM_SMALL, rng.range(2.4 * s, 4.6 * s));
+function smallAlcove(rng, corner) {
+  const w = rng.range(4.5, 8.5);
+  const d = rng.range(4.5, 8.5);
   const shapes = {
     se: {
       zones: [{ x0: CHUNK - w, z0: CHUNK - d, x1: CHUNK, z1: CHUNK }],
@@ -296,9 +239,9 @@ function smallAlcove(rng, corner, tier = "small") {
   return { kind: "small-alcove", ...shapes[corner] };
 }
 
-function hShape(rng, tier = "medium") {
-  const leg = tierSpan(rng, tier, 0.16, 0.26);
-  const thick = tierSpan(rng, tier, 0.16, 0.26, true);
+function hShape(rng) {
+  const leg = rng.range(CHUNK * 0.2, CHUNK * 0.34);
+  const thick = narrowSpan(rng, CHUNK * 0.2, CHUNK * 0.34);
   const mid = CHUNK / 2;
   const barZ0 = mid - thick / 2;
   const barZ1 = mid + thick / 2;
@@ -318,9 +261,9 @@ function hShape(rng, tier = "medium") {
   };
 }
 
-function alcove(rng, corner, tier = "medium") {
-  const w = tierSpan(rng, tier, 0.22, 0.42);
-  const d = tierSpan(rng, tier, 0.22, 0.42);
+function alcove(rng, corner) {
+  const w = rng.range(CHUNK * 0.32, CHUNK * 0.62);
+  const d = rng.range(CHUNK * 0.32, CHUNK * 0.62);
   const elongated = rng.chance(0.45);
   const ew = elongated && rng.chance(0.5);
   const W = ew ? Math.min(CHUNK - 0.4, w * rng.range(1.15, 1.55)) : w;
@@ -360,9 +303,9 @@ function alcove(rng, corner, tier = "medium") {
   return { kind: "alcove", ...shapes[corner] };
 }
 
-function lShape(rng, voidCorner, legX0, legZ0, tier = "medium") {
-  const legX = legX0 ?? tierSpan(rng, tier, 0.14, 0.24);
-  const legZ = legZ0 ?? tierSpan(rng, tier, 0.14, 0.24);
+function lShape(rng, voidCorner, legX0, legZ0) {
+  const legX = legX0 ?? rng.range(CHUNK * 0.26, CHUNK * 0.48);
+  const legZ = legZ0 ?? rng.range(CHUNK * 0.26, CHUNK * 0.48);
   const shapes = {
     nw: {
       zones: [
@@ -409,11 +352,10 @@ function lShape(rng, voidCorner, legX0, legZ0, tier = "medium") {
   return { kind: "L", ...shapes[voidCorner] };
 }
 
-function offsetSlab(rng, tier = "small") {
-  const s = tierScale(tier);
-  const elongated = rng.chance(0.65);
-  const w = elongated ? rng.range(6.5 * s, 10.5 * s) : rng.range(4.0 * s, 6.5 * s);
-  const d = elongated ? rng.range(3.5 * s, 5.5 * s) : rng.range(4.5 * s, 7.0 * s);
+function offsetSlab(rng) {
+  const elongated = rng.chance(0.62);
+  const w = elongated ? rng.range(9, 13.2) : rng.range(5.5, 10);
+  const d = elongated ? rng.range(4.5, 7.5) : rng.range(7, 12.5);
   const ew = elongated && rng.chance(0.55);
   const W = ew ? w : d;
   const D = ew ? d : w;
@@ -435,13 +377,13 @@ function offsetSlab(rng, tier = "small") {
   };
 }
 
-function tShape(rng, stem, tier = "medium") {
-  const bar = tierSpan(rng, tier, 0.42, 0.68);
-  const stemW = tierSpan(rng, tier, 0.16, 0.28, true);
+function tShape(rng, stem) {
+  const bar = rng.range(CHUNK * 0.58, CHUNK * 0.92);
+  const stemW = narrowSpan(rng, CHUNK * 0.22, CHUNK * 0.38);
   const stemX0 = (CHUNK - stemW) / 2;
   const stemX1 = stemX0 + stemW;
-  const barZ = tierSpan(rng, tier, 0.38, 0.58);
-  const barX = tierSpan(rng, tier, 0.38, 0.58);
+  const barZ = rng.range(CHUNK * 0.52, CHUNK * 0.82);
+  const barX = rng.range(CHUNK * 0.52, CHUNK * 0.82);
 
   const shapes = {
     south: {
@@ -497,11 +439,10 @@ function tShape(rng, stem, tier = "medium") {
   return { kind: "T", ...shapes[stem] };
 }
 
-function twinZone(rng, tier = "small") {
-  const s = tierScale(tier);
+function twinZone(rng) {
   const splitX = rng.chance(0.5);
   if (splitX) {
-    const x = rng.range(4.2 * s, 6.8 * s);
+    const x = rng.range(5.5, 8.5);
     const z0 = rng.range(0.4, 2.5);
     const z1 = rng.range(CHUNK - 2.5, CHUNK - 0.4);
     return {
@@ -514,7 +455,7 @@ function twinZone(rng, tier = "small") {
     };
   }
 
-  const z = rng.range(5.5 * s, 8.5 * s);
+  const z = rng.range(5.5, 8.5);
   const x0 = rng.range(0.4, 2.5);
   const x1 = rng.range(CHUNK - 2.5, CHUNK - 0.4);
   return {
@@ -527,10 +468,10 @@ function twinZone(rng, tier = "small") {
   };
 }
 
-function tripleSplit(rng, tier = "medium") {
+function tripleSplit(rng) {
   if (rng.chance(0.5)) {
-    const x1 = tierSpan(rng, tier, 0.18, 0.28);
-    const x2 = tierSpan(rng, tier, 0.44, 0.58);
+    const x1 = rng.range(CHUNK * 0.24, CHUNK * 0.36);
+    const x2 = rng.range(CHUNK * 0.58, CHUNK * 0.74);
     return {
       kind: "triple",
       zones: [
@@ -545,8 +486,8 @@ function tripleSplit(rng, tier = "medium") {
     };
   }
 
-  const z1 = tierSpan(rng, tier, 0.18, 0.28);
-  const z2 = tierSpan(rng, tier, 0.44, 0.58);
+  const z1 = rng.range(CHUNK * 0.24, CHUNK * 0.36);
+  const z2 = rng.range(CHUNK * 0.58, CHUNK * 0.74);
   return {
     kind: "triple",
     zones: [
@@ -561,9 +502,9 @@ function tripleSplit(rng, tier = "medium") {
   };
 }
 
-function uShape(rng, tier = "medium") {
-  const leg = tierSpan(rng, tier, 0.16, 0.26);
-  const open = tierSpan(rng, tier, 0.22, 0.34);
+function uShape(rng) {
+  const leg = rng.range(CHUNK * 0.24, CHUNK * 0.38);
+  const open = rng.range(CHUNK * 0.32, CHUNK * 0.48);
   return {
     kind: "U",
     zones: [
@@ -578,9 +519,9 @@ function uShape(rng, tier = "medium") {
   };
 }
 
-function zigzag(rng, tier = "small") {
-  const mid = tierSpan(rng, tier, 0.24, 0.38);
-  const thick = tierSpan(rng, tier, 0.16, 0.26, true);
+function zigzag(rng) {
+  const mid = rng.range(CHUNK * 0.34, CHUNK * 0.52);
+  const thick = narrowSpan(rng, CHUNK * 0.22, CHUNK * 0.36);
   if (rng.chance(0.5)) {
     return {
       kind: "zigzag",
@@ -610,11 +551,11 @@ function zigzag(rng, tier = "small") {
   };
 }
 
-function hallWithPockets(rng, cx, cz, tier = "medium") {
-  const band = alignedBandEW(cz, tier);
-  const thick = tierSpan(rng, tier, 0.22, 0.34);
+function hallWithPockets(rng, cx, cz) {
+  const band = alignedBandEW(cz);
+  const thick = rng.range(CHUNK * 0.34, CHUNK * 0.52);
   const z0 = rng.chance(0.55) ? band.z0 : rng.range(0.5, CHUNK - thick - 0.5);
-  const pocket = tierSpan(rng, tier, 0.18, 0.28);
+  const pocket = rng.range(CHUNK * 0.28, CHUNK * 0.42);
   const side = rng.pick(["left", "right"]);
   const zones = [{ x0: 0, z0, x1: CHUNK, z1: z0 + thick }];
   const walls = [
@@ -655,8 +596,8 @@ function compoundLT(rng) {
   return l;
 }
 
-function crossHall(rng, tier = "medium") {
-  const arm = tierSpan(rng, tier, 0.1, 0.16, true);
+function crossHall(rng) {
+  const arm = narrowSpan(rng, CHUNK * 0.26, CHUNK * 0.42);
   const cx0 = (CHUNK - arm) / 2;
   const cz0 = (CHUNK - arm) / 2;
   return {
@@ -669,9 +610,9 @@ function crossHall(rng, tier = "medium") {
   };
 }
 
-function staggeredWings(rng, tier = "medium") {
-  const w = tierSpan(rng, tier, 0.16, 0.26, true);
-  const split = tierSpan(rng, tier, 0.26, 0.38);
+function staggeredWings(rng) {
+  const w = narrowSpan(rng, CHUNK * 0.24, CHUNK * 0.36);
+  const split = rng.range(CHUNK * 0.36, CHUNK * 0.52);
   const a = rng.range(1.5, CHUNK * 0.2);
   const b = rng.range(CHUNK - w - CHUNK * 0.2, CHUNK - 1.5);
   return {
@@ -687,9 +628,9 @@ function staggeredWings(rng, tier = "medium") {
   };
 }
 
-function diagonalSlice(rng, tier = "medium") {
-  const thick = tierSpan(rng, tier, 0.16, 0.26, true);
-  const offset = tierSpan(rng, tier, 0.22, 0.36);
+function diagonalSlice(rng) {
+  const thick = narrowSpan(rng, CHUNK * 0.24, CHUNK * 0.38);
+  const offset = rng.range(CHUNK * 0.3, CHUNK * 0.5);
   if (rng.chance(0.5)) {
     return {
       kind: "diag",
@@ -718,10 +659,10 @@ function diagonalSlice(rng, tier = "medium") {
   };
 }
 
-function forkHall(rng, tier = "medium") {
-  const arm = tierSpan(rng, tier, 0.16, 0.26, true);
+function forkHall(rng) {
+  const arm = narrowSpan(rng, CHUNK * 0.24, CHUNK * 0.38);
   const cx = (CHUNK - arm) / 2;
-  const splitZ = tierSpan(rng, tier, 0.36, 0.54);
+  const splitZ = rng.range(CHUNK * 0.48, CHUNK * 0.72);
   const forkX = cx + arm * rng.range(0.35, 0.65);
   return {
     kind: "fork",
@@ -824,63 +765,6 @@ function wallsAnchorToBoundary(innerWalls) {
 }
 
 const NAV_CELL = 0.5;
-const ZONE_MARGIN = 0.04;
-const VOID_SEAL_GRID = 0.5;
-
-function pointInZones(x, z, zones, margin = ZONE_MARGIN) {
-  for (const zone of zones) {
-    if (
-      x >= zone.x0 + margin &&
-      x <= zone.x1 - margin &&
-      z >= zone.z0 + margin &&
-      z <= zone.z1 - margin
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function nearestZonePoint(px, pz, zones) {
-  let best = null;
-  let bestD = Infinity;
-  for (const zone of zones) {
-    const tx = Math.max(zone.x0, Math.min(px, zone.x1));
-    const tz = Math.max(zone.z0, Math.min(pz, zone.z1));
-    const d = (px - tx) ** 2 + (pz - tz) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = { x: tx, z: tz };
-    }
-  }
-  return best;
-}
-
-function addLCorridor(extra, px, pz, tx, tz, strip) {
-  const h = strip / 2;
-  if (Math.abs(tz - pz) > 0.08) {
-    extra.push({
-      x0: px - h,
-      z0: Math.min(pz, tz),
-      x1: px + h,
-      z1: Math.max(pz, tz),
-    });
-  }
-  if (Math.abs(tx - px) > 0.08) {
-    extra.push({
-      x0: Math.min(px, tx),
-      z0: tz - h,
-      x1: Math.max(px, tx),
-      z1: tz + h,
-    });
-  }
-}
-
-function wallCoversSegment(wall, axis, pos, span0, span1) {
-  if (wall.axis !== axis) return false;
-  if (Math.abs(wall.pos - pos) > 0.12) return false;
-  return wall.span0 <= span0 + 0.12 && wall.span1 >= span1 - 0.12;
-}
 
 function wallBlocksNav(wall, x, z) {
   const halfT = WALL_T / 2 + 0.05;
@@ -924,31 +808,11 @@ function chunkDoors(cx, cz) {
 function chunkDoorPoints(doors) {
   const h = CHUNK / 2;
   return {
-    north: { x: h + doors.north.offset, z: 0.55, side: "north" },
-    south: { x: h + doors.south.offset, z: CHUNK - 0.55, side: "south" },
-    east: { x: CHUNK - 0.55, z: h + doors.east.offset, side: "east" },
-    west: { x: 0.55, z: h + doors.west.offset, side: "west" },
+    north: { x: h + doors.north.offset, z: 0.55 },
+    south: { x: h + doors.south.offset, z: CHUNK - 0.55 },
+    east: { x: CHUNK - 0.55, z: h + doors.east.offset },
+    west: { x: 0.55, z: h + doors.west.offset },
   };
-}
-
-/** Thin strips from chunk doors into the shape — no wide lounge voids */
-function doorConnectorZones(zones, doors) {
-  const strip = MIN_PASSAGE_SPAN + 0.35;
-  const extra = [];
-  const pts = chunkDoorPoints(doors);
-
-  for (const p of Object.values(pts)) {
-    if (pointInZones(p.x, p.z, zones, 0.02)) continue;
-    const hit = nearestZonePoint(p.x, p.z, zones);
-    if (!hit) continue;
-    addLCorridor(extra, p.x, p.z, hit.x, hit.z, strip);
-  }
-
-  return [...zones, ...extra];
-}
-
-function walkZones(zones, doors) {
-  return doorConnectorZones(zones, doors);
 }
 
 function navCellKey(x, z) {
@@ -1002,81 +866,10 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
   return true;
 }
 
-/** Reject lounge-scale zones — corridors may be long but not wide open rooms */
-function shapeIsCompact(shape, tier) {
-  const maxRoom = CHUNK * (tier === "medium" ? 0.36 : 0.3);
-  const maxArea = CHUNK * CHUNK * (tier === "medium" ? 0.22 : 0.17);
-  for (const zone of shape.zones) {
-    const w = zone.x1 - zone.x0;
-    const d = zone.z1 - zone.z0;
-    const narrow = Math.min(w, d);
-    const area = w * d;
-    if (narrow > maxRoom) return false;
-    if (area > maxArea) return false;
-  }
-  return true;
-}
-
-/** Seal zone outlines so void floor outside shapes is not walkable */
-function computeVoidSealWalls(zones, innerWalls) {
-  const G = VOID_SEAL_GRID;
-  const cols = Math.round(CHUNK / G);
-  const walk = new Uint8Array(cols * cols);
-
-  for (let iz = 0; iz < cols; iz++) {
-    for (let ix = 0; ix < cols; ix++) {
-      const x = (ix + 0.5) * G;
-      const z = (iz + 0.5) * G;
-      walk[iz * cols + ix] = pointInZones(x, z, zones) ? 1 : 0;
-    }
-  }
-
-  const walls = [];
-  const pushWall = (axis, pos, span0, span1) => {
-    if (span1 - span0 < 0.25) return;
-    if (pos <= BOUND_EPS || pos >= CHUNK - BOUND_EPS) return;
-    for (const wall of innerWalls) {
-      if (wallCoversSegment(wall, axis, pos, span0, span1)) return;
-    }
-    for (const wall of walls) {
-      if (wallCoversSegment(wall, axis, pos, span0, span1)) return;
-    }
-    walls.push({ axis, pos, span0, span1, door: null });
-  };
-
-  for (let iz = 0; iz < cols - 1; iz++) {
-    let runStart = -1;
-    for (let ix = 0; ix <= cols; ix++) {
-      const need =
-        ix < cols && walk[iz * cols + ix] !== walk[(iz + 1) * cols + ix];
-      if (need && runStart < 0) runStart = ix;
-      if ((!need || ix === cols) && runStart >= 0) {
-        pushWall("z", (iz + 1) * G, runStart * G, ix * G);
-        runStart = -1;
-      }
-    }
-  }
-
-  for (let ix = 0; ix < cols - 1; ix++) {
-    let runStart = -1;
-    for (let iz = 0; iz <= cols; iz++) {
-      const need =
-        iz < cols && walk[iz * cols + ix] !== walk[iz * cols + ix + 1];
-      if (need && runStart < 0) runStart = iz;
-      if ((!need || iz === cols) && runStart >= 0) {
-        pushWall("x", (ix + 1) * G, runStart * G, iz * G);
-        runStart = -1;
-      }
-    }
-  }
-
-  return walls;
-}
-
 function pickSizeTier(rng) {
   return rng.pickWeighted([
-    ["small", 98],
-    ["medium", 2],
+    ["small", 68],
+    ["medium", 32],
   ]);
 }
 
@@ -1086,74 +879,67 @@ function buildShape(size, kind, rng, cx, cz) {
 
   switch (kind) {
     case "compact-L":
-      return compactL(rng, corner(), size);
+      return compactL(rng, corner());
     case "chamber-corner":
-      return smallAlcove(rng, corner(), size);
+      return smallAlcove(rng, corner());
     case "small-alcove":
-      return smallAlcove(rng, corner(), size);
+      return smallAlcove(rng, corner());
     case "hall-ew":
-      return hallEW(rng, cx, cz, size);
+      return hallEW(rng, cx, cz);
     case "hall-ns":
-      return hallNS(rng, cx, cz, size);
+      return hallNS(rng, cx, cz);
     case "L":
-      return lShape(rng, corner(), undefined, undefined, size);
+      return lShape(rng, corner());
     case "T":
-      return tShape(rng, stem(), size);
+      return tShape(rng, stem());
     case "H":
-      return hShape(rng, size);
+      return hShape(rng);
     case "U":
-      return uShape(rng, size);
+      return uShape(rng);
     case "alcove":
-      return alcove(rng, corner(), size);
+      return alcove(rng, corner());
     case "cross":
-      return crossHall(rng, size);
+      return crossHall(rng);
     case "zigzag":
-      return zigzag(rng, size);
+      return zigzag(rng);
     case "hall-pockets":
-      return hallWithPockets(rng, cx, cz, size);
+      return hallWithPockets(rng, cx, cz);
     case "fork":
-      return forkHall(rng, size);
+      return forkHall(rng);
     case "diag":
-      return diagonalSlice(rng, size);
+      return diagonalSlice(rng);
     case "twin":
-      return twinZone(rng, size);
+      return twinZone(rng);
     case "triple":
-      return tripleSplit(rng, size);
+      return tripleSplit(rng);
     case "stagger":
-      return staggeredWings(rng, size);
-    case "elongated":
-    case "slab":
-      return offsetSlab(rng, size);
+      return staggeredWings(rng);
     default:
-      return smallAlcove(rng, corner(), "small");
+      return { kind: "full", zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }], innerWalls: [] };
   }
 }
 
 const SHAPE_WEIGHTS = {
   small: [
     ["compact-L", 18],
-    ["small-alcove", 16],
-    ["hall-ew", 14],
-    ["hall-ns", 14],
-    ["elongated", 12],
-    ["zigzag", 10],
-    ["twin", 8],
-    ["alcove", 6],
-    ["fork", 5],
-    ["cross", 4],
+    ["small-alcove", 18],
+    ["hall-ew", 17],
+    ["hall-ns", 17],
+    ["chamber-corner", 14],
+    ["twin", 10],
+    ["zigzag", 6],
   ],
   medium: [
-    ["compact-L", 14],
-    ["alcove", 12],
-    ["T", 10],
-    ["zigzag", 10],
-    ["stagger", 9],
-    ["diag", 9],
-    ["cross", 8],
+    ["cross", 14],
+    ["L", 12],
+    ["T", 11],
+    ["H", 9],
+    ["U", 9],
+    ["hall-ew", 9],
+    ["hall-ns", 9],
+    ["alcove", 8],
     ["hall-pockets", 8],
     ["fork", 7],
-    ["hall-ew", 7],
-    ["hall-ns", 6],
   ],
 };
 
@@ -1169,44 +955,37 @@ function pickValidShape(rng, cx, cz) {
   const doors = chunkDoors(cx, cz);
   for (let attempt = 0; attempt < 32; attempt++) {
     const shape = pickShape(rng, cx, cz);
-    const minDim =
-      shape.sizeTier === "medium"
-        ? MIN_ZONE_DIM_SMALL + 0.25
-        : MIN_ZONE_DIM_SMALL;
+    const minDim = shape.sizeTier === "small" ? MIN_ZONE_DIM_SMALL : MIN_ZONE_DIM;
     if (
       isMazeConnected(shape.innerWalls) &&
       wallsAnchorToBoundary(shape.innerWalls) &&
       !hasFloatingWalls(shape.innerWalls) &&
       shapeIsWalkable(shape, minDim) &&
-      shapeIsCompact(shape, shape.sizeTier) &&
       allExitsConnected(shape.innerWalls, doors)
     ) {
       return shape;
     }
   }
-  return smallAlcove(rng, rng.pick(["nw", "ne", "sw", "se"]), "small");
+  return crossHall(rng);
 }
 
 export function generateRoom(cx, cz) {
   const rng = createRng(cx, cz, 7);
   const shape = pickValidShape(rng, cx, cz);
-  const doors = {
-    north: getSharedDoor(cx, cz, cx, cz - 1),
-    south: getSharedDoor(cx, cz, cx, cz + 1),
-    east: getSharedDoor(cx, cz, cx + 1, cz),
-    west: getSharedDoor(cx, cz, cx - 1, cz),
-  };
-  const zones = walkZones(shape.zones, doors);
-  const voidWalls = computeVoidSealWalls(zones, shape.innerWalls);
 
   const room = {
     cx,
     cz,
     kind: shape.kind,
-    zones,
-    innerWalls: [...shape.innerWalls, ...voidWalls],
+    zones: shape.zones,
+    innerWalls: shape.innerWalls,
     height: ROOM_H,
-    doors,
+    doors: {
+      north: getSharedDoor(cx, cz, cx, cz - 1),
+      south: getSharedDoor(cx, cz, cx, cz + 1),
+      east: getSharedDoor(cx, cz, cx + 1, cz),
+      west: getSharedDoor(cx, cz, cx - 1, cz),
+    },
     lightSeed: rng.int(0, 99999),
     lightSpacing: rng.pick([3.4, 3.8, 4.2, 4.6, 5.0]),
   };
@@ -1241,8 +1020,8 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x0, lo, z - t, z + t, y0, yTop);
-  addBox(boxes, hi, x1, z - t, z + t, y0, yTop);
+  addBox(boxes, x0, lo, z - t, z + t, y0, DOOR_H);
+  addBox(boxes, hi, x1, z - t, z + t, y0, DOOR_H);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
@@ -1255,8 +1034,8 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x - t, x + t, z0, lo, y0, yTop);
-  addBox(boxes, x - t, x + t, hi, z1, y0, yTop);
+  addBox(boxes, x - t, x + t, z0, lo, y0, DOOR_H);
+  addBox(boxes, x - t, x + t, hi, z1, y0, DOOR_H);
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {

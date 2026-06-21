@@ -3,7 +3,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CHUNK } from "./room.js";
 import { WALL_T } from "./constants.js";
 import { WALL_TILE_W } from "./textures.js";
-import { cloneWallBox, bakeWallUV } from "./geometryPool.js";
+import { cloneWallBox, bakeWallBoxUV } from "./geometryPool.js";
 
 function tileHFromWallTex(wallTex) {
   return wallTex.userData?.tileH ?? WALL_TILE_W;
@@ -24,7 +24,7 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, r
     const y = segY + segH / 2;
     const geo = cloneWallBox(axis, slen, segH);
     const worldU0 = axis === "z" ? roomWx + es0 : roomWz + es0;
-    bakeWallUV(geo, slen, segH, WALL_TILE_W, tileH, worldU0, segY);
+    bakeWallBoxUV(geo, axis, slen, segH, WALL_TILE_W, tileH, worldU0, segY);
     if (axis === "z") geo.translate(smid, y, pos);
     else geo.translate(pos, y, smid);
     parts.push(geo);
