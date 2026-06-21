@@ -127,9 +127,13 @@ export function createDoorJambMaterial(carpetBase, floorTex) {
   return mat;
 }
 
-/** Matte ceiling carpet — underside only */
+/** Matte ceiling carpet — underside; DoubleSide avoids instanced facing issues */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshBasicMaterial({ map });
+  return new THREE.MeshBasicMaterial({
+    map,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
 }
 
 /** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {

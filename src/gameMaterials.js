@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import {
   createCeilingGapMaterial,
-  createCeilingTileFaceTexture,
   createCeilingTileMaterial,
   createBakedWallMaterial,
   tiledAt,
@@ -12,13 +11,13 @@ import { CHUNK } from "./constants.js";
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex) {
   const panelOnColor = new THREE.Color(0xfff4e5).multiplyScalar(2.2);
-  const ceilingTileTex = createCeilingTileFaceTexture(surfaceTex);
 
   return {
     wallTex: wallpaper,
     surfaceTex,
     wall: createBakedWallMaterial(wallpaper),
-    ceilingTile: createCeilingTileMaterial(ceilingTileTex),
+    /** bottom.jpg — world UVs baked on each chunk's ceiling mesh */
+    ceilingTile: createCeilingTileMaterial(surfaceTex),
     ceilingGroove: createCeilingGapMaterial(),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
