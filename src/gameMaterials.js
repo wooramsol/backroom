@@ -6,15 +6,15 @@ import {
   createBakedWallMaterial,
   SURFACE_TILE_M,
 } from "./textures.js";
-import { CHUNK } from "./constants.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
-export function createGameMaterials(wallpaper, surfaceTex) {
+export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
   const panelOnColor = new THREE.Color(0xfff4e5).multiplyScalar(2.2);
 
   return {
     wallTex: wallpaper,
     surfaceTex,
+    floorTex,
     wall: createBakedWallMaterial(wallpaper),
     /** bottom2.jpg — subtle grain, world UVs baked per chunk */
     ceilingTile: createCeilingTileMaterial(surfaceTex),
@@ -26,9 +26,9 @@ export function createGameMaterials(wallpaper, surfaceTex) {
   };
 }
 
-/** Per-chunk floor — seamless world UVs (no repeat seams between chunks) */
+/** Per-chunk floor — isotropic speckle carpet, seamless world UVs */
 export function createChunkFloorMaterial(materials) {
-  const map = materials.surfaceTex.clone();
+  const map = materials.floorTex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
   map.userData.chunkOwned = true;

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
+  loadIsotropicFloor,
 } from "./textures.js";
 import { createGameMaterials } from "./gameMaterials.js";
 import { World } from "./world.js";
@@ -72,7 +73,8 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const materials = createGameMaterials(wallpaper, surfaceTex);
+  const floorTex = await loadIsotropicFloor();
+  const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
 
   const world = new World(scene, materials);
   const player = new Player(camera, renderer.domElement);

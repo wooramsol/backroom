@@ -319,6 +319,43 @@ export function createCarpetTexture() {
   });
 }
 
+/** Omnidirectional office carpet — hash speckle, no weave direction */
+export function createIsotropicFloorTexture() {
+  return canvasTex((ctx, size) => {
+    const img = ctx.createImageData(size, size);
+    const px = img.data;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (y * size + x) * 4;
+        const h1 = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        const h2 = Math.sin(x * 39.346 + y * 11.135) * 22578.1459;
+        const h3 = Math.sin(x * 73.156 + y * 52.235) * 12438.5453;
+        const n1 = h1 - Math.floor(h1);
+        const n2 = h2 - Math.floor(h2);
+        const n3 = h3 - Math.floor(h3);
+        const base = 214 + n1 * 22 + n2 * 8;
+        let r = base + 4;
+        let g = base - 2;
+        let b = base - 28;
+        if (n3 > 0.93) {
+          r *= 0.86;
+          g *= 0.88;
+          b *= 0.9;
+        } else if (n3 < 0.07) {
+          r = Math.min(255, r + 10);
+          g = Math.min(255, g + 8);
+          b = Math.min(255, b + 4);
+        }
+        px[i] = r;
+        px[i + 1] = g;
+        px[i + 2] = b;
+        px[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }, 256);
+}
+
 /** Add very light acoustic-ceiling grain — tileable, deterministic */
 export function enrichSurfaceTexture(tex) {
   const img = tex.image;
@@ -376,6 +413,12 @@ export function applySurfaceTileSize(tex) {
 
 /** @deprecated */ export function applyCeilingTileSize(tex) {
   return applySurfaceTileSize(tex);
+}
+
+export async function loadIsotropicFloor() {
+  const tex = createIsotropicFloorTexture();
+  applySurfaceTileSize(tex);
+  return tex;
 }
 
 export function loadFloor(loader) {
