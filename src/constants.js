@@ -54,8 +54,8 @@ export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 6;
-export const FOG_FAR = 26;
+export const FOG_NEAR = 8;
+export const FOG_FAR = 34;
 export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — 5×5 ring matches FOG_FAR */
 export const GRID_RADIUS = 2;

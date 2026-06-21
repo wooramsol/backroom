@@ -21,19 +21,28 @@ export { CHUNK };
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
 
-const DOOR_WIDTHS = [1.4, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0];
-const SHARED_DOOR_WIDTHS = [1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0, 4.4];
+const DOOR_WIDTHS = [1.15, 1.3, 1.45, 1.6, 1.75, 1.9, 2.05, 2.25, 2.5, 2.75, 3.0, 3.3, 3.6, 3.95, 4.3];
+const SHARED_DOOR_WIDTHS = [1.35, 1.5, 1.7, 1.9, 2.1, 2.35, 2.6, 2.85, 3.15, 3.45, 3.75, 4.1, 4.5];
 
 function fract(n) {
   return n - Math.floor(n);
 }
 
-function doorSpec(rng, span) {
+function pickDoorWidth(rng, span) {
   const maxW = span - 0.8;
   if (maxW < MIN_DOOR_WIDTH) return null;
+  if (rng.chance(0.38)) {
+    const w = rng.range(MIN_DOOR_WIDTH, maxW);
+    return Math.round(w * 20) / 20;
+  }
   const choices = DOOR_WIDTHS.filter((w) => w <= maxW + 0.01);
-  const w = Math.max(MIN_DOOR_WIDTH, rng.pick(choices.length ? choices : [MIN_DOOR_WIDTH]));
-  const width = Math.min(w, maxW);
+  return Math.max(MIN_DOOR_WIDTH, rng.pick(choices.length ? choices : [MIN_DOOR_WIDTH]));
+}
+
+function doorSpec(rng, span) {
+  const maxW = span - 0.8;
+  const width = Math.min(pickDoorWidth(rng, span) ?? MIN_DOOR_WIDTH, maxW);
+  if (width < MIN_DOOR_WIDTH) return null;
   const maxOff = Math.max(0, span / 2 - width / 2 - 0.25);
   return { width, offset: rng.range(-maxOff, maxOff) };
 }
@@ -119,7 +128,15 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const bx = Math.max(cx0, cx1);
   const bz = Math.max(cz0, cz1);
   const rng = createRng(ax, az, bx, bz, 42);
-  const width = Math.max(MIN_DOOR_WIDTH, rng.pick(SHARED_DOOR_WIDTHS));
+  const maxW = CHUNK - 0.8;
+  let width;
+  if (rng.chance(0.38)) {
+    width = Math.round(rng.range(MIN_DOOR_WIDTH, maxW) * 20) / 20;
+  } else {
+    const choices = SHARED_DOOR_WIDTHS.filter((w) => w <= maxW + 0.01);
+    width = Math.max(MIN_DOOR_WIDTH, rng.pick(choices.length ? choices : [MIN_DOOR_WIDTH]));
+  }
+  width = Math.max(MIN_DOOR_WIDTH, Math.min(width, maxW));
   const maxOff = Math.max(0, CHUNK / 2 - width / 2 - 0.5);
   const centerClear = width / 2 + 0.38;
   const cap = Math.min(maxOff, centerClear);
@@ -504,7 +521,7 @@ function uShape(rng) {
 }
 
 function hubRoom(rng) {
-  const margin = rng.range(CHUNK * 0.09, CHUNK * 0.13);
+  const margin = rng.range(CHUNK * 0.045, CHUNK * 0.065);
   return {
     kind: "lounge",
     zones: [
