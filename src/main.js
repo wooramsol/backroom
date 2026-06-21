@@ -26,6 +26,7 @@ import {
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 import { updateFilmNoise } from "./filmNoise.js";
+import { formatBuildLabel } from "./version.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");

@@ -324,8 +324,13 @@ export function enrichSurfaceTexture(tex) {
   const img = tex.image;
   if (!img?.width || !img?.height) return tex;
 
-  const w = img.width;
-  const h = img.height;
+  const srcW = img.width;
+  const srcH = img.height;
+  const maxDim = 512;
+  const scale = Math.min(1, maxDim / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
