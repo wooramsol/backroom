@@ -169,13 +169,12 @@ function alignedBandNS(cx) {
   return { x0, width };
 }
 
-function hallEW(rng, cx, cz, forceWide = false) {
-  const wide = forceWide;
+function hallEW(rng, cx, cz) {
   const band = alignedBandEW(cz);
-  const depth = wide ? rng.range(CHUNK * 0.62, CHUNK * 0.94) : band.depth;
-  const z0 = wide ? rng.range(0.4, CHUNK - depth - 0.4) : band.z0;
+  const depth = band.depth;
+  const z0 = band.z0;
   return {
-    kind: wide ? "wide-hall" : "hall",
+    kind: "hall",
     zones: [{ x0: 0, z0, x1: CHUNK, z1: z0 + depth }],
     innerWalls: [
       { axis: "z", pos: z0, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
@@ -184,13 +183,12 @@ function hallEW(rng, cx, cz, forceWide = false) {
   };
 }
 
-function hallNS(rng, cx, cz, forceWide = false) {
-  const wide = forceWide;
+function hallNS(rng, cx, cz) {
   const band = alignedBandNS(cx);
-  const width = wide ? rng.range(CHUNK * 0.62, CHUNK * 0.94) : band.width;
-  const x0 = wide ? rng.range(0.4, CHUNK - width - 0.4) : band.x0;
+  const width = band.width;
+  const x0 = band.x0;
   return {
-    kind: wide ? "wide-hall" : "hall",
+    kind: "hall",
     zones: [{ x0, z0: 0, x1: x0 + width, z1: CHUNK }],
     innerWalls: [
       { axis: "x", pos: x0, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
@@ -516,26 +514,6 @@ function uShape(rng) {
     innerWalls: [
       { axis: "x", pos: leg, span0: 0, span1: CHUNK - open, door: doorSpec(rng, CHUNK - open) },
       { axis: "x", pos: CHUNK - leg, span0: 0, span1: CHUNK - open, door: doorSpec(rng, CHUNK - open) },
-    ],
-  };
-}
-
-function hubRoom(rng) {
-  const margin = rng.range(CHUNK * 0.045, CHUNK * 0.065);
-  return {
-    kind: "lounge",
-    zones: [
-      { x0: 0, z0: 0, x1: CHUNK, z1: margin },
-      { x0: 0, z0: CHUNK - margin, x1: CHUNK, z1: CHUNK },
-      { x0: 0, z0: margin, x1: margin, z1: CHUNK - margin },
-      { x0: CHUNK - margin, z0: margin, x1: CHUNK, z1: CHUNK - margin },
-      { x0: margin, z0: margin, x1: CHUNK - margin, z1: CHUNK - margin },
-    ],
-    innerWalls: [
-      { axis: "z", pos: margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
-      { axis: "z", pos: CHUNK - margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
-      { axis: "x", pos: margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
-      { axis: "x", pos: CHUNK - margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
     ],
   };
 }
@@ -887,13 +865,7 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
   return true;
 }
 
-function isLoungeCell(cx, cz) {
-  const h = fract(Math.sin(cx * 127.1 + cz * 311.7) * 43758.5453);
-  return h < 0.025;
-}
-
-function pickSizeTier(rng, cx, cz) {
-  if (isLoungeCell(cx, cz)) return "large";
+function pickSizeTier(rng) {
   return rng.pickWeighted([
     ["small", 68],
     ["medium", 32],
@@ -912,9 +884,9 @@ function buildShape(size, kind, rng, cx, cz) {
     case "small-alcove":
       return smallAlcove(rng, corner());
     case "hall-ew":
-      return hallEW(rng, cx, cz, false);
+      return hallEW(rng, cx, cz);
     case "hall-ns":
-      return hallNS(rng, cx, cz, false);
+      return hallNS(rng, cx, cz);
     case "L":
       return lShape(rng, corner());
     case "T":
@@ -937,12 +909,6 @@ function buildShape(size, kind, rng, cx, cz) {
       return diagonalSlice(rng);
     case "twin":
       return twinZone(rng);
-    case "lounge":
-      return hubRoom(rng);
-    case "wide-hall-ew":
-      return hallEW(rng, cx, cz, true);
-    case "wide-hall-ns":
-      return hallNS(rng, cx, cz, true);
     case "triple":
       return tripleSplit(rng);
     case "stagger":
@@ -974,15 +940,10 @@ const SHAPE_WEIGHTS = {
     ["hall-pockets", 8],
     ["fork", 7],
   ],
-  large: [
-    ["lounge", 70],
-    ["wide-hall-ew", 15],
-    ["wide-hall-ns", 15],
-  ],
 };
 
 function pickShape(rng, cx, cz) {
-  const size = pickSizeTier(rng, cx, cz);
+  const size = pickSizeTier(rng);
   const kind = rng.pickWeighted(SHAPE_WEIGHTS[size]);
   const shape = buildShape(size, kind, rng, cx, cz);
   shape.sizeTier = size;
@@ -1058,9 +1019,8 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x0, lo, z - t, z + t, y0, yTop);
-  addBox(boxes, hi, x1, z - t, z + t, y0, yTop);
-  addBox(boxes, lo, hi, z - t, z + t, y0 + DOOR_H, yTop);
+  addBox(boxes, x0, lo, z - t, z + t, y0, DOOR_H);
+  addBox(boxes, hi, x1, z - t, z + t, y0, DOOR_H);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
@@ -1073,9 +1033,8 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x - t, x + t, z0, lo, y0, yTop);
-  addBox(boxes, x - t, x + t, hi, z1, y0, yTop);
-  addBox(boxes, x - t, x + t, lo, hi, y0 + DOOR_H, yTop);
+  addBox(boxes, x - t, x + t, z0, lo, y0, DOOR_H);
+  addBox(boxes, x - t, x + t, hi, z1, y0, DOOR_H);
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {
