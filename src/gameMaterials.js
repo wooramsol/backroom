@@ -1,28 +1,24 @@
 import * as THREE from "three";
 import {
   createCeilingGapMaterial,
-  createCeilingTileFaceTexture,
   createCeilingTileMaterial,
   createBakedWallMaterial,
   tiledAt,
   CEILING_TILE_M,
-  WALL_TILE_W,
 } from "./textures.js";
 import { CHUNK } from "./constants.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex) {
-  const carpetTileTex = createCeilingTileFaceTexture(surfaceTex);
-  const carpet = createCeilingTileMaterial(carpetTileTex);
   const panelOnColor = new THREE.Color(0xfff4e5).multiplyScalar(2.2);
 
   return {
     wallTex: wallpaper,
-    carpetTileTex,
+    surfaceTex,
     wall: createBakedWallMaterial(wallpaper),
-    carpet,
+    /** bottom.jpg — shared base for ceiling tile faces (UVs baked per chunk) */
+    surfaceMat: createCeilingTileMaterial(surfaceTex),
     ceilingGroove: createCeilingGapMaterial(),
-    ceilingTile: createCeilingTileMaterial(carpetTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: false,
@@ -30,11 +26,11 @@ export function createGameMaterials(wallpaper, surfaceTex) {
   };
 }
 
-/** Per-chunk floor map + material (disposed with chunk) */
+/** Per-chunk floor — bottom.jpg tiled in world space */
 export function createChunkFloorMaterial(materials, worldX, worldZ) {
-  const map = tiledAt(materials.carpetTileTex, CEILING_TILE_M, CHUNK, CHUNK, worldX, worldZ);
+  const map = tiledAt(materials.surfaceTex, CEILING_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   map.userData.chunkOwned = true;
-  const mat = materials.carpet.clone();
+  const mat = materials.surfaceMat.clone();
   mat.map = map;
   mat.userData.chunkOwned = true;
   return mat;

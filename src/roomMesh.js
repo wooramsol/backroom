@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CHUNK } from "./room.js";
 import {
   PANEL_W,
@@ -7,12 +8,10 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { CEILING_TILE_M } from "./textures.js";
+import { CEILING_TILE_M, bakeSurfaceUV } from "./textures.js";
 import { createChunkFloorMaterial } from "./gameMaterials.js";
 import { buildMergedWallGeometry } from "./wallBuilder.js";
 
-const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
-_tileGeo.userData.shared = true;
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 _cellBackingGeo.userData.shared = true;
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -52,7 +51,7 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
 
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
   const backingTransforms = [];
-  const tileTransforms = [];
+  const tileParts = [];
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
@@ -62,14 +61,23 @@ function addCeilingTiles(group, h, materials, worldX, worldZ) {
       _mat4.compose(_pos, _ceilRot, _scale);
       backingTransforms.push(_mat4.clone());
 
-      _pos.set(px, tileY, pz);
-      _mat4.compose(_pos, _ceilRot, _scale);
-      tileTransforms.push(_mat4.clone());
+      const tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
+      tileGeo.rotateX(-Math.PI / 2);
+      tileGeo.translate(px, tileY, pz);
+      bakeSurfaceUV(tileGeo, tileM, worldX, worldZ);
+      tileParts.push(tileGeo);
     }
   }
 
   addInstancedCeiling(group, _cellBackingGeo, materials.ceilingGroove, backingTransforms);
-  addInstancedCeiling(group, _tileGeo, materials.ceilingTile, tileTransforms, 2);
+
+  if (tileParts.length) {
+    const merged = mergeGeometries(tileParts, false);
+    for (const g of tileParts) g.dispose();
+    const ceiling = new THREE.Mesh(merged, materials.surfaceMat);
+    ceiling.renderOrder = 2;
+    group.add(ceiling);
+  }
 }
 
 export function createRoomBuildState(room, materials) {

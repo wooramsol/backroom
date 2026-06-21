@@ -93,6 +93,18 @@ export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
   return t;
 }
 
+/** Bake world-aligned UVs on a horizontal (XZ) mesh for surface tiling */
+export function bakeSurfaceUV(geo, tileM, worldX, worldZ) {
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const u = (worldX + pos.getX(i)) / tileM;
+    const v = (worldZ + pos.getZ(i)) / tileM;
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+}
+
 /** Floor/ceiling — matte, texture albedo only (no tint) */
 export function createSurfaceMaterial(map = null) {
   return new THREE.MeshBasicMaterial({
