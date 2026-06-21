@@ -82,7 +82,7 @@ function getFloorWashMaterial() {
 }
 
 function addFloorLightWash(group, px, pz) {
-  const wash = new THREE.Mesh(getFloorWashMaterial(), _floorWashGeo);
+  const wash = new THREE.Mesh(_floorWashGeo, getFloorWashMaterial());
   const span = PANEL_W * 1.55;
   wash.scale.set(span, span, 1);
   wash.position.set(px, 0.012, pz);

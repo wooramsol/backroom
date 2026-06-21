@@ -131,8 +131,7 @@ async function init() {
       try {
         for (let i = 0; i < 5; i++) pipeline.render();
       } catch (err) {
-        console.error("Post-process warmup failed", err);
-        throw err;
+        console.warn("Post-process warmup skipped", err);
       }
       player.setColliders(world.getColliders());
       ready = true;
