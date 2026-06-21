@@ -1,11 +1,11 @@
 /** Level 0 grid — one chunk = one connectable room cell */
-export const CHUNK = 14;
+export const CHUNK = 22;
 export const CHUNK_HW = CHUNK / 2;
 /** Legacy room size hints — shapes now use zones + inner walls */
-export const MIN_ROOM_W = 3;
-export const MAX_ROOM_W = 14;
-export const MIN_ROOM_D = 3;
-export const MAX_ROOM_D = 14;
+export const MIN_ROOM_W = 5;
+export const MAX_ROOM_W = CHUNK;
+export const MIN_ROOM_D = 5;
+export const MAX_ROOM_D = CHUNK;
 export const WALL_T = 0.16;
 export const DOOR_H = 2.2;
 /** Collision jambs sit this much inside the visible opening on each side */
@@ -25,6 +25,8 @@ export const PLAYER_DEPTH = 0.28;
 export const BODY_WALL_CLEAR = 0.035;
 /** Minimum walkable span (corridor width / depth) — must fit the body */
 export const MIN_PASSAGE_SPAN = 2 * (PLAYER_R * 0.98 + BODY_WALL_CLEAR) + 0.18;
+/** Every zone must be at least this wide in both axes — no crawl-space pockets */
+export const MIN_ZONE_DIM = MIN_PASSAGE_SPAN + 2.0;
 /** Minimum door width so the player body cannot squeeze through the gap */
 export const MIN_DOOR_WIDTH = 2 * (PLAYER_R + BODY_WALL_CLEAR) + 2 * DOOR_JAMB_INSET + 0.14;
 export const JUMP_V = 4.2;
@@ -50,8 +52,8 @@ export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 18;
-export const FOG_FAR = 48;
+export const FOG_NEAR = 26;
+export const FOG_FAR = 72;
 export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — 5×5 ring matches FOG_FAR */
 export const GRID_RADIUS = 2;
@@ -101,9 +103,9 @@ export const CEILING_PLENUM_INTENSITY = 1.15;
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Subtle bloom — tight to bright panel squares only */
-export const BLOOM_STRENGTH = 0.14;
-export const BLOOM_RADIUS = 0.18;
-export const BLOOM_THRESHOLD = 0.82;
+export const BLOOM_STRENGTH = 0.22;
+export const BLOOM_RADIUS = 0.22;
+export const BLOOM_THRESHOLD = 0.78;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Bloom buffer scale — can stay low; scene pass is full res */

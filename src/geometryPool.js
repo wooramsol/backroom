@@ -29,13 +29,13 @@ export function bakePlaneWallUV(geo, widthM, heightM, tileW, tileH, worldU0, wor
   uv.needsUpdate = true;
 }
 
-/** Bake wallpaper repeat into UVs for a merged wall material (repeat 1×1) */
-export function bakeWallUV(geo, spanU, spanV, tileW, tileH) {
+/** Bake wallpaper UVs aligned to world metres (material repeat 1×1) */
+export function bakeWallUV(geo, spanU, spanV, tileW, tileH, worldU0 = 0, worldV0 = 0) {
   const uv = geo.attributes.uv;
-  const ru = spanU / tileW;
-  const rv = spanV / tileH;
   for (let i = 0; i < uv.count; i++) {
-    uv.setXY(i, uv.getX(i) * ru, uv.getY(i) * rv);
+    const u = (worldU0 + uv.getX(i) * spanU) / tileW;
+    const v = (worldV0 + uv.getY(i) * spanV) / tileH;
+    uv.setXY(i, u, v);
   }
   uv.needsUpdate = true;
 }

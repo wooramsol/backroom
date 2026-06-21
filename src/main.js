@@ -102,7 +102,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, fxaa } = createBloomPipeline(renderer, scene, camera);
+  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -191,7 +191,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, null, fxaa, w, h);
+    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
     syncCrosshair();
   });
 }

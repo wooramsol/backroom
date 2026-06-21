@@ -75,7 +75,7 @@ function addDoorJambTrim(group, wallMat, wallTex, axis, pos, mid, dw, roomWx, ro
 }
 
 function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
-  const { geometry, jambs } = buildMergedWallGeometry(room, materials.wallTex, h);
+  const { geometry, jambs } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
   if (geometry) {
     group.add(new THREE.Mesh(geometry, materials.wall));
   }

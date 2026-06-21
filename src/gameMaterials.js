@@ -8,6 +8,7 @@ import {
   CEILING_TILE_M,
   WALL_TILE_W,
 } from "./textures.js";
+import { CHUNK } from "./constants.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex) {
@@ -31,7 +32,7 @@ export function createGameMaterials(wallpaper, surfaceTex) {
 
 /** Per-chunk floor map + material (disposed with chunk) */
 export function createChunkFloorMaterial(materials, worldX, worldZ) {
-  const map = tiledAt(materials.carpetTileTex, CEILING_TILE_M, 14, 14, worldX, worldZ);
+  const map = tiledAt(materials.carpetTileTex, CEILING_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   map.userData.chunkOwned = true;
   const mat = materials.carpet.clone();
   mat.map = map;
