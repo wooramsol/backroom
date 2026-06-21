@@ -9,7 +9,7 @@ function tileHFromWallTex(wallTex) {
   return wallTex.userData?.tileH ?? WALL_TILE_W;
 }
 
-function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, jambs, roomWx, roomWz) {
+function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, roomWz) {
   const tileH = tileHFromWallTex(wallTex);
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
@@ -33,8 +33,6 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, jambs, ro
   if (door) {
     push(a0, mid - dw, DOOR_H, 0, true, false);
     push(mid + dw, a1, DOOR_H, 0, false, true);
-    push(a0, a1, h - DOOR_H, DOOR_H, true, true);
-    jambs.push({ axis, pos, mid, dw });
     return;
   }
 
@@ -44,21 +42,20 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, jambs, ro
 /** One merged BufferGeometry for all wallpaper walls in a chunk */
 export function buildMergedWallGeometry(room, wallTex, h, roomWx, roomWz) {
   const parts = [];
-  const jambs = [];
 
-  appendWallSegment(parts, wallTex, "z", 0, 0, CHUNK, room.doors.north, h, jambs, roomWx, roomWz);
-  appendWallSegment(parts, wallTex, "z", CHUNK, 0, CHUNK, room.doors.south, h, jambs, roomWx, roomWz);
-  appendWallSegment(parts, wallTex, "x", 0, 0, CHUNK, room.doors.west, h, jambs, roomWx, roomWz);
-  appendWallSegment(parts, wallTex, "x", CHUNK, 0, CHUNK, room.doors.east, h, jambs, roomWx, roomWz);
+  appendWallSegment(parts, wallTex, "z", 0, 0, CHUNK, room.doors.north, h, roomWx, roomWz);
+  appendWallSegment(parts, wallTex, "z", CHUNK, 0, CHUNK, room.doors.south, h, roomWx, roomWz);
+  appendWallSegment(parts, wallTex, "x", 0, 0, CHUNK, room.doors.west, h, roomWx, roomWz);
+  appendWallSegment(parts, wallTex, "x", CHUNK, 0, CHUNK, room.doors.east, h, roomWx, roomWz);
 
   for (const wall of room.innerWalls) {
     const axis = wall.axis === "x" ? "x" : "z";
-    appendWallSegment(parts, wallTex, axis, wall.pos, wall.span0, wall.span1, wall.door, h, jambs, roomWx, roomWz);
+    appendWallSegment(parts, wallTex, axis, wall.pos, wall.span0, wall.span1, wall.door, h, roomWx, roomWz);
   }
 
-  if (!parts.length) return { geometry: null, jambs };
+  if (!parts.length) return { geometry: null };
 
   const geometry = mergeGeometries(parts, false);
   for (const g of parts) g.dispose();
-  return { geometry, jambs };
+  return { geometry };
 }

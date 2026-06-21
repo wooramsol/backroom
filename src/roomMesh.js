@@ -1,18 +1,15 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
 import {
-  WALL_T,
-  DOOR_H,
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { tiledAt, CEILING_TILE_M, WALL_TILE_W } from "./textures.js";
+import { CEILING_TILE_M } from "./textures.js";
 import { createChunkFloorMaterial } from "./gameMaterials.js";
 import { buildMergedWallGeometry } from "./wallBuilder.js";
-import { bakePlaneWallUV } from "./geometryPool.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 _tileGeo.userData.shared = true;
@@ -20,64 +17,15 @@ const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 _cellBackingGeo.userData.shared = true;
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 _chunkPlane.userData.shared = true;
-const _jambSideGeo = new THREE.PlaneGeometry(WALL_T, DOOR_H);
-_jambSideGeo.userData.shared = true;
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
-const JAMB_INSET = 0.01;
-
-function addDoorJambTrim(group, wallMat, wallTex, axis, pos, mid, dw, roomWx, roomWz) {
-  const lo = mid - dw;
-  const hi = mid + dw;
-  const doorW = dw * 2;
-  const yMid = DOOR_H * 0.5;
-  const tileW = wallTex.userData?.tileW ?? WALL_TILE_W;
-  const tileH = wallTex.userData?.tileH ?? WALL_TILE_W;
-
-  const placeSide = (along, rotY, worldU0, worldV0) => {
-    const geo = _jambSideGeo.clone();
-    bakePlaneWallUV(geo, WALL_T, DOOR_H, tileW, tileH, worldU0, worldV0);
-    const m = new THREE.Mesh(geo, wallMat);
-    m.rotation.y = rotY;
-    m.renderOrder = 1;
-    if (axis === "z") m.position.set(along, yMid, pos);
-    else m.position.set(pos, yMid, along);
-    group.add(m);
-  };
-
-  const topGeo = new THREE.PlaneGeometry(doorW, WALL_T);
-  if (axis === "z") {
-    bakePlaneWallUV(topGeo, doorW, WALL_T, tileW, tileH, roomWx + lo, DOOR_H - JAMB_INSET);
-  } else {
-    bakePlaneWallUV(topGeo, doorW, WALL_T, tileW, tileH, roomWz + lo, DOOR_H - JAMB_INSET);
-  }
-  const top = new THREE.Mesh(topGeo, wallMat);
-  top.rotation.x = -Math.PI / 2;
-  top.renderOrder = 1;
-  if (axis === "z") top.position.set(mid, DOOR_H - JAMB_INSET, pos);
-  else top.position.set(pos, DOOR_H - JAMB_INSET, mid);
-  group.add(top);
-
-  if (axis === "z") {
-    const wz = roomWz + pos;
-    placeSide(lo + JAMB_INSET, Math.PI / 2, wz - WALL_T * 0.5, 0);
-    placeSide(hi - JAMB_INSET, -Math.PI / 2, wz - WALL_T * 0.5, 0);
-  } else {
-    const wx = roomWx + pos;
-    placeSide(lo + JAMB_INSET, 0, wx - WALL_T * 0.5, 0);
-    placeSide(hi - JAMB_INSET, Math.PI, wx - WALL_T * 0.5, 0);
-  }
-}
 
 function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
-  const { geometry, jambs } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
+  const { geometry } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
   if (geometry) {
     group.add(new THREE.Mesh(geometry, materials.wall));
-  }
-  for (const j of jambs) {
-    addDoorJambTrim(group, materials.wall, materials.wallTex, j.axis, j.pos, j.mid, j.dw, roomWx, roomWz);
   }
 }
 

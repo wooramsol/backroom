@@ -504,7 +504,7 @@ function uShape(rng) {
 }
 
 function hubRoom(rng) {
-  const margin = rng.range(CHUNK * 0.22, CHUNK * 0.32);
+  const margin = rng.range(CHUNK * 0.14, CHUNK * 0.2);
   return {
     kind: "lounge",
     zones: [
@@ -756,6 +756,13 @@ export function isMazeConnected(innerWalls) {
   return visited.size === innerWalls.length;
 }
 
+/** No wall segment with both ends floating in open floor */
+function hasFloatingWalls(innerWalls) {
+  return innerWalls.some(
+    (wall) => wall.span0 > BOUND_EPS && wall.span1 < CHUNK - BOUND_EPS,
+  );
+}
+
 /** Every inner wall must reach a chunk edge — no floating segments in open floor */
 function wallsAnchorToBoundary(innerWalls) {
   return innerWalls.every(wallTouchesBoundary);
@@ -844,14 +851,14 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
 
 function isLoungeCell(cx, cz) {
   const h = fract(Math.sin(cx * 127.1 + cz * 311.7) * 43758.5453);
-  return h < 0.045;
+  return h < 0.025;
 }
 
 function pickSizeTier(rng, cx, cz) {
   if (isLoungeCell(cx, cz)) return "large";
   return rng.pickWeighted([
-    ["small", 58],
-    ["medium", 42],
+    ["small", 68],
+    ["medium", 32],
   ]);
 }
 
@@ -862,6 +869,8 @@ function buildShape(size, kind, rng, cx, cz) {
   switch (kind) {
     case "compact-L":
       return compactL(rng, corner());
+    case "chamber-corner":
+      return smallAlcove(rng, corner());
     case "small-alcove":
       return smallAlcove(rng, corner());
     case "hall-ew":
@@ -907,17 +916,18 @@ function buildShape(size, kind, rng, cx, cz) {
 
 const SHAPE_WEIGHTS = {
   small: [
-    ["compact-L", 20],
-    ["small-alcove", 20],
-    ["hall-ew", 18],
-    ["hall-ns", 18],
-    ["zigzag", 12],
-    ["twin", 12],
+    ["compact-L", 18],
+    ["small-alcove", 18],
+    ["hall-ew", 17],
+    ["hall-ns", 17],
+    ["chamber-corner", 14],
+    ["twin", 10],
+    ["zigzag", 6],
   ],
   medium: [
     ["L", 14],
     ["T", 12],
-    ["H", 12],
+    ["H", 10],
     ["U", 10],
     ["hall-ew", 10],
     ["hall-ns", 10],
@@ -925,12 +935,11 @@ const SHAPE_WEIGHTS = {
     ["cross", 8],
     ["hall-pockets", 8],
     ["fork", 8],
-    ["diag", 8],
   ],
   large: [
-    ["lounge", 55],
-    ["wide-hall-ew", 22],
-    ["wide-hall-ns", 23],
+    ["lounge", 70],
+    ["wide-hall-ew", 15],
+    ["wide-hall-ns", 15],
   ],
 };
 
@@ -949,6 +958,7 @@ function pickValidShape(rng, cx, cz) {
     if (
       isMazeConnected(shape.innerWalls) &&
       wallsAnchorToBoundary(shape.innerWalls) &&
+      !hasFloatingWalls(shape.innerWalls) &&
       shapeIsWalkable(shape, minDim) &&
       shapeIsNavigable(shape)
     ) {
@@ -1009,10 +1019,8 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  const jambTop = y0 + DOOR_H + 0.08;
-  addBox(boxes, x0, lo, z - t, z + t, y0, jambTop);
-  addBox(boxes, hi, x1, z - t, z + t, y0, jambTop);
-  addBox(boxes, x0, x1, z - t, z + t, y0 + DOOR_H, yTop);
+  addBox(boxes, x0, lo, z - t, z + t, y0, yTop);
+  addBox(boxes, hi, x1, z - t, z + t, y0, yTop);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
@@ -1025,10 +1033,8 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  const jambTop = y0 + DOOR_H + 0.08;
-  addBox(boxes, x - t, x + t, z0, lo, y0, jambTop);
-  addBox(boxes, x - t, x + t, hi, z1, y0, jambTop);
-  addBox(boxes, x - t, x + t, z0, z1, y0 + DOOR_H, yTop);
+  addBox(boxes, x - t, x + t, z0, lo, y0, yTop);
+  addBox(boxes, x - t, x + t, hi, z1, y0, yTop);
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {
