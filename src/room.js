@@ -504,7 +504,7 @@ function uShape(rng) {
 }
 
 function hubRoom(rng) {
-  const margin = rng.range(CHUNK * 0.14, CHUNK * 0.2);
+  const margin = rng.range(CHUNK * 0.09, CHUNK * 0.13);
   return {
     kind: "lounge",
     zones: [
@@ -1021,6 +1021,7 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const hi = mid + half;
   addBox(boxes, x0, lo, z - t, z + t, y0, yTop);
   addBox(boxes, hi, x1, z - t, z + t, y0, yTop);
+  addBox(boxes, lo, hi, z - t, z + t, y0 + DOOR_H, yTop);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
@@ -1035,6 +1036,7 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const hi = mid + half;
   addBox(boxes, x - t, x + t, z0, lo, y0, yTop);
   addBox(boxes, x - t, x + t, hi, z1, y0, yTop);
+  addBox(boxes, x - t, x + t, lo, hi, y0 + DOOR_H, yTop);
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {

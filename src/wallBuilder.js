@@ -33,6 +33,7 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, r
   if (door) {
     push(a0, mid - dw, DOOR_H, 0, true, false);
     push(mid + dw, a1, DOOR_H, 0, false, true);
+    push(a0, a1, h - DOOR_H, DOOR_H, true, true);
     return;
   }
 
