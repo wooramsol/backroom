@@ -73,15 +73,14 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** ~2700K soft bulb — slightly warm white */
-export const FLUORESCENT_COLOR = 0xffe4c8;
-/** Neutral fill — avoids orange cast on wallpaper */
-export const AMBIENT_COLOR = 0xfff6ec;
-export const AMBIENT_INTENSITY = 0.5;
-/** Hemisphere — soft white bounce, not amber */
-export const HEMI_SKY_COLOR = 0xfff8f0;
-export const HEMI_GROUND_COLOR = 0xfff0e4;
-export const HEMI_INTENSITY = 0.62;
+/** ~2700K warm bulb — slightly yellow vs flat white */
+export const FLUORESCENT_COLOR = 0xfff0d8;
+export const AMBIENT_COLOR = FLUORESCENT_COLOR;
+export const AMBIENT_INTENSITY = 0.58;
+/** Hemisphere — even indirect on ceiling, walls, and floor */
+export const HEMI_SKY_COLOR = 0xfff6ea;
+export const HEMI_GROUND_COLOR = 0xfff0e0;
+export const HEMI_INTENSITY = 0.72;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */
@@ -115,12 +114,10 @@ export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Layer mask — only troffer meshes enable this for selective bloom */
 export const BLOOM_LAYER = 1;
-/** Troffer glow — high threshold keeps bloom on bright panels only */
-export const BLOOM_STRENGTH = 0.18;
-export const BLOOM_RADIUS = 0.14;
-export const BLOOM_THRESHOLD = 0.82;
-/** Lit troffer panels per chunk */
-export const PANELS_PER_CHUNK = 2;
+/** Troffer-only selective bloom — troffer layer via camera mask */
+export const BLOOM_STRENGTH = 0.3;
+export const BLOOM_RADIUS = 0.22;
+export const BLOOM_THRESHOLD = 0.55;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Bloom buffer scale — can stay low; scene pass is full res */

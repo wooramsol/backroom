@@ -50,12 +50,9 @@ function addInstancedCeiling(group, geometry, material, transforms, renderOrder 
 }
 
 function isLitPanelCell(room, px, pz) {
-  if (!room.panels?.length) return null;
-  for (const panel of room.panels) {
-    if (!panel.on) continue;
-    if (Math.abs(panel.x - px) < 0.05 && Math.abs(panel.z - pz) < 0.05) return panel;
-  }
-  return null;
+  const panel = room.panels?.[0];
+  if (!panel?.on) return false;
+  return Math.abs(panel.x - px) < 0.05 && Math.abs(panel.z - pz) < 0.05;
 }
 
 function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
@@ -65,7 +62,7 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
   const backingTransforms = [];
   const tileParts = [];
-  room.lightFixtures = [];
+  room.lightFixture = null;
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
@@ -75,8 +72,7 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
       _mat4.compose(_pos, _ceilRot, _scale);
       backingTransforms.push(_mat4.clone());
 
-      const litPanel = isLitPanelCell(room, px, pz);
-      if (litPanel) {
+      if (isLitPanelCell(room, px, pz)) {
         const litGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
         litGeo.rotateX(Math.PI / 2);
         litGeo.translate(px, tileY, pz);
@@ -84,13 +80,13 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
         litMesh.layers.enable(BLOOM_LAYER);
         litMesh.renderOrder = 3;
         group.add(litMesh);
-        room.lightFixtures.push({
+        room.lightFixture = {
           wx: worldX + px,
           wy: lightY,
           wz: worldZ + pz,
           lightY,
-          panel: litPanel,
-        });
+          panel: room.panels[0],
+        };
         continue;
       }
 

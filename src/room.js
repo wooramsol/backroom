@@ -20,7 +20,6 @@ import {
   PANEL_W,
   PANEL_H,
   PANEL_SIZE,
-  PANELS_PER_CHUNK,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 
@@ -147,17 +146,7 @@ function generatePanels(rng, room) {
   }
 
   if (!candidates.length) return [];
-
-  const panels = [];
-  const pool = candidates.slice();
-  for (let n = 0; n < PANELS_PER_CHUNK && pool.length; n++) {
-    const idx = rng.int(0, pool.length - 1);
-    panels.push(pool.splice(idx, 1)[0]);
-    for (let i = pool.length - 1; i >= 0; i--) {
-      if (panelOverlapsExisting(pool[i].x, pool[i].z, panels)) pool.splice(i, 1);
-    }
-  }
-  return panels;
+  return [rng.pick(candidates)];
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {

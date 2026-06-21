@@ -5,6 +5,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 import {
+  BLOOM_LAYER,
   BLOOM_STRENGTH,
   BLOOM_RADIUS,
   BLOOM_THRESHOLD,
@@ -27,37 +28,80 @@ function fxaaResolution(renderer, w, h) {
   return new THREE.Vector2(1 / (w * pr), 1 / (h * pr));
 }
 
-/** One scene draw + threshold bloom + FXAA + VCR noise (no per-frame traverse) */
+const mixShader = {
+  uniforms: {
+    baseTexture: { value: null },
+    bloomTexture: { value: null },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D baseTexture;
+    uniform sampler2D bloomTexture;
+    varying vec2 vUv;
+    void main() {
+      vec4 base = texture2D(baseTexture, vUv);
+      vec3 bloomCol = texture2D(bloomTexture, vUv).rgb;
+      float bloomAmt = max(bloomCol.r, max(bloomCol.g, bloomCol.b));
+      vec3 glow = vec3(1.0, 0.96, 0.86) * bloomAmt;
+      gl_FragColor = base + vec4(glow, 1.0);
+    }
+  `,
+};
+
+/** Troffer-only bloom via camera layers — ceiling tiles stay dark */
 export function createBloomPipeline(renderer, scene, camera) {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const pr = renderPixelRatio(renderer);
 
-  const composer = new EffectComposer(renderer);
-  composer.setPixelRatio(pr);
-  composer.setSize(w, h);
-  composer.addPass(new RenderPass(scene, camera));
+  const bloomComposer = new EffectComposer(renderer);
+  bloomComposer.renderToScreen = false;
+  bloomComposer.setPixelRatio(pr);
+  bloomComposer.setSize(w, h);
+  bloomComposer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(
     bloomResolution(renderer, w, h),
     BLOOM_STRENGTH,
     BLOOM_RADIUS,
     BLOOM_THRESHOLD,
   );
-  composer.addPass(bloomPass);
+  bloomComposer.addPass(bloomPass);
+
+  const finalComposer = new EffectComposer(renderer);
+  finalComposer.setPixelRatio(pr);
+  finalComposer.setSize(w, h);
+  finalComposer.addPass(new RenderPass(scene, camera));
+  const mixPass = new ShaderPass(new THREE.ShaderMaterial(mixShader), "baseTexture");
+  mixPass.needsSwap = true;
+  mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
+  finalComposer.addPass(mixPass);
   const fxaa = new ShaderPass(FXAAShader);
   fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
-  composer.addPass(fxaa);
+  finalComposer.addPass(fxaa);
   const noise = createFilmNoisePass();
   resizeFilmNoise(noise, w, h, pr);
-  composer.addPass(noise);
+  finalComposer.addPass(noise);
 
   return {
-    composer,
+    camera,
+    bloomComposer,
+    finalComposer,
     bloomPass,
     fxaa,
     noise,
     render() {
-      composer.render();
+      const savedLayers = camera.layers.mask;
+      camera.layers.set(BLOOM_LAYER);
+      bloomComposer.render();
+      camera.layers.mask = savedLayers;
+      mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
+      finalComposer.render();
     },
   };
 }
@@ -65,9 +109,11 @@ export function createBloomPipeline(renderer, scene, camera) {
 export function resizeBloomPipeline(renderer, pipeline, w, h) {
   const pr = renderPixelRatio(renderer);
   renderer.setSize(w, h);
-  pipeline.composer.setPixelRatio(pr);
-  pipeline.composer.setSize(w, h);
+  pipeline.bloomComposer.setPixelRatio(pr);
+  pipeline.bloomComposer.setSize(w, h);
   pipeline.bloomPass.resolution.copy(bloomResolution(renderer, w, h));
+  pipeline.finalComposer.setPixelRatio(pr);
+  pipeline.finalComposer.setSize(w, h);
   pipeline.fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
   resizeFilmNoise(pipeline.noise, w, h, pr);
 }
