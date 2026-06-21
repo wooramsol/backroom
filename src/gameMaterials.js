@@ -17,7 +17,7 @@ export function createGameMaterials(wallpaper, surfaceTex) {
     wallTex: wallpaper,
     surfaceTex,
     wall: createBakedWallMaterial(wallpaper),
-    /** bottom2.jpg — world UVs baked on each chunk's ceiling mesh */
+    /** bottom.jpg — world UVs baked on each chunk's ceiling mesh */
     ceilingTile: createCeilingTileMaterial(surfaceTex),
     ceilingGroove: createCeilingGapMaterial(),
     lightPanelOn: new THREE.MeshBasicMaterial({
@@ -27,7 +27,7 @@ export function createGameMaterials(wallpaper, surfaceTex) {
   };
 }
 
-/** Per-chunk floor — bottom2.jpg tiled in world space */
+/** Per-chunk floor — bottom.jpg tiled in world space */
 export function createChunkFloorMaterial(materials, worldX, worldZ) {
   const map = tiledAt(materials.surfaceTex, CEILING_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   map.userData.chunkOwned = true;

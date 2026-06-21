@@ -4,7 +4,7 @@ import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, C
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/wallpaper2.jpg";
 /** User floor/ceiling surface */
-export const BOTTOM_URL = "./assets/bottom2.jpg";
+export const BOTTOM_URL = "./assets/bottom.jpg";
 /** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
 /** @deprecated */ export const CEILING_URL = BOTTOM_URL;
 export const WALL_TILE_SCALE = 0.8;
@@ -136,7 +136,7 @@ export function createDoorJambMaterial(carpetBase, floorTex) {
   return mat;
 }
 
-/** Floor — bottom2.jpg, same unlit treatment as walls */
+/** Floor — bottom.jpg, same unlit treatment as walls */
 export function createFloorSurfaceMaterial(map) {
   return createUnlitSurfaceMaterial(map);
 }

@@ -36,8 +36,8 @@ jobs:
             echo "::error::Add your wallpaper at public/assets/wallpaper2.jpg (do not auto-generate)."
             exit 1
           fi
-          if [ ! -f public/assets/bottom2.jpg ]; then
-            echo "::error::Add your floor/ceiling texture at public/assets/bottom2.jpg (do not auto-generate)."
+          if [ ! -f public/assets/bottom.jpg ]; then
+            echo "::error::Add your floor/ceiling texture at public/assets/bottom.jpg (do not auto-generate)."
             exit 1
           fi
 
