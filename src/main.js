@@ -128,7 +128,12 @@ async function init() {
       }
     })
     .then(() => {
-      for (let i = 0; i < 5; i++) pipeline.render();
+      try {
+        for (let i = 0; i < 5; i++) pipeline.render();
+      } catch (err) {
+        console.error("Post-process warmup failed", err);
+        throw err;
+      }
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
@@ -185,8 +190,17 @@ async function init() {
       syncCrosshair();
     }
 
-    pipeline.render();
-    updateFilmNoise(pipeline.noise, lightT);
+    if (ready) {
+      try {
+        pipeline.render();
+      } catch (err) {
+        console.error("Post-process render failed", err);
+        renderer.render(scene, camera);
+      }
+      updateFilmNoise(pipeline.noise, lightT);
+    } else {
+      renderer.render(scene, camera);
+    }
 
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;

@@ -1,12 +1,14 @@
 import * as THREE from "three";
 import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
+const ASSET_BASE = import.meta.env.BASE_URL;
+
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
-export const WALLPAPER_URL = "./assets/wallpaper2.jpg";
+export const WALLPAPER_URL = `${ASSET_BASE}assets/wallpaper2.jpg`;
 /** User floor/ceiling surface */
-export const BOTTOM_URL = "./assets/bottom2.jpg";
+export const BOTTOM_URL = `${ASSET_BASE}assets/bottom2.jpg`;
 /** User floor carpet */
-export const CARPET_URL = "./assets/carpet2.jpg";
+export const CARPET_URL = `${ASSET_BASE}assets/carpet2.jpg`;
 /** One floor carpet repeat in world space (2 m × 2 m) */
 export const FLOOR_TILE_M = 2.0;
 /** @deprecated */ export const SURFACE_URL = BOTTOM_URL;

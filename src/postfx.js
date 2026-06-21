@@ -118,6 +118,7 @@ export function createBloomPipeline(renderer, scene, camera) {
       scene.traverse(darkenNonBloomed);
       bloomComposer.render();
       scene.traverse(restoreMaterials);
+      mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
       finalComposer.render();
     },
   };

@@ -293,6 +293,15 @@ export class World {
     this.pendingKeys.delete(k);
   }
 
+  _spawnChunkSafe(cx, cz) {
+    try {
+      this._spawnChunkComplete(cx, cz);
+    } catch (err) {
+      console.error(`Chunk build failed (${cx}, ${cz})`, err);
+      throw err;
+    }
+  }
+
   async preloadAround(camera, onProgress) {
     const playerPos = camera.position;
     const cx = Math.floor(playerPos.x / CHUNK);
@@ -318,7 +327,7 @@ export class World {
       const end = Math.min(i + PRELOAD_BATCH, toBuild.length);
       for (let j = i; j < end; j++) {
         const { cx: x, cz: z } = toBuild[j];
-        this._spawnChunkComplete(x, z);
+        this._spawnChunkSafe(x, z);
         done++;
       }
       onProgress?.(done, total || 1);
