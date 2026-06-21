@@ -63,9 +63,9 @@ function getFloorWashMaterial() {
   c.width = c.height = size;
   const ctx = c.getContext("2d");
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, "rgba(255, 244, 229, 0.16)");
-  g.addColorStop(0.42, "rgba(255, 244, 229, 0.05)");
-  g.addColorStop(1, "rgba(255, 244, 229, 0)");
+  g.addColorStop(0, "rgba(255, 224, 184, 0.16)");
+  g.addColorStop(0.42, "rgba(255, 224, 184, 0.05)");
+  g.addColorStop(1, "rgba(255, 224, 184, 0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   const tex = new THREE.CanvasTexture(c);

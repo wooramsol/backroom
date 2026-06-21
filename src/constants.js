@@ -73,13 +73,13 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** ~4500K warm white — flat fluorescent office fill */
-export const FLUORESCENT_COLOR = 0xfff4e5;
+/** ~2700K pale incandescent bulb — warm, not cool white */
+export const FLUORESCENT_COLOR = 0xffe0b8;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
 export const AMBIENT_INTENSITY = 0.58;
 /** Hemisphere — even indirect on ceiling, walls, and floor */
-export const HEMI_SKY_COLOR = 0xfff6ea;
-export const HEMI_GROUND_COLOR = 0xfff0e0;
+export const HEMI_SKY_COLOR = 0xffe8c8;
+export const HEMI_GROUND_COLOR = 0xffd4a0;
 export const HEMI_INTENSITY = 0.72;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
