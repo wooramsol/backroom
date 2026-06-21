@@ -96,18 +96,32 @@ export function createSurfaceMaterial(map = null) {
   });
 }
 
-/** Door jamb — floor texture (same tiling as carpet) */
-export function createJambMaterial(floorTex, w, h, worldX, worldZ) {
+/** Door jamb — same material family as floor carpet */
+export function createJambMaterial(floorTex, w, h, worldX, worldZ, carpetBase) {
   const map = tiledAt(floorTex, CEILING_TILE_M, w, h, worldX, worldZ);
-  return createSurfaceMaterial(map);
+  const mat = carpetBase.clone();
+  mat.map = map;
+  mat.side = THREE.DoubleSide;
+  return mat;
 }
 
-/** One door-facing box face uses floor; rest stays wallpaper */
-export function createWallBoxMaterials(wallTex, floorTex, slen, segH, doorFaceIndex, worldX, worldZ) {
+/** One jamb face uses floor carpet; rest stays wallpaper */
+export function createWallBoxMaterials(
+  wallTex,
+  floorTex,
+  slen,
+  segH,
+  doorFaceIndex,
+  worldX,
+  worldZ,
+  carpetBase,
+  faceW = WALL_T,
+  faceH = segH,
+) {
   const wallMat = createTiledMaterial(wallTex, slen, segH);
   if (doorFaceIndex < 0) return wallMat;
   const mats = [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat];
-  mats[doorFaceIndex] = createJambMaterial(floorTex, WALL_T, segH, worldX, worldZ);
+  mats[doorFaceIndex] = createJambMaterial(floorTex, faceW, faceH, worldX, worldZ, carpetBase);
   return mats;
 }
 

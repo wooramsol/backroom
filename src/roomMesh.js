@@ -9,7 +9,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, createWallBoxMaterials, createSurfaceMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
+import { createTiledMaterial, createWallBoxMaterials, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -21,23 +21,12 @@ const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
 
 function doorJambFaceIndex(axis, side) {
+  if (side === "top") return 3;
   if (axis === "z") return side === "left" ? 0 : 1;
   return side === "left" ? 4 : 5;
 }
 
-/** 문 위쪽 한 면만 바닥 텍스처 */
-function addDoorTopJamb(group, floorTex, axis, pos, mid, doorW, roomWx, roomWz) {
-  const t = WALL_T;
-  const eps = 0.004;
-  const map = tiledAt(floorTex, CEILING_TILE_M, doorW, t, roomWx + mid, roomWz + pos);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(doorW, t), createSurfaceMaterial(map));
-  m.rotation.x = -Math.PI / 2;
-  if (axis === "z") m.position.set(mid, DOOR_H + eps, pos);
-  else m.position.set(pos, DOOR_H + eps, mid);
-  group.add(m);
-}
-
-function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, roomWz) {
+function wallSeg(group, wallTex, floorTex, carpetMat, h, axis, pos, a0, a1, door, roomWx, roomWz) {
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
 
@@ -56,8 +45,9 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, r
     if (jambSide) {
       const lo = mid - dw;
       const hi = mid + dw;
-      const jx = axis === "z" ? roomWx + (jambSide === "left" ? lo : hi) : roomWx + pos;
-      const jz = axis === "z" ? roomWz + pos : roomWz + (jambSide === "left" ? lo : hi);
+      const isTop = jambSide === "top";
+      const jx = axis === "z" ? roomWx + (isTop ? mid : jambSide === "left" ? lo : hi) : roomWx + pos;
+      const jz = axis === "z" ? roomWz + pos : roomWz + (isTop ? mid : jambSide === "left" ? lo : hi);
       mat = createWallBoxMaterials(
         wallTex,
         floorTex,
@@ -66,6 +56,9 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, r
         doorJambFaceIndex(axis, jambSide),
         jx,
         jz,
+        carpetMat,
+        isTop ? slen : WALL_T,
+        isTop ? WALL_T : segH,
       );
     }
     const m = new THREE.Mesh(geo, mat);
@@ -75,20 +68,22 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, r
   };
 
   if (door) {
+    const lintelH = h - DOOR_H;
     add(a0, mid - dw, DOOR_H, 0, true, false, "left");
     add(mid + dw, a1, DOOR_H, 0, false, true, "right");
-    addDoorTopJamb(group, floorTex, axis, pos, mid, dw * 2, roomWx, roomWz);
-    add(a0, a1, h - DOOR_H, DOOR_H, true, true);
+    add(a0, mid - dw, lintelH, DOOR_H, true, true);
+    add(mid + dw, a1, lintelH, DOOR_H, false, true);
+    add(mid - dw, mid + dw, lintelH, DOOR_H, false, false, "top");
   } else {
     add(a0, a1, h, 0, true, true);
   }
 }
 
-function addInnerWall(group, wallTex, floorTex, h, wall, roomWx, roomWz) {
+function addInnerWall(group, wallTex, floorTex, carpetMat, h, wall, roomWx, roomWz) {
   if (wall.axis === "x") {
-    wallSeg(group, wallTex, floorTex, h, "x", wall.pos, wall.span0, wall.span1, wall.door, roomWx, roomWz);
+    wallSeg(group, wallTex, floorTex, carpetMat, h, "x", wall.pos, wall.span0, wall.span1, wall.door, roomWx, roomWz);
   } else {
-    wallSeg(group, wallTex, floorTex, h, "z", wall.pos, wall.span0, wall.span1, wall.door, roomWx, roomWz);
+    wallSeg(group, wallTex, floorTex, carpetMat, h, "z", wall.pos, wall.span0, wall.span1, wall.door, roomWx, roomWz);
   }
 }
 
@@ -158,13 +153,13 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, panels) {
 }
 
 function addWalls(group, room, materials, h, roomWx, roomWz) {
-  const { wallTex, carpetTileTex } = materials;
-  wallSeg(group, wallTex, carpetTileTex, h, "z", 0, 0, CHUNK, room.doors.north, roomWx, roomWz);
-  wallSeg(group, wallTex, carpetTileTex, h, "z", CHUNK, 0, CHUNK, room.doors.south, roomWx, roomWz);
-  wallSeg(group, wallTex, carpetTileTex, h, "x", 0, 0, CHUNK, room.doors.west, roomWx, roomWz);
-  wallSeg(group, wallTex, carpetTileTex, h, "x", CHUNK, 0, CHUNK, room.doors.east, roomWx, roomWz);
+  const { wallTex, carpetTileTex, carpet } = materials;
+  wallSeg(group, wallTex, carpetTileTex, carpet, h, "z", 0, 0, CHUNK, room.doors.north, roomWx, roomWz);
+  wallSeg(group, wallTex, carpetTileTex, carpet, h, "z", CHUNK, 0, CHUNK, room.doors.south, roomWx, roomWz);
+  wallSeg(group, wallTex, carpetTileTex, carpet, h, "x", 0, 0, CHUNK, room.doors.west, roomWx, roomWz);
+  wallSeg(group, wallTex, carpetTileTex, carpet, h, "x", CHUNK, 0, CHUNK, room.doors.east, roomWx, roomWz);
   for (const wall of room.innerWalls) {
-    addInnerWall(group, wallTex, carpetTileTex, h, wall, roomWx, roomWz);
+    addInnerWall(group, wallTex, carpetTileTex, carpet, h, wall, roomWx, roomWz);
   }
 }
 
