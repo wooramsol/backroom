@@ -125,13 +125,13 @@
         position: fixed;
         left: 0;
         top: 0;
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
         transform: translate(-50%, -50%);
         pointer-events: none;
-        z-index: 6;
+        z-index: 9;
         opacity: 0;
-        transition: opacity 0.35s ease;
+        transition: opacity 0.25s ease;
       }
       #crosshair.visible {
         opacity: 1;
@@ -139,20 +139,21 @@
       #crosshair .ch-h,
       #crosshair .ch-v {
         position: absolute;
-        background: rgba(201, 184, 122, 0.42);
+        background: rgba(255, 252, 240, 0.82);
+        box-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
       }
       #crosshair .ch-h {
         left: 0;
         right: 0;
         top: 50%;
-        height: 1px;
+        height: 2px;
         transform: translateY(-50%);
       }
       #crosshair .ch-v {
         top: 0;
         bottom: 0;
         left: 50%;
-        width: 1px;
+        width: 2px;
         transform: translateX(-50%);
       }
       #vignette {
