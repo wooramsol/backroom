@@ -112,16 +112,8 @@ export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
-/** Layer mask — only troffer meshes enable this for selective bloom */
-export const BLOOM_LAYER = 1;
-/** Troffer-only selective bloom — troffer layer via camera mask */
-export const BLOOM_STRENGTH = 0.3;
-export const BLOOM_RADIUS = 0.22;
-export const BLOOM_THRESHOLD = 0.55;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
-/** Bloom buffer scale — can stay low; scene pass is full res */
-export const BLOOM_RESOLUTION_SCALE = 0.35;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */

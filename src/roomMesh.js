@@ -5,7 +5,6 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
-  BLOOM_LAYER,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -77,7 +76,6 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
         litGeo.rotateX(Math.PI / 2);
         litGeo.translate(px, tileY, pz);
         const litMesh = new THREE.Mesh(litGeo, materials.lightPanelOn);
-        litMesh.layers.enable(BLOOM_LAYER);
         litMesh.renderOrder = 3;
         group.add(litMesh);
         room.lightFixture = {

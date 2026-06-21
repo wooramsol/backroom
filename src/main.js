@@ -128,11 +128,6 @@ async function init() {
       }
     })
     .then(() => {
-      try {
-        for (let i = 0; i < 5; i++) pipeline.render();
-      } catch (err) {
-        console.warn("Post-process warmup skipped", err);
-      }
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
@@ -190,12 +185,7 @@ async function init() {
     }
 
     if (ready) {
-      try {
-        pipeline.render();
-      } catch (err) {
-        console.error("Post-process render failed", err);
-        renderer.render(scene, camera);
-      }
+      pipeline.render();
       updateFilmNoise(pipeline.noise, lightT);
     } else {
       renderer.render(scene, camera);
