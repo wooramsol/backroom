@@ -118,8 +118,6 @@ export const RENDER_RESOLUTION_SCALE = 1;
 export const BLOOM_RESOLUTION_SCALE = 0.35;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
-/** Tint walls toward floor/ceiling carpet tone while keeping wallpaper pattern */
-export const SURFACE_TINT = CARPET_COLOR;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
 /** Fluorescent hum — disabled until re-enabled later */
