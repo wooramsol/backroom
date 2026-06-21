@@ -38,26 +38,6 @@ export function applyWallpaperTileSize(tex) {
 }
 
 const _wallMatCache = new Map();
-const _jambSurfCache = new Map();
-
-/** Door jamb face — floor/carpet texture (not wallpaper) */
-export function createJambSurfaceMaterial(floorTex, widthM, heightM) {
-  const key = `jamb|${widthM.toFixed(2)}|${heightM.toFixed(2)}`;
-  const cached = _jambSurfCache.get(key);
-  if (cached) return cached;
-
-  const map = floorTex.clone();
-  map.wrapS = map.wrapT = THREE.RepeatWrapping;
-  const tileM = floorTex.userData?.tileW ?? SURFACE_TILE_M;
-  map.repeat.set(widthM / tileM, heightM / tileM);
-  const mat = new THREE.MeshStandardMaterial({
-    map,
-    roughness: SURFACE_ROUGHNESS,
-    metalness: SURFACE_METALNESS,
-  });
-  _jambSurfCache.set(key, mat);
-  return mat;
-}
 
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const key = `${widthM.toFixed(2)}|${heightM.toFixed(2)}`;
@@ -77,27 +57,6 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   });
   _wallMatCache.set(key, mat);
   return mat;
-}
-
-/** Jamb-only box — unspecified faces use a small floor tile */
-export function createJambCapMaterials(floorTex, faceSpecs) {
-  const fallback = createJambSurfaceMaterial(floorTex, WALL_T, WALL_T);
-  const mats = [fallback, fallback, fallback, fallback, fallback, fallback];
-  for (const { index, w, h } of faceSpecs) {
-    mats[index] = createJambSurfaceMaterial(floorTex, w, h);
-  }
-  return mats;
-}
-
-/** Box wall with door jamb faces using floor texture */
-export function createWallBoxMaterials(wallTex, floorTex, slen, segH, jambFaces) {
-  const wallMat = createTiledMaterial(wallTex, slen, segH);
-  if (!jambFaces?.length) return wallMat;
-  const mats = [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat];
-  for (const { index, w, h } of jambFaces) {
-    mats[index] = createJambSurfaceMaterial(floorTex, w, h);
-  }
-  return mats;
 }
 
 export function tiled(tex, tileM, w, h) {
