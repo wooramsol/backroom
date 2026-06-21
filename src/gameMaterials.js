@@ -4,7 +4,6 @@ import {
   createCeilingTileMaterial,
   createFloorSurfaceMaterial,
   createBakedWallMaterial,
-  SURFACE_TILE_M,
 } from "./textures.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
@@ -26,7 +25,7 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
   };
 }
 
-/** Per-chunk floor — isotropic speckle carpet, seamless world UVs */
+/** Per-chunk floor — carpet2.jpg, seamless world UVs (no tile bevel/shadow) */
 export function createChunkFloorMaterial(materials) {
   const map = materials.floorTex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;

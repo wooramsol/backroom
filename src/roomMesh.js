@@ -8,7 +8,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { CEILING_TILE_M, bakeSurfaceUV, SURFACE_TILE_M } from "./textures.js";
+import { CEILING_TILE_M, bakeSurfaceUV, FLOOR_TILE_M } from "./textures.js";
 import { createChunkFloorMaterial } from "./gameMaterials.js";
 import { buildMergedWallGeometry } from "./wallBuilder.js";
 
@@ -30,7 +30,7 @@ function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
 
 function addFloor(group, materials, worldX, worldZ) {
   const floorGeo = _chunkPlane.clone();
-  bakeSurfaceUV(floorGeo, SURFACE_TILE_M, worldX, worldZ);
+  bakeSurfaceUV(floorGeo, FLOOR_TILE_M, worldX, worldZ);
   const floor = new THREE.Mesh(floorGeo, createChunkFloorMaterial(materials));
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 
-/** VCR / camcorder — soft blur, scanlines, visible grain */
+/** VCR / camcorder — soft blur and visible grain (no scanlines) */
 export const FilmNoiseShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -9,7 +9,6 @@ export const FilmNoiseShader = {
     resolution: { value: new THREE.Vector2(1280, 720) },
     intensity: { value: 0.16 },
     blurAmount: { value: 0.58 },
-    scanStrength: { value: 0.11 },
     wobble: { value: 0.0022 },
   },
   vertexShader: /* glsl */ `
@@ -25,7 +24,6 @@ export const FilmNoiseShader = {
     uniform vec2 resolution;
     uniform float intensity;
     uniform float blurAmount;
-    uniform float scanStrength;
     uniform float wobble;
     varying vec2 vUv;
 
@@ -52,9 +50,6 @@ export const FilmNoiseShader = {
       vec4 sharp = texture2D(tDiffuse, uv);
       vec4 soft = sampleBlur(uv);
       vec4 col = mix(sharp, soft, blurAmount);
-
-      float scan = sin(uv.y * resolution.y * 1.35 + time * 2.0) * 0.5 + 0.5;
-      col.rgb *= 1.0 - scanStrength * (1.0 - scan);
 
       vec2 p = uv * resolution;
       float grain = hash(floor(p * 0.9) + floor(time * 20.0)) - 0.5;

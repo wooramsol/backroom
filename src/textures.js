@@ -415,6 +415,10 @@ export function applySurfaceTileSize(tex) {
   return applySurfaceTileSize(tex);
 }
 
+export async function loadCarpetFloor(loader) {
+  return loadFloorOrFallback(loader);
+}
+
 export async function loadIsotropicFloor() {
   const tex = createIsotropicFloorTexture();
   applySurfaceTileSize(tex);
