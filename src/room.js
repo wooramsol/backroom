@@ -153,9 +153,9 @@ function narrowSpan(rng, lo, hi) {
 }
 
 function tierScale(tier) {
-  if (tier === "large") return 1;
-  if (tier === "medium") return 0.84;
-  return 0.66;
+  if (tier === "large") return 0.82;
+  if (tier === "medium") return 0.68;
+  return 0.5;
 }
 
 function tierSpan(rng, tier, lo, hi, narrow = false) {
@@ -168,7 +168,7 @@ function tierSpan(rng, tier, lo, hi, narrow = false) {
 /** Same E–W corridor band across chunks in a row (shared cz) */
 function alignedBandEW(cz, tier = "small") {
   const lane = createRng(0, cz, 88);
-  const depth = tierSpan(lane, tier, 0.2, 0.3);
+  const depth = tierSpan(lane, tier, 0.12, 0.2);
   const maxZ0 = CHUNK - depth - 0.6;
   const z0 = lane.range(1.2, Math.max(1.2, maxZ0));
   return { z0, depth };
@@ -177,7 +177,7 @@ function alignedBandEW(cz, tier = "small") {
 /** Same N–S corridor band across chunks in a column (shared cx) */
 function alignedBandNS(cx, tier = "small") {
   const lane = createRng(cx, 0, 88);
-  const width = tierSpan(lane, tier, 0.2, 0.3);
+  const width = tierSpan(lane, tier, 0.12, 0.2);
   const maxX0 = CHUNK - width - 0.6;
   const x0 = lane.range(1.2, Math.max(1.2, maxX0));
   return { x0, width };
@@ -325,8 +325,8 @@ function alcove(rng, corner, tier = "medium") {
 }
 
 function lShape(rng, voidCorner, legX0, legZ0, tier = "medium") {
-  const legX = legX0 ?? tierSpan(rng, tier, 0.18, 0.32);
-  const legZ = legZ0 ?? tierSpan(rng, tier, 0.18, 0.32);
+  const legX = legX0 ?? tierSpan(rng, tier, 0.14, 0.24);
+  const legZ = legZ0 ?? tierSpan(rng, tier, 0.14, 0.24);
   const shapes = {
     nw: {
       zones: [
@@ -373,10 +373,11 @@ function lShape(rng, voidCorner, legX0, legZ0, tier = "medium") {
   return { kind: "L", ...shapes[voidCorner] };
 }
 
-function offsetSlab(rng) {
-  const elongated = rng.chance(0.62);
-  const w = elongated ? rng.range(9, 13.2) : rng.range(5.5, 10);
-  const d = elongated ? rng.range(4.5, 7.5) : rng.range(7, 12.5);
+function offsetSlab(rng, tier = "small") {
+  const s = tierScale(tier);
+  const elongated = rng.chance(0.65);
+  const w = elongated ? rng.range(6.5 * s, 10.5 * s) : rng.range(4.0 * s, 6.5 * s);
+  const d = elongated ? rng.range(3.5 * s, 5.5 * s) : rng.range(4.5 * s, 7.0 * s);
   const ew = elongated && rng.chance(0.55);
   const W = ew ? w : d;
   const D = ew ? d : w;
@@ -633,7 +634,7 @@ function crossHall(rng, tier = "medium") {
 }
 
 function openChamber(rng) {
-  const m = rng.range(CHUNK * 0.03, CHUNK * 0.065);
+  const m = rng.range(CHUNK * 0.1, CHUNK * 0.16);
   return {
     kind: "chamber",
     zones: [{ x0: m, z0: m, x1: CHUNK - m, z1: CHUNK - m }],
@@ -899,9 +900,9 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
 
 function pickSizeTier(rng) {
   return rng.pickWeighted([
-    ["small", 88],
-    ["medium", 10],
-    ["large", 2],
+    ["small", 94],
+    ["medium", 5],
+    ["large", 1],
   ]);
 }
 
@@ -946,6 +947,9 @@ function buildShape(size, kind, rng, cx, cz) {
       return tripleSplit(rng, size);
     case "stagger":
       return staggeredWings(rng, size);
+    case "elongated":
+    case "slab":
+      return offsetSlab(rng, size);
     case "open-chamber":
       return openChamber(rng);
     default:
@@ -955,31 +959,39 @@ function buildShape(size, kind, rng, cx, cz) {
 
 const SHAPE_WEIGHTS = {
   small: [
-    ["compact-L", 18],
-    ["small-alcove", 18],
-    ["hall-ew", 17],
-    ["hall-ns", 17],
-    ["chamber-corner", 14],
-    ["twin", 10],
-    ["zigzag", 6],
+    ["compact-L", 13],
+    ["L", 11],
+    ["small-alcove", 11],
+    ["hall-ew", 11],
+    ["hall-ns", 11],
+    ["U", 9],
+    ["T", 9],
+    ["elongated", 10],
+    ["zigzag", 8],
+    ["twin", 7],
+    ["fork", 5],
+    ["alcove", 5],
   ],
   medium: [
-    ["cross", 14],
-    ["L", 12],
-    ["T", 11],
+    ["cross", 10],
+    ["L", 10],
+    ["T", 10],
     ["H", 9],
     ["U", 9],
-    ["hall-ew", 9],
-    ["hall-ns", 9],
-    ["alcove", 8],
     ["hall-pockets", 8],
-    ["fork", 7],
+    ["alcove", 8],
+    ["diag", 8],
+    ["stagger", 8],
+    ["triple", 7],
+    ["hall-ew", 7],
+    ["hall-ns", 6],
   ],
   large: [
-    ["open-chamber", 45],
-    ["cross", 25],
+    ["open-chamber", 35],
+    ["cross", 20],
     ["H", 15],
     ["L", 15],
+    ["elongated", 15],
   ],
 };
 
@@ -1011,7 +1023,7 @@ function pickValidShape(rng, cx, cz) {
       return shape;
     }
   }
-  return crossHall(rng, "small");
+  return compactL(rng, rng.pick(["nw", "ne", "sw", "se"]), "small");
 }
 
 export function generateRoom(cx, cz) {

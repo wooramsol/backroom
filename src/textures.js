@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR, SURFACE_TINT } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
 export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
@@ -38,12 +38,16 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
-/** Wallpaper with 1×1 repeat — UVs are baked on merged wall geometry */
-export function createBakedWallMaterial(tex) {
+/** Wallpaper — pattern preserved, tint matched to floor/ceiling carpet */
+export function createBakedWallMaterial(tex, tint = SURFACE_TINT) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  return new THREE.MeshBasicMaterial({ map });
+  return new THREE.MeshBasicMaterial({
+    map,
+    color: tint,
+    toneMapped: false,
+  });
 }
 
 const _wallMatCache = new Map();
