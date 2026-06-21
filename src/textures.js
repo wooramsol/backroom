@@ -6,9 +6,9 @@ export const WALLPAPER_URL = "./assets/wallpaper2.jpg";
 /** User floor/ceiling surface */
 export const BOTTOM_URL = "./assets/bottom2.jpg";
 /** User floor carpet */
-export const CARPET_URL = "./assets/carpet.jpg";
-/** One floor carpet repeat in world space (30 cm × 30 cm) */
-export const FLOOR_TILE_M = 0.3;
+export const CARPET_URL = "./assets/carpet2.jpg";
+/** One floor carpet repeat in world space (1 m × 1 m) */
+export const FLOOR_TILE_M = 1.0;
 /** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
 /** @deprecated */ export const CEILING_URL = BOTTOM_URL;
 export const WALL_TILE_SCALE = 0.8;

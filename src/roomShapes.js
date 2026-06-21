@@ -8,8 +8,22 @@ export const MIN_WALL_SPAN = PANEL_SIZE * MIN_WALL_TILES;
 
 const BOUND_EPS = 0.25;
 
+/** Room footprint — ~½ prior linear span → ~¼ area */
+const ROOM_TILE_LO = 3;
+const ROOM_TILE_HI = 3;
+const GAP_TILE_LO = 1;
+const GAP_TILE_HI = 2;
+
 function tileMetres(rng, lo = MIN_WALL_TILES, hi = MAX_WALL_TILES) {
   return rng.int(lo, hi) * PANEL_SIZE;
+}
+
+function roomTileMetres(rng) {
+  return tileMetres(rng, ROOM_TILE_LO, ROOM_TILE_HI);
+}
+
+function gapMetres(rng) {
+  return rng.int(GAP_TILE_LO, GAP_TILE_HI) * PANEL_SIZE;
 }
 
 function wall(axis, pos, span0, span1, door = null) {
@@ -22,7 +36,7 @@ function wall(axis, pos, span0, span1, door = null) {
 
 /** 3-wall corner bay — open toward opposite corner */
 function cornerBay(rng, corner, doorSpec) {
-  const side = tileMetres(rng);
+  const side = roomTileMetres(rng);
   const doorOn = rng.pick(["leg-a", "leg-b", "none"]);
 
   const mk = {
@@ -58,7 +72,7 @@ function cornerBay(rng, corner, doorSpec) {
     },
     se: () => {
       const depth = side;
-      const gap = rng.int(2, 4) * PANEL_SIZE;
+      const gap = gapMetres(rng);
       const x0 = CHUNK - depth;
       const z0 = CHUNK - depth;
       const zA = z0 - gap;
@@ -75,13 +89,13 @@ function cornerBay(rng, corner, doorSpec) {
 
 /** 3-wall shelf from a chunk edge */
 function edgeShelf(rng, edge, doorSpec) {
-  const depth = tileMetres(rng);
-  const gap = rng.int(2, 4) * PANEL_SIZE;
+  const depth = roomTileMetres(rng);
+  const gap = gapMetres(rng);
   const doorOn = rng.pick(["cap", "rail-a", "rail-b"]);
 
   const mk = {
     west: () => {
-      const zA = tileMetres(rng, MIN_WALL_TILES, 6);
+      const zA = tileMetres(rng, ROOM_TILE_LO, ROOM_TILE_HI);
       const zB = zA + gap;
       const innerWalls = [
         wall("z", zA, 0, depth, doorOn === "rail-a" ? doorSpec(rng, depth) : null),
@@ -92,7 +106,7 @@ function edgeShelf(rng, edge, doorSpec) {
     },
     east: () => {
       const x0 = CHUNK - depth;
-      const zA = tileMetres(rng, MIN_WALL_TILES, 6);
+      const zA = tileMetres(rng, ROOM_TILE_LO, ROOM_TILE_HI);
       const zB = zA + gap;
       const innerWalls = [
         wall("z", zA, x0, CHUNK, doorOn === "rail-a" ? doorSpec(rng, depth) : null),
@@ -102,7 +116,7 @@ function edgeShelf(rng, edge, doorSpec) {
       return { kind: "shelf-e", zones: [{ x0, z0: 0, x1: CHUNK, z1: zB }], innerWalls };
     },
     north: () => {
-      const xA = tileMetres(rng, MIN_WALL_TILES, 6);
+      const xA = tileMetres(rng, ROOM_TILE_LO, ROOM_TILE_HI);
       const xB = xA + gap;
       const innerWalls = [
         wall("x", xA, 0, depth, doorOn === "rail-a" ? doorSpec(rng, depth) : null),
@@ -112,7 +126,7 @@ function edgeShelf(rng, edge, doorSpec) {
       return { kind: "shelf-n", zones: [{ x0: 0, z0: 0, x1: xB, z1: depth }], innerWalls };
     },
     south: () => {
-      const xA = tileMetres(rng, MIN_WALL_TILES, 6);
+      const xA = tileMetres(rng, ROOM_TILE_LO, ROOM_TILE_HI);
       const xB = xA + gap;
       const z0 = CHUNK - depth;
       const innerWalls = [

@@ -29,7 +29,7 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
   };
 }
 
-/** Per-chunk floor — carpet.jpg tiled in world space (30 cm repeats) */
+/** Per-chunk floor — carpet2.jpg tiled in world space (1 m repeats) */
 export function createChunkFloorMaterial(materials, worldX, worldZ) {
   const map = tiledAt(materials.floorTex, FLOOR_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   map.userData.chunkOwned = true;
