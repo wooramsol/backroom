@@ -6,6 +6,7 @@ import {
   PANEL_H,
   CEILING_TILE_FACE_M,
   BLOOM_LAYER,
+  FLUORESCENT_COLOR,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -49,10 +50,53 @@ function addInstancedCeiling(group, geometry, material, transforms, renderOrder 
   group.add(mesh);
 }
 
+const _floorWashGeo = new THREE.PlaneGeometry(1, 1);
+_floorWashGeo.rotateX(-Math.PI / 2);
+_floorWashGeo.userData.shared = true;
+
+let _floorWashMaterial = null;
+
+function getFloorWashMaterial() {
+  if (_floorWashMaterial) return _floorWashMaterial;
+  const size = 128;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255, 244, 229, 0.16)");
+  g.addColorStop(0.42, "rgba(255, 244, 229, 0.05)");
+  g.addColorStop(1, "rgba(255, 244, 229, 0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  _floorWashMaterial = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    color: new THREE.Color(FLUORESCENT_COLOR),
+  });
+  return _floorWashMaterial;
+}
+
+function addFloorLightWash(group, px, pz) {
+  const wash = new THREE.Mesh(getFloorWashMaterial(), _floorWashGeo);
+  const span = PANEL_W * 1.55;
+  wash.scale.set(span, span, 1);
+  wash.position.set(px, 0.012, pz);
+  wash.renderOrder = 1;
+  group.add(wash);
+}
+
 function isLitPanelCell(room, px, pz) {
-  const panel = room.panels?.[0];
-  if (!panel?.on) return false;
-  return Math.abs(panel.x - px) < 0.05 && Math.abs(panel.z - pz) < 0.05;
+  if (!room.panels?.length) return null;
+  for (const panel of room.panels) {
+    if (!panel.on) continue;
+    if (Math.abs(panel.x - px) < 0.05 && Math.abs(panel.z - pz) < 0.05) return panel;
+  }
+  return null;
 }
 
 function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
@@ -62,7 +106,7 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
   const backingTransforms = [];
   const tileParts = [];
-  room.lightFixture = null;
+  room.lightFixtures = [];
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
@@ -72,7 +116,8 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
       _mat4.compose(_pos, _ceilRot, _scale);
       backingTransforms.push(_mat4.clone());
 
-      if (isLitPanelCell(room, px, pz)) {
+      const litPanel = isLitPanelCell(room, px, pz);
+      if (litPanel) {
         const litGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
         litGeo.rotateX(Math.PI / 2);
         litGeo.translate(px, tileY, pz);
@@ -80,13 +125,14 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
         litMesh.layers.enable(BLOOM_LAYER);
         litMesh.renderOrder = 3;
         group.add(litMesh);
-        room.lightFixture = {
+        room.lightFixtures.push({
           wx: worldX + px,
           wy: lightY,
           wz: worldZ + pz,
           lightY,
-          panel: room.panels[0],
-        };
+          panel: litPanel,
+        });
+        addFloorLightWash(group, px, pz);
         continue;
       }
 

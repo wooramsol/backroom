@@ -25,6 +25,10 @@ export const PLAYER_DEPTH = 0.28;
 export const BODY_WALL_CLEAR = 0.035;
 /** Minimum walkable span (corridor width / depth) — must fit the body */
 export const MIN_PASSAGE_SPAN = 2 * (PLAYER_R * 0.98 + BODY_WALL_CLEAR) + 0.18;
+/** Clear span between parallel walls — wider than body so openings never look impassable */
+export const MIN_CLEAR_PASSAGE = MIN_PASSAGE_SPAN + 0.75;
+/** Door openings — visibly wider than the minimum walkable width */
+export const MIN_CLEAR_DOOR_WIDTH = MIN_PASSAGE_SPAN + 0.5;
 /** Every zone must be at least this wide in both axes — no crawl-space pockets */
 export const MIN_ZONE_DIM = MIN_PASSAGE_SPAN + 2.0;
 /** Smaller chambers — still walkable, not crawl spaces */
@@ -110,10 +114,12 @@ export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Layer mask — only troffer meshes enable this for selective bloom */
 export const BLOOM_LAYER = 1;
-/** Subtle bloom — troffer layer only (selective pass in postfx.js) */
-export const BLOOM_STRENGTH = 0.24;
-export const BLOOM_RADIUS = 0.24;
-export const BLOOM_THRESHOLD = 0.55;
+/** Troffer glow — selective bloom pass in postfx.js */
+export const BLOOM_STRENGTH = 0.34;
+export const BLOOM_RADIUS = 0.28;
+export const BLOOM_THRESHOLD = 0.48;
+/** Lit troffer panels per chunk */
+export const PANELS_PER_CHUNK = 2;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Bloom buffer scale — can stay low; scene pass is full res */

@@ -5,6 +5,7 @@ import {
   wallsWithinTileLimit,
   hasThreeSidedStructure,
   nookIsWalkable,
+  parallelPassagesWideEnough,
 } from "./roomShapes.js";
 import {
   CHUNK,
@@ -12,12 +13,14 @@ import {
   DOOR_H,
   DOOR_JAMB_INSET,
   MIN_DOOR_WIDTH,
+  MIN_CLEAR_DOOR_WIDTH,
   MAX_DOOR_WIDTH,
   ROOM_H,
   PANEL_EDGE_INSET,
   PANEL_W,
   PANEL_H,
   PANEL_SIZE,
+  PANELS_PER_CHUNK,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 
@@ -25,8 +28,12 @@ export { CHUNK };
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
 
-const DOOR_WIDTHS = [1.15, 1.3, 1.45, 1.6, 1.75, 1.9, 2.05, 2.25, 2.5, 2.75, 3.0];
-const SHARED_DOOR_WIDTHS = [1.35, 1.5, 1.7, 1.9, 2.1, 2.35, 2.6, 2.85, 3.0];
+const DOOR_WIDTHS = [1.55, 1.7, 1.85, 2.0, 2.15, 2.35, 2.55, 2.75, 3.0];
+const SHARED_DOOR_WIDTHS = [1.6, 1.75, 1.95, 2.15, 2.35, 2.55, 2.8, 3.0];
+
+function minDoorWidth() {
+  return Math.max(MIN_DOOR_WIDTH, MIN_CLEAR_DOOR_WIDTH);
+}
 
 function maxDoorSpan(span) {
   return Math.min(span - 0.8, MAX_DOOR_WIDTH);
@@ -34,19 +41,20 @@ function maxDoorSpan(span) {
 
 function pickDoorWidth(rng, span) {
   const maxW = maxDoorSpan(span);
-  if (maxW < MIN_DOOR_WIDTH) return null;
-  if (rng.chance(0.38)) {
-    const w = rng.range(MIN_DOOR_WIDTH, maxW);
+  const minW = minDoorWidth();
+  if (maxW < minW) return null;
+  if (rng.chance(0.52)) {
+    const w = rng.range(minW, maxW);
     return Math.round(w * 20) / 20;
   }
-  const choices = DOOR_WIDTHS.filter((w) => w <= maxW + 0.01);
-  return Math.max(MIN_DOOR_WIDTH, rng.pick(choices.length ? choices : [MIN_DOOR_WIDTH]));
+  const choices = DOOR_WIDTHS.filter((w) => w >= minW - 0.01 && w <= maxW + 0.01);
+  return Math.max(minW, rng.pick(choices.length ? choices : [minW]));
 }
 
 function doorSpec(rng, span) {
   const maxW = maxDoorSpan(span);
-  const width = Math.min(pickDoorWidth(rng, span) ?? MIN_DOOR_WIDTH, maxW);
-  if (width < MIN_DOOR_WIDTH) return null;
+  const width = Math.min(pickDoorWidth(rng, span) ?? minDoorWidth(), maxW);
+  if (width < minDoorWidth()) return null;
   const maxOff = Math.max(0, span / 2 - width / 2 - 0.25);
   return { width, offset: rng.range(-maxOff, maxOff) };
 }
@@ -139,7 +147,17 @@ function generatePanels(rng, room) {
   }
 
   if (!candidates.length) return [];
-  return [rng.pick(candidates)];
+
+  const panels = [];
+  const pool = candidates.slice();
+  for (let n = 0; n < PANELS_PER_CHUNK && pool.length; n++) {
+    const idx = rng.int(0, pool.length - 1);
+    panels.push(pool.splice(idx, 1)[0]);
+    for (let i = pool.length - 1; i >= 0; i--) {
+      if (panelOverlapsExisting(pool[i].x, pool[i].z, panels)) pool.splice(i, 1);
+    }
+  }
+  return panels;
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
@@ -149,14 +167,15 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const bz = Math.max(cz0, cz1);
   const rng = createRng(ax, az, bx, bz, 42);
   const maxW = Math.min(CHUNK - 0.8, MAX_DOOR_WIDTH);
+  const minW = minDoorWidth();
   let width;
-  if (rng.chance(0.38)) {
-    width = Math.round(rng.range(MIN_DOOR_WIDTH, maxW) * 20) / 20;
+  if (rng.chance(0.52)) {
+    width = Math.round(rng.range(minW, maxW) * 20) / 20;
   } else {
-    const choices = SHARED_DOOR_WIDTHS.filter((w) => w <= maxW + 0.01);
-    width = Math.max(MIN_DOOR_WIDTH, rng.pick(choices.length ? choices : [MIN_DOOR_WIDTH]));
+    const choices = SHARED_DOOR_WIDTHS.filter((w) => w >= minW - 0.01 && w <= maxW + 0.01);
+    width = Math.max(minW, rng.pick(choices.length ? choices : [minW]));
   }
-  width = Math.max(MIN_DOOR_WIDTH, Math.min(width, maxW));
+  width = Math.max(minW, Math.min(width, maxW));
   const maxOff = Math.max(0, CHUNK / 2 - width / 2 - 0.5);
   const centerClear = width / 2 + 0.38;
   const cap = Math.min(maxOff, centerClear);
@@ -360,6 +379,17 @@ function allExitsConnected(innerWalls, doors) {
   return true;
 }
 
+function doorsWideEnough(innerWalls, doors) {
+  const minW = minDoorWidth();
+  for (const wall of innerWalls) {
+    if (wall.door && wall.door.width < minW) return false;
+  }
+  for (const door of Object.values(doors)) {
+    if (door.width < minW) return false;
+  }
+  return true;
+}
+
 function shapePassesValidation(shape, doors) {
   return (
     hasThreeSidedStructure(shape.innerWalls) &&
@@ -369,6 +399,8 @@ function shapePassesValidation(shape, doors) {
     wallsAnchorToBoundary(shape.innerWalls) &&
     !hasFloatingWalls(shape.innerWalls) &&
     nookIsWalkable(shape) &&
+    parallelPassagesWideEnough(shape.innerWalls) &&
+    doorsWideEnough(shape.innerWalls, doors) &&
     allExitsConnected(shape.innerWalls, doors)
   );
 }

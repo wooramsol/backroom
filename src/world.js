@@ -270,7 +270,11 @@ export class World {
   getLightFixtures() {
     const out = [];
     for (const { room } of this.chunks.values()) {
-      if (room?.lightFixture) out.push(room.lightFixture);
+      if (room?.lightFixtures?.length) {
+        out.push(...room.lightFixtures);
+      } else if (room?.lightFixture) {
+        out.push(room.lightFixture);
+      }
     }
     return out;
   }

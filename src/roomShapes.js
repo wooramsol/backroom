@@ -1,4 +1,4 @@
-import { CHUNK, PANEL_SIZE, MIN_PASSAGE_SPAN } from "./constants.js";
+import { CHUNK, PANEL_SIZE, WALL_T, MIN_PASSAGE_SPAN, MIN_CLEAR_PASSAGE } from "./constants.js";
 
 /** Wall length limits — ceiling/floor tile grid */
 export const MAX_WALL_TILES = 10;
@@ -25,8 +25,13 @@ function legSpan(rng) {
   return tileMetres(rng, LEG_TILE_LO, Math.min(LEG_TILE_HI, Math.floor(CHUNK / PANEL_SIZE) - 1));
 }
 
+function minGapTiles() {
+  return Math.ceil((MIN_CLEAR_PASSAGE + WALL_T) / PANEL_SIZE);
+}
+
 function gapSpan(rng) {
-  return tileMetres(rng, 2, 3);
+  const lo = minGapTiles();
+  return tileMetres(rng, lo, lo + 2);
 }
 
 function wall(axis, pos, span0, span1, door = null) {
@@ -309,7 +314,26 @@ export function nookIsWalkable(shape) {
   for (const zone of shape.zones) {
     const w = zone.x1 - zone.x0;
     const d = zone.z1 - zone.z0;
-    if (Math.min(w, d) < MIN_PASSAGE_SPAN + 0.5) return false;
+    if (Math.min(w, d) < MIN_CLEAR_PASSAGE) return false;
+  }
+  return true;
+}
+
+function spansOverlap(a0, a1, b0, b1) {
+  return a0 < b1 && a1 > b0;
+}
+
+/** Parallel inner walls must leave a clear gap wider than walkable minimum */
+export function parallelPassagesWideEnough(innerWalls) {
+  for (let i = 0; i < innerWalls.length; i++) {
+    for (let j = i + 1; j < innerWalls.length; j++) {
+      const a = innerWalls[i];
+      const b = innerWalls[j];
+      if (a.axis !== b.axis) continue;
+      if (!spansOverlap(a.span0, a.span1, b.span0, b.span1)) continue;
+      const gap = Math.abs(a.pos - b.pos) - WALL_T;
+      if (gap > 0.05 && gap < MIN_CLEAR_PASSAGE) return false;
+    }
   }
   return true;
 }
