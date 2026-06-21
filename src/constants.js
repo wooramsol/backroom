@@ -112,8 +112,8 @@ export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
-/** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
-export const RENDER_RESOLUTION_SCALE = 1;
+/** Main scene render scale — 1.0 was ~4× heavier than the old 0.5 pipeline */
+export const RENDER_RESOLUTION_SCALE = 0.72;
 export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */

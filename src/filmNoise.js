@@ -8,7 +8,7 @@ export const FilmNoiseShader = {
     time: { value: 0 },
     resolution: { value: new THREE.Vector2(1280, 720) },
     intensity: { value: 0.16 },
-    blurAmount: { value: 0.42 },
+    blurAmount: { value: 0.28 },
     wobble: { value: 0.0022 },
   },
   vertexShader: /* glsl */ `
@@ -33,12 +33,11 @@ export const FilmNoiseShader = {
 
     vec4 sampleBlur(vec2 uv) {
       vec2 px = 1.0 / resolution;
-      vec4 c = texture2D(tDiffuse, uv);
-      c += texture2D(tDiffuse, uv + vec2(px.x, 0.0));
-      c += texture2D(tDiffuse, uv - vec2(px.x, 0.0));
-      c += texture2D(tDiffuse, uv + vec2(0.0, px.y));
-      c += texture2D(tDiffuse, uv - vec2(0.0, px.y));
-      return c * 0.2;
+      return (
+        texture2D(tDiffuse, uv) * 0.5 +
+        texture2D(tDiffuse, uv + vec2(px.x, 0.0)) * 0.25 +
+        texture2D(tDiffuse, uv - vec2(px.x, 0.0)) * 0.25
+      );
     }
 
     void main() {
@@ -52,10 +51,9 @@ export const FilmNoiseShader = {
       vec2 p = uv * resolution;
       float grain = hash(floor(p * 0.9) + floor(time * 20.0)) - 0.5;
       float fine = hash(p * 1.8 + time * 4.1) - 0.5;
-      float snow = hash(p * 3.3 - time * 9.0) - 0.5;
-      float noise = grain * 0.5 + fine * 0.35 + snow * 0.15;
+      float noise = grain * 0.65 + fine * 0.35;
       col.rgb += noise * intensity;
-      col.rgb += abs(noise) * intensity * 0.22;
+      col.rgb += abs(noise) * intensity * 0.15;
 
       col.rgb = col.rgb * 0.96 + 0.025;
       gl_FragColor = col;

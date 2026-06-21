@@ -380,12 +380,12 @@ function shapePassesValidation(shape, doors) {
 
 function pickValidShape(rng, cx, cz) {
   const doors = chunkDoors(cx, cz);
-  for (let attempt = 0; attempt < 96; attempt++) {
+  for (let attempt = 0; attempt < 32; attempt++) {
     const shape = buildPseudoRoom(rng, doorSpec);
     if (shapePassesValidation(shape, doors)) return shape;
   }
   const fallbackRng = createRng(cx, cz, 99);
-  for (let attempt = 0; attempt < 96; attempt++) {
+  for (let attempt = 0; attempt < 32; attempt++) {
     const shape = buildPseudoRoom(fallbackRng, doorSpec);
     if (shapePassesValidation(shape, doors)) return shape;
   }
@@ -524,6 +524,28 @@ export function appendRoomWalls(map, room) {
   });
 
   return added;
+}
+
+/** Drop one room's wall boxes from the shared map and collider list */
+export function removeRoomWalls(map, colliders, room) {
+  const keys = [
+    `ex,${room.cx + 1},${room.cz}`,
+    `ez,${room.cx},${room.cz + 1}`,
+    `wx,${room.cx},${room.cz}`,
+    `nz,${room.cx},${room.cz}`,
+  ];
+  for (let i = 0; i < room.innerWalls.length; i++) {
+    keys.push(`iw,${room.cx},${room.cz},${i}`);
+  }
+  const drop = new Set();
+  for (const key of keys) {
+    const boxes = map.get(key);
+    if (!boxes) continue;
+    for (const box of boxes) drop.add(box);
+    map.delete(key);
+  }
+  if (!drop.size) return colliders;
+  return colliders.filter((c) => !drop.has(c));
 }
 
 export function registerRoomWalls(map, room) {
