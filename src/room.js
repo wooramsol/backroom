@@ -109,55 +109,8 @@ function panelOverlapsExisting(px, pz, panels) {
   return false;
 }
 
-function generatePanels(rng, room) {
-  const hash = (x) => fract(Math.sin(x * 12.9898 + room.lightSeed) * 43758.5453);
-  const panels = [];
-  const worldX = room.cx * CHUNK;
-  const worldZ = room.cz * CHUNK;
-  const tileM = CEILING_TILE_M;
-  const halfCell = PANEL_SIZE / 2;
-
-  for (const zone of room.zones) {
-    const inset = zoneInset(zone);
-    const xLo = zone.x0 + inset;
-    const xHi = zone.x1 - inset;
-    const zLo = zone.z0 + inset;
-    const zHi = zone.z1 - inset;
-    const zw = xHi - xLo;
-    const zd = zHi - zLo;
-    if (zw < PANEL_SIZE || zd < PANEL_SIZE) continue;
-
-    const narrow = Math.min(zw, zd) < 5.2;
-    const skip = narrow ? 0.14 : 0.28;
-    const tileStride = Math.max(2, Math.round(room.lightSpacing / tileM));
-
-    const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
-
-    for (let tx = tx0; tx <= tx1; tx++) {
-      if (tx % tileStride !== 0) continue;
-      for (let tz = tz0; tz <= tz1; tz++) {
-        if (tz % tileStride !== 0) continue;
-        const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
-
-        if (px - halfCell < xLo || px + halfCell > xHi || pz - halfCell < zLo || pz + halfCell > zHi) {
-          continue;
-        }
-        if (hash(tx * 3.1 + tz + zone.x0 * 0.7) < skip) continue;
-        if (panelBlocked(px, pz, room)) continue;
-        if (panelOverlapsExisting(px, pz, panels)) continue;
-        panels.push({
-          x: px,
-          z: pz,
-          tx,
-          tz,
-          on: true,
-          bright: 0.9 + hash(tz + zone.z0) * 0.14,
-        });
-      }
-    }
-  }
-
-  return panels;
+function generatePanels(_rng, _room) {
+  return [];
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
@@ -227,21 +180,6 @@ function hallNS(rng, cx, cz, forceWide = false) {
       { axis: "x", pos: x0 + width, span0: 0, span1: CHUNK, door: null },
     ],
   };
-}
-
-function smallChamber(rng) {
-  const w = rng.range(4.2, 7.8);
-  const d = rng.range(4.2, 7.8);
-  const x0 = rng.range(0.5, CHUNK - w - 0.5);
-  const z0 = rng.range(0.5, CHUNK - d - 0.5);
-  const x1 = x0 + w;
-  const z1 = z0 + d;
-  const walls = [];
-  if (x0 > 0.35) walls.push({ axis: "x", pos: x0, span0: z0, span1: z1, door: doorSpec(rng, d) });
-  if (x1 < CHUNK - 0.35) walls.push({ axis: "x", pos: x1, span0: z0, span1: z1, door: doorSpec(rng, d) });
-  if (z0 > 0.35) walls.push({ axis: "z", pos: z0, span0: x0, span1: x1, door: doorSpec(rng, w) });
-  if (z1 < CHUNK - 0.35) walls.push({ axis: "z", pos: z1, span0: x0, span1: x1, door: doorSpec(rng, w) });
-  return { kind: "chamber", zones: [{ x0, z0, x1, z1 }], innerWalls: walls };
 }
 
 function compactL(rng, voidCorner) {
@@ -566,25 +504,21 @@ function uShape(rng) {
 }
 
 function hubRoom(rng) {
-  const margin = rng.range(CHUNK * 0.14, CHUNK * 0.24);
-  const cx0 = margin;
-  const cz0 = margin;
-  const cx1 = CHUNK - margin;
-  const cz1 = CHUNK - margin;
+  const margin = rng.range(CHUNK * 0.22, CHUNK * 0.32);
   return {
-    kind: "hub",
+    kind: "lounge",
     zones: [
-      { x0: 0, z0: 0, x1: CHUNK, z1: cz0 },
-      { x0: 0, z0: cz1, x1: CHUNK, z1: CHUNK },
-      { x0: 0, z0: cz0, x1: cx0, z1: cz1 },
-      { x0: cx1, z0: cz0, x1: CHUNK, z1: cz1 },
-      { x0: cx0, z0: cz0, x1: cx1, z1: cz1 },
+      { x0: 0, z0: 0, x1: CHUNK, z1: margin },
+      { x0: 0, z0: CHUNK - margin, x1: CHUNK, z1: CHUNK },
+      { x0: 0, z0: margin, x1: margin, z1: CHUNK - margin },
+      { x0: CHUNK - margin, z0: margin, x1: CHUNK, z1: CHUNK - margin },
+      { x0: margin, z0: margin, x1: CHUNK - margin, z1: CHUNK - margin },
     ],
     innerWalls: [
-      { axis: "z", pos: cz0, span0: cx0, span1: cx1, door: doorSpec(rng, cx1 - cx0) },
-      { axis: "z", pos: cz1, span0: cx0, span1: cx1, door: doorSpec(rng, cx1 - cx0) },
-      { axis: "x", pos: cx0, span0: cz0, span1: cz1, door: doorSpec(rng, cz1 - cz0) },
-      { axis: "x", pos: cx1, span0: cz0, span1: cz1, door: doorSpec(rng, cz1 - cz0) },
+      { axis: "z", pos: margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      { axis: "z", pos: CHUNK - margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      { axis: "x", pos: margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      { axis: "x", pos: CHUNK - margin, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
     ],
   };
 }
@@ -822,6 +756,82 @@ export function isMazeConnected(innerWalls) {
   return visited.size === innerWalls.length;
 }
 
+/** Every inner wall must reach a chunk edge — no floating segments in open floor */
+function wallsAnchorToBoundary(innerWalls) {
+  return innerWalls.every(wallTouchesBoundary);
+}
+
+const NAV_CELL = 0.5;
+
+function wallBlocksNav(wall, x, z) {
+  const halfT = WALL_T / 2 + 0.05;
+  if (wall.axis === "z") {
+    if (Math.abs(z - wall.pos) > halfT) return false;
+    if (x < wall.span0 - 0.05 || x > wall.span1 + 0.05) return false;
+    if (wall.door) {
+      const mid = (wall.span0 + wall.span1) / 2 + wall.door.offset;
+      const half = wall.door.width / 2 - DOOR_JAMB_INSET;
+      if (x >= mid - half && x <= mid + half) return false;
+    }
+    return true;
+  }
+  if (Math.abs(x - wall.pos) > halfT) return false;
+  if (z < wall.span0 - 0.05 || z > wall.span1 + 0.05) return false;
+  if (wall.door) {
+    const mid = (wall.span0 + wall.span1) / 2 + wall.door.offset;
+    const half = wall.door.width / 2 - DOOR_JAMB_INSET;
+    if (z >= mid - half && z <= mid + half) return false;
+  }
+  return true;
+}
+
+function navBlocked(x, z, innerWalls) {
+  if (x < 0.3 || x > CHUNK - 0.3 || z < 0.3 || z > CHUNK - 0.3) return true;
+  for (const wall of innerWalls) {
+    if (wallBlocksNav(wall, x, z)) return true;
+  }
+  return false;
+}
+
+/** Chunk interior must be one connected walkable region */
+function shapeIsNavigable(shape) {
+  const cols = Math.ceil(CHUNK / NAV_CELL);
+  const startX = CHUNK / 2;
+  const startZ = CHUNK / 2;
+  if (navBlocked(startX, startZ, shape.innerWalls)) return false;
+
+  const visited = new Uint8Array(cols * cols);
+  const queue = [[startX, startZ]];
+  let count = 0;
+
+  while (queue.length) {
+    const [x, z] = queue.pop();
+    if (navBlocked(x, z, shape.innerWalls)) continue;
+    const ix = Math.floor(x / NAV_CELL);
+    const iz = Math.floor(z / NAV_CELL);
+    if (ix < 0 || iz < 0 || ix >= cols || iz >= cols) continue;
+    const key = iz * cols + ix;
+    if (visited[key]) continue;
+    visited[key] = 1;
+    count++;
+
+    const n = NAV_CELL;
+    queue.push([x + n, z], [x - n, z], [x, z + n], [x, z - n]);
+  }
+
+  let blocked = 0;
+  for (let iz = 0; iz < cols; iz++) {
+    for (let ix = 0; ix < cols; ix++) {
+      const x = (ix + 0.5) * NAV_CELL;
+      const z = (iz + 0.5) * NAV_CELL;
+      if (navBlocked(x, z, shape.innerWalls)) blocked++;
+    }
+  }
+
+  const open = cols * cols - blocked;
+  return open > 0 && count / open > 0.88;
+}
+
 /** Reject layouts with zones too small to walk in comfortably */
 function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
   for (const zone of shape.zones) {
@@ -832,11 +842,16 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
   return true;
 }
 
-function pickSizeTier(rng) {
+function isLoungeCell(cx, cz) {
+  const h = fract(Math.sin(cx * 127.1 + cz * 311.7) * 43758.5453);
+  return h < 0.045;
+}
+
+function pickSizeTier(rng, cx, cz) {
+  if (isLoungeCell(cx, cz)) return "large";
   return rng.pickWeighted([
-    ["small", 32],
-    ["medium", 40],
-    ["large", 28],
+    ["small", 58],
+    ["medium", 42],
   ]);
 }
 
@@ -845,16 +860,14 @@ function buildShape(size, kind, rng, cx, cz) {
   const stem = () => rng.pick(["north", "south", "east", "west"]);
 
   switch (kind) {
-    case "chamber":
-      return smallChamber(rng);
     case "compact-L":
       return compactL(rng, corner());
     case "small-alcove":
       return smallAlcove(rng, corner());
     case "hall-ew":
-      return hallEW(rng, cx, cz, size === "large");
+      return hallEW(rng, cx, cz, false);
     case "hall-ns":
-      return hallNS(rng, cx, cz, size === "large");
+      return hallNS(rng, cx, cz, false);
     case "L":
       return lShape(rng, corner());
     case "T":
@@ -878,9 +891,11 @@ function buildShape(size, kind, rng, cx, cz) {
     case "twin":
       return twinZone(rng);
     case "lounge":
-      return { ...hubRoom(rng), kind: "lounge" };
-    case "full":
-      return { kind: "full", zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }], innerWalls: [] };
+      return hubRoom(rng);
+    case "wide-hall-ew":
+      return hallEW(rng, cx, cz, true);
+    case "wide-hall-ns":
+      return hallNS(rng, cx, cz, true);
     case "triple":
       return tripleSplit(rng);
     case "stagger":
@@ -892,43 +907,35 @@ function buildShape(size, kind, rng, cx, cz) {
 
 const SHAPE_WEIGHTS = {
   small: [
-    ["chamber", 22],
-    ["compact-L", 18],
-    ["small-alcove", 16],
-    ["hall-ew", 14],
-    ["hall-ns", 14],
-    ["twin", 10],
-    ["zigzag", 6],
+    ["compact-L", 20],
+    ["small-alcove", 20],
+    ["hall-ew", 18],
+    ["hall-ns", 18],
+    ["zigzag", 12],
+    ["twin", 12],
   ],
   medium: [
     ["L", 14],
     ["T", 12],
     ["H", 12],
     ["U", 10],
-    ["hall-ew", 11],
-    ["hall-ns", 11],
+    ["hall-ew", 10],
+    ["hall-ns", 10],
     ["alcove", 10],
-    ["cross", 10],
-    ["hall-pockets", 10],
+    ["cross", 8],
+    ["hall-pockets", 8],
     ["fork", 8],
-    ["zigzag", 6],
-    ["diag", 6],
+    ["diag", 8],
   ],
   large: [
-    ["full", 12],
-    ["lounge", 14],
-    ["hall-ew", 14],
-    ["hall-ns", 14],
-    ["fork", 10],
-    ["cross", 10],
-    ["triple", 8],
-    ["stagger", 8],
-    ["hall-pockets", 10],
+    ["lounge", 55],
+    ["wide-hall-ew", 22],
+    ["wide-hall-ns", 23],
   ],
 };
 
 function pickShape(rng, cx, cz) {
-  const size = pickSizeTier(rng);
+  const size = pickSizeTier(rng, cx, cz);
   const kind = rng.pickWeighted(SHAPE_WEIGHTS[size]);
   const shape = buildShape(size, kind, rng, cx, cz);
   shape.sizeTier = size;
@@ -939,9 +946,16 @@ function pickValidShape(rng, cx, cz) {
   for (let attempt = 0; attempt < 28; attempt++) {
     const shape = pickShape(rng, cx, cz);
     const minDim = shape.sizeTier === "small" ? MIN_ZONE_DIM_SMALL : MIN_ZONE_DIM;
-    if (isMazeConnected(shape.innerWalls) && shapeIsWalkable(shape, minDim)) return shape;
+    if (
+      isMazeConnected(shape.innerWalls) &&
+      wallsAnchorToBoundary(shape.innerWalls) &&
+      shapeIsWalkable(shape, minDim) &&
+      shapeIsNavigable(shape)
+    ) {
+      return shape;
+    }
   }
-  return { kind: "full", zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }], innerWalls: [] };
+  return hallEW(rng, cx, cz, false);
 }
 
 export function generateRoom(cx, cz) {
