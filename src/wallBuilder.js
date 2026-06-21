@@ -23,11 +23,13 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, r
     const smid = (es0 + es1) / 2;
     const y = segY + segH / 2;
     const geo = cloneWallBox(axis, slen, segH);
+    const baked = geo.index ? geo.toNonIndexed() : geo;
+    if (baked !== geo) geo.dispose();
     const worldU0 = axis === "z" ? roomWx + es0 : roomWz + es0;
-    bakeWallBoxUV(geo, axis, slen, segH, WALL_TILE_W, tileH, worldU0, segY);
-    if (axis === "z") geo.translate(smid, y, pos);
-    else geo.translate(pos, y, smid);
-    parts.push(geo);
+    bakeWallBoxUV(baked, axis, slen, segH, WALL_TILE_W, tileH, worldU0, segY);
+    if (axis === "z") baked.translate(smid, y, pos);
+    else baked.translate(pos, y, smid);
+    parts.push(baked);
   };
 
   if (door) {
