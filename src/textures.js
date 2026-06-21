@@ -2,14 +2,14 @@ import * as THREE from "three";
 import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
-export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
+export const WALLPAPER_URL = "./assets/wallpaper2.jpg";
 /** User floor/ceiling surface */
-export const BOTTOM_URL = "./assets/bottom.jpg";
+export const BOTTOM_URL = "./assets/bottom2.jpg";
 /** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
 /** @deprecated */ export const CEILING_URL = BOTTOM_URL;
 export const WALL_TILE_SCALE = 0.8;
 export const WALL_TILE_W = 0.76 * WALL_TILE_SCALE;
-/** One bottom.jpg repeat = one ceiling troffer tile (matches PANEL_SIZE) */
+/** One surface tile repeat = one ceiling troffer tile (matches PANEL_SIZE) */
 export const SURFACE_TILE_M = PANEL_SIZE;
 /** @deprecated */ export const CARPET_TILE_M = SURFACE_TILE_M;
 /** Ceiling tile — matches square PANEL_SIZE */
@@ -38,13 +38,12 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
-/** Unlit surface — original texture albedo; no lights, no fog tint, no tone map */
+/** Unlit surface — texture albedo; distance fog applies (default), no tone map */
 export function createUnlitSurfaceMaterial(map, { side = THREE.FrontSide } = {}) {
   return new THREE.MeshBasicMaterial({
     map,
     side,
     toneMapped: false,
-    fog: false,
   });
 }
 
@@ -137,7 +136,7 @@ export function createDoorJambMaterial(carpetBase, floorTex) {
   return mat;
 }
 
-/** Floor — bottom.jpg, same unlit treatment as walls */
+/** Floor — bottom2.jpg, same unlit treatment as walls */
 export function createFloorSurfaceMaterial(map) {
   return createUnlitSurfaceMaterial(map);
 }
@@ -272,7 +271,6 @@ export function createCeilingGapMaterial() {
     color: CEILING_GAP_COLOR,
     depthWrite: false,
     toneMapped: false,
-    fog: false,
   });
 }
 
