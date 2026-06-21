@@ -40,7 +40,7 @@ export const CAMERA_FOV = 60;
 /** Closer near plane — default 0.08 let walls vanish when hugging them */
 export const CAMERA_NEAR = 0.035;
 /** Must exceed FOG_FAR so distant geometry is not clipped early */
-export const CAMERA_FAR = 80;
+export const CAMERA_FAR = 42;
 /** Underside of ceiling stack — flush with wall tops */
 export const CEILING_TOP_INSET_M = 0.001;
 /** @deprecated kept at 0 — lowering caused wall/ceiling shadow bands */
@@ -58,13 +58,13 @@ export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
-export const FOG_NEAR = 16;
-export const FOG_FAR = 68;
+export const FOG_NEAR = 8;
+export const FOG_FAR = 34;
 export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — ring must cover FOG_FAR */
-export const GRID_RADIUS = 3;
+export const GRID_RADIUS = 2;
 /** Full square synced on the title screen before play */
-export const PRELOAD_RADIUS = 3;
+export const PRELOAD_RADIUS = 2;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */

@@ -1,6 +1,7 @@
 import { createRng } from "./rng.js";
 import {
   buildPseudoRoom,
+  buildFallbackPseudoRoom,
   wallsWithinTileLimit,
   hasThreeSidedStructure,
   nookIsWalkable,
@@ -16,7 +17,9 @@ import {
   PANEL_EDGE_INSET,
   PANEL_W,
   PANEL_H,
+  PANEL_SIZE,
 } from "./constants.js";
+import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 
 export { CHUNK };
 export const CELL = CHUNK;
@@ -119,8 +122,24 @@ function panelOverlapsExisting(px, pz, panels) {
   return false;
 }
 
-function generatePanels(_rng, _room) {
-  return [];
+function generatePanels(rng, room) {
+  const ox = room.cx * CHUNK;
+  const oz = room.cz * CHUNK;
+  const tileM = PANEL_SIZE;
+  const candidates = [];
+  const { tx0, tx1, tz0, tz1 } = chunkTileRange(ox, oz, CHUNK, tileM);
+
+  for (let tx = tx0; tx <= tx1; tx++) {
+    for (let tz = tz0; tz <= tz1; tz++) {
+      const { x: px, z: pz } = tileCenterLocal(tx, tz, ox, oz, tileM);
+      if (!panelBlocked(px, pz, room)) {
+        candidates.push({ x: px, z: pz, on: true, bright: 1 });
+      }
+    }
+  }
+
+  if (!candidates.length) return [];
+  return [rng.pick(candidates)];
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
@@ -219,6 +238,22 @@ export function isMazeConnected(innerWalls) {
   }
 
   return visited.size === innerWalls.length;
+}
+
+/** Every inner wall must touch at least one other inner wall — no lone segments */
+export function wallsPairwiseConnected(innerWalls) {
+  if (innerWalls.length < 3) return false;
+  for (let i = 0; i < innerWalls.length; i++) {
+    let linked = false;
+    for (let j = 0; j < innerWalls.length; j++) {
+      if (i !== j && wallsLinked(innerWalls[i], innerWalls[j])) {
+        linked = true;
+        break;
+      }
+    }
+    if (!linked) return false;
+  }
+  return true;
 }
 
 /** No wall segment with both ends floating in open floor */
@@ -330,6 +365,7 @@ function shapePassesValidation(shape, doors) {
     hasThreeSidedStructure(shape.innerWalls) &&
     wallsWithinTileLimit(shape.innerWalls) &&
     isMazeConnected(shape.innerWalls) &&
+    wallsPairwiseConnected(shape.innerWalls) &&
     wallsAnchorToBoundary(shape.innerWalls) &&
     !hasFloatingWalls(shape.innerWalls) &&
     nookIsWalkable(shape) &&
@@ -348,6 +384,8 @@ function pickValidShape(rng, cx, cz) {
     const shape = buildPseudoRoom(fallbackRng, doorSpec);
     if (shapePassesValidation(shape, doors)) return shape;
   }
+  const guaranteed = buildFallbackPseudoRoom(createRng(cx, cz, 77), doorSpec);
+  if (shapePassesValidation(guaranteed, doors)) return guaranteed;
   return {
     kind: "open",
     zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }],

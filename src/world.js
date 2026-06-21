@@ -267,6 +267,14 @@ export class World {
     return this.colliders;
   }
 
+  getLightFixtures() {
+    const out = [];
+    for (const { room } of this.chunks.values()) {
+      if (room?.lightFixture) out.push(room.lightFixture);
+    }
+    return out;
+  }
+
   flushColliders() {
     if (this.pendingColliderRebuild) this.rebuildColliders();
   }
