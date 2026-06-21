@@ -6,6 +6,7 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
+  BLOOM_LAYER,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -151,6 +152,7 @@ function addLightPanels(group, materials, h, panels) {
   }
   mesh.instanceMatrix.needsUpdate = true;
   mesh.renderOrder = 1;
+  mesh.layers.enable(BLOOM_LAYER);
   group.add(mesh);
 }
 

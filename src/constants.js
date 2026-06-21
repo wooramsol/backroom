@@ -27,6 +27,8 @@ export const BODY_WALL_CLEAR = 0.035;
 export const MIN_PASSAGE_SPAN = 2 * (PLAYER_R * 0.98 + BODY_WALL_CLEAR) + 0.18;
 /** Every zone must be at least this wide in both axes — no crawl-space pockets */
 export const MIN_ZONE_DIM = MIN_PASSAGE_SPAN + 2.0;
+/** Smaller chambers — still walkable, not crawl spaces */
+export const MIN_ZONE_DIM_SMALL = MIN_PASSAGE_SPAN + 0.85;
 /** Minimum door width so the player body cannot squeeze through the gap */
 export const MIN_DOOR_WIDTH = 2 * (PLAYER_R + BODY_WALL_CLEAR) + 2 * DOOR_JAMB_INSET + 0.14;
 export const JUMP_V = 4.2;
@@ -102,10 +104,12 @@ export const CEILING_PLENUM_INTENSITY = 1.15;
 /** Matte surfaces — flat fluorescent look, minimal specular */
 export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
-/** Subtle bloom — tight to bright panel squares only */
-export const BLOOM_STRENGTH = 0.22;
-export const BLOOM_RADIUS = 0.22;
-export const BLOOM_THRESHOLD = 0.78;
+/** Layer mask — only troffer meshes enable this for selective bloom */
+export const BLOOM_LAYER = 1;
+/** Subtle bloom — troffer layer only (selective pass in postfx.js) */
+export const BLOOM_STRENGTH = 0.24;
+export const BLOOM_RADIUS = 0.24;
+export const BLOOM_THRESHOLD = 0.55;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */
 export const RENDER_RESOLUTION_SCALE = 1;
 /** Bloom buffer scale — can stay low; scene pass is full res */

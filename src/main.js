@@ -102,7 +102,7 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom, fxaa } = createBloomPipeline(renderer, scene, camera);
+  const pipeline = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
@@ -120,7 +120,7 @@ async function init() {
       }
     })
     .then(() => {
-      for (let i = 0; i < 5; i++) composer.render();
+      for (let i = 0; i < 5; i++) pipeline.render();
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
@@ -175,7 +175,7 @@ async function init() {
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
-    composer.render();
+    pipeline.render();
 
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;
@@ -191,7 +191,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, fxaa, w, h);
+    resizeBloomPipeline(renderer, pipeline, w, h);
     syncCrosshair();
   });
 }
