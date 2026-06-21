@@ -161,8 +161,8 @@ function hallEW(rng, cx, cz, forceWide = false) {
     kind: wide ? "wide-hall" : "hall",
     zones: [{ x0: 0, z0, x1: CHUNK, z1: z0 + depth }],
     innerWalls: [
-      { axis: "z", pos: z0, span0: 0, span1: CHUNK, door: null },
-      { axis: "z", pos: z0 + depth, span0: 0, span1: CHUNK, door: null },
+      { axis: "z", pos: z0, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      { axis: "z", pos: z0 + depth, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
     ],
   };
 }
@@ -176,8 +176,8 @@ function hallNS(rng, cx, cz, forceWide = false) {
     kind: wide ? "wide-hall" : "hall",
     zones: [{ x0, z0: 0, x1: x0 + width, z1: CHUNK }],
     innerWalls: [
-      { axis: "x", pos: x0, span0: 0, span1: CHUNK, door: null },
-      { axis: "x", pos: x0 + width, span0: 0, span1: CHUNK, door: null },
+      { axis: "x", pos: x0, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+      { axis: "x", pos: x0 + width, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
     ],
   };
 }
@@ -563,8 +563,8 @@ function hallWithPockets(rng, cx, cz) {
   const side = rng.pick(["left", "right"]);
   const zones = [{ x0: 0, z0, x1: CHUNK, z1: z0 + thick }];
   const walls = [
-    { axis: "z", pos: z0, span0: 0, span1: CHUNK, door: null },
-    { axis: "z", pos: z0 + thick, span0: 0, span1: CHUNK, door: null },
+    { axis: "z", pos: z0, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
+    { axis: "z", pos: z0 + thick, span0: 0, span1: CHUNK, door: doorSpec(rng, CHUNK) },
   ];
 
   if (side === "left") {
@@ -800,43 +800,64 @@ function navBlocked(x, z, innerWalls) {
   return false;
 }
 
-/** Chunk interior must be one connected walkable region */
-function shapeIsNavigable(shape) {
+function chunkDoors(cx, cz) {
+  return {
+    north: getSharedDoor(cx, cz, cx, cz - 1),
+    south: getSharedDoor(cx, cz, cx, cz + 1),
+    east: getSharedDoor(cx, cz, cx + 1, cz),
+    west: getSharedDoor(cx, cz, cx - 1, cz),
+  };
+}
+
+function chunkDoorPoints(doors) {
+  const h = CHUNK / 2;
+  return {
+    north: { x: h + doors.north.offset, z: 0.55 },
+    south: { x: h + doors.south.offset, z: CHUNK - 0.55 },
+    east: { x: CHUNK - 0.55, z: h + doors.east.offset },
+    west: { x: 0.55, z: h + doors.west.offset },
+  };
+}
+
+function navCellKey(x, z) {
+  return `${Math.floor(x / NAV_CELL)},${Math.floor(z / NAV_CELL)}`;
+}
+
+function navFloodKeys(innerWalls, startX, startZ) {
   const cols = Math.ceil(CHUNK / NAV_CELL);
-  const startX = CHUNK / 2;
-  const startZ = CHUNK / 2;
-  if (navBlocked(startX, startZ, shape.innerWalls)) return false;
+  const visited = new Set();
+  if (navBlocked(startX, startZ, innerWalls)) return visited;
 
-  const visited = new Uint8Array(cols * cols);
   const queue = [[startX, startZ]];
-  let count = 0;
-
   while (queue.length) {
     const [x, z] = queue.pop();
-    if (navBlocked(x, z, shape.innerWalls)) continue;
+    if (navBlocked(x, z, innerWalls)) continue;
     const ix = Math.floor(x / NAV_CELL);
     const iz = Math.floor(z / NAV_CELL);
     if (ix < 0 || iz < 0 || ix >= cols || iz >= cols) continue;
-    const key = iz * cols + ix;
-    if (visited[key]) continue;
-    visited[key] = 1;
-    count++;
+    const key = navCellKey(x, z);
+    if (visited.has(key)) continue;
+    visited.add(key);
 
     const n = NAV_CELL;
     queue.push([x + n, z], [x - n, z], [x, z + n], [x, z - n]);
   }
+  return visited;
+}
 
-  let blocked = 0;
-  for (let iz = 0; iz < cols; iz++) {
-    for (let ix = 0; ix < cols; ix++) {
-      const x = (ix + 0.5) * NAV_CELL;
-      const z = (iz + 0.5) * NAV_CELL;
-      if (navBlocked(x, z, shape.innerWalls)) blocked++;
-    }
+/** North/south/east/west chunk doors must all lie in one walkable maze component */
+function allExitsConnected(innerWalls, doors) {
+  const pts = chunkDoorPoints(doors);
+  const entries = [pts.north, pts.south, pts.east, pts.west];
+  for (const p of entries) {
+    if (navBlocked(p.x, p.z, innerWalls)) return false;
   }
 
-  const open = cols * cols - blocked;
-  return open > 0 && count / open > 0.88;
+  const reached = navFloodKeys(innerWalls, pts.north.x, pts.north.z);
+  for (const p of entries) {
+    if (!reached.has(navCellKey(p.x, p.z))) return false;
+  }
+  return true;
 }
 
 /** Reject layouts with zones too small to walk in comfortably */
@@ -925,16 +946,16 @@ const SHAPE_WEIGHTS = {
     ["zigzag", 6],
   ],
   medium: [
-    ["L", 14],
-    ["T", 12],
-    ["H", 10],
-    ["U", 10],
-    ["hall-ew", 10],
-    ["hall-ns", 10],
-    ["alcove", 10],
-    ["cross", 8],
+    ["cross", 14],
+    ["L", 12],
+    ["T", 11],
+    ["H", 9],
+    ["U", 9],
+    ["hall-ew", 9],
+    ["hall-ns", 9],
+    ["alcove", 8],
     ["hall-pockets", 8],
-    ["fork", 8],
+    ["fork", 7],
   ],
   large: [
     ["lounge", 70],
@@ -952,7 +973,8 @@ function pickShape(rng, cx, cz) {
 }
 
 function pickValidShape(rng, cx, cz) {
-  for (let attempt = 0; attempt < 28; attempt++) {
+  const doors = chunkDoors(cx, cz);
+  for (let attempt = 0; attempt < 32; attempt++) {
     const shape = pickShape(rng, cx, cz);
     const minDim = shape.sizeTier === "small" ? MIN_ZONE_DIM_SMALL : MIN_ZONE_DIM;
     if (
@@ -960,12 +982,12 @@ function pickValidShape(rng, cx, cz) {
       wallsAnchorToBoundary(shape.innerWalls) &&
       !hasFloatingWalls(shape.innerWalls) &&
       shapeIsWalkable(shape, minDim) &&
-      shapeIsNavigable(shape)
+      allExitsConnected(shape.innerWalls, doors)
     ) {
       return shape;
     }
   }
-  return hallEW(rng, cx, cz, false);
+  return crossHall(rng);
 }
 
 export function generateRoom(cx, cz) {
