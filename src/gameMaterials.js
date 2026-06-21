@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   createCeilingGapMaterial,
   createCeilingTileMaterial,
+  createFloorSurfaceMaterial,
   createBakedWallMaterial,
   tiledAt,
   CEILING_TILE_M,
@@ -30,7 +31,7 @@ export function createGameMaterials(wallpaper, surfaceTex) {
 export function createChunkFloorMaterial(materials, worldX, worldZ) {
   const map = tiledAt(materials.surfaceTex, CEILING_TILE_M, CHUNK, CHUNK, worldX, worldZ);
   map.userData.chunkOwned = true;
-  const mat = createCeilingTileMaterial(map);
+  const mat = createFloorSurfaceMaterial(map);
   mat.userData.chunkOwned = true;
   return mat;
 }

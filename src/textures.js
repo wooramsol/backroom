@@ -38,15 +38,22 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
+/** Unlit surface — original texture albedo; no lights, no fog tint, no tone map */
+export function createUnlitSurfaceMaterial(map, { side = THREE.FrontSide } = {}) {
+  return new THREE.MeshBasicMaterial({
+    map,
+    side,
+    toneMapped: false,
+    fog: false,
+  });
+}
+
 /** Wallpaper — original asset albedo, no tint */
 export function createBakedWallMaterial(tex) {
   const map = tex.clone();
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(1, 1);
-  return new THREE.MeshBasicMaterial({
-    map,
-    toneMapped: false,
-  });
+  return createUnlitSurfaceMaterial(map);
 }
 
 const _wallMatCache = new Map();
@@ -130,13 +137,14 @@ export function createDoorJambMaterial(carpetBase, floorTex) {
   return mat;
 }
 
-/** Matte ceiling carpet — underside; DoubleSide avoids instanced facing issues */
+/** Floor — bottom.jpg, same unlit treatment as walls */
+export function createFloorSurfaceMaterial(map) {
+  return createUnlitSurfaceMaterial(map);
+}
+
+/** Matte ceiling carpet — underside; DoubleSide avoids facing issues */
 export function createCeilingTileMaterial(map) {
-  return new THREE.MeshBasicMaterial({
-    map,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  });
+  return createUnlitSurfaceMaterial(map, { side: THREE.DoubleSide });
 }
 
 /** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {
@@ -263,6 +271,8 @@ export function createCeilingGapMaterial() {
   return new THREE.MeshBasicMaterial({
     color: CEILING_GAP_COLOR,
     depthWrite: false,
+    toneMapped: false,
+    fog: false,
   });
 }
 
