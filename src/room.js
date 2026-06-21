@@ -7,6 +7,7 @@ import {
   DOOR_H,
   DOOR_JAMB_INSET,
   MIN_DOOR_WIDTH,
+  MAX_DOOR_WIDTH,
   MIN_PASSAGE_SPAN,
   MIN_ZONE_DIM,
   MIN_ZONE_DIM_SMALL,
@@ -21,15 +22,15 @@ export { CHUNK };
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
 
-const DOOR_WIDTHS = [1.15, 1.3, 1.45, 1.6, 1.75, 1.9, 2.05, 2.25, 2.5, 2.75, 3.0, 3.3, 3.6, 3.95, 4.3];
-const SHARED_DOOR_WIDTHS = [1.35, 1.5, 1.7, 1.9, 2.1, 2.35, 2.6, 2.85, 3.15, 3.45, 3.75, 4.1, 4.5];
+const DOOR_WIDTHS = [1.15, 1.3, 1.45, 1.6, 1.75, 1.9, 2.05, 2.25, 2.5, 2.75, 3.0];
+const SHARED_DOOR_WIDTHS = [1.35, 1.5, 1.7, 1.9, 2.1, 2.35, 2.6, 2.85, 3.0];
 
-function fract(n) {
-  return n - Math.floor(n);
+function maxDoorSpan(span) {
+  return Math.min(span - 0.8, MAX_DOOR_WIDTH);
 }
 
 function pickDoorWidth(rng, span) {
-  const maxW = span - 0.8;
+  const maxW = maxDoorSpan(span);
   if (maxW < MIN_DOOR_WIDTH) return null;
   if (rng.chance(0.38)) {
     const w = rng.range(MIN_DOOR_WIDTH, maxW);
@@ -40,7 +41,7 @@ function pickDoorWidth(rng, span) {
 }
 
 function doorSpec(rng, span) {
-  const maxW = span - 0.8;
+  const maxW = maxDoorSpan(span);
   const width = Math.min(pickDoorWidth(rng, span) ?? MIN_DOOR_WIDTH, maxW);
   if (width < MIN_DOOR_WIDTH) return null;
   const maxOff = Math.max(0, span / 2 - width / 2 - 0.25);
@@ -128,7 +129,7 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   const bx = Math.max(cx0, cx1);
   const bz = Math.max(cz0, cz1);
   const rng = createRng(ax, az, bx, bz, 42);
-  const maxW = CHUNK - 0.8;
+  const maxW = Math.min(CHUNK - 0.8, MAX_DOOR_WIDTH);
   let width;
   if (rng.chance(0.38)) {
     width = Math.round(rng.range(MIN_DOOR_WIDTH, maxW) * 20) / 20;
@@ -1066,7 +1067,6 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const hi = mid + half;
   addBox(boxes, x0, lo, z - t, z + t, y0, yTop);
   addBox(boxes, hi, x1, z - t, z + t, y0, yTop);
-  addBox(boxes, lo, hi, z - t, z + t, y0 + DOOR_H, yTop);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
@@ -1081,7 +1081,6 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const hi = mid + half;
   addBox(boxes, x - t, x + t, z0, lo, y0, yTop);
   addBox(boxes, x - t, x + t, hi, z1, y0, yTop);
-  addBox(boxes, x - t, x + t, lo, hi, y0 + DOOR_H, yTop);
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {
