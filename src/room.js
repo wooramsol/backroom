@@ -153,9 +153,8 @@ function narrowSpan(rng, lo, hi) {
 }
 
 function tierScale(tier) {
-  if (tier === "large") return 0.82;
-  if (tier === "medium") return 0.68;
-  return 0.5;
+  if (tier === "medium") return 0.42;
+  return 0.3;
 }
 
 function tierSpan(rng, tier, lo, hi, narrow = false) {
@@ -168,7 +167,7 @@ function tierSpan(rng, tier, lo, hi, narrow = false) {
 /** Same E–W corridor band across chunks in a row (shared cz) */
 function alignedBandEW(cz, tier = "small") {
   const lane = createRng(0, cz, 88);
-  const depth = tierSpan(lane, tier, 0.12, 0.2);
+  const depth = Math.max(MIN_ZONE_DIM_SMALL, tierSpan(lane, tier, 0.09, 0.15));
   const maxZ0 = CHUNK - depth - 0.6;
   const z0 = lane.range(1.2, Math.max(1.2, maxZ0));
   return { z0, depth };
@@ -177,7 +176,7 @@ function alignedBandEW(cz, tier = "small") {
 /** Same N–S corridor band across chunks in a column (shared cx) */
 function alignedBandNS(cx, tier = "small") {
   const lane = createRng(cx, 0, 88);
-  const width = tierSpan(lane, tier, 0.12, 0.2);
+  const width = Math.max(MIN_ZONE_DIM_SMALL, tierSpan(lane, tier, 0.12, 0.2));
   const maxX0 = CHUNK - width - 0.6;
   const x0 = lane.range(1.2, Math.max(1.2, maxX0));
   return { x0, width };
@@ -211,22 +210,59 @@ function hallNS(rng, cx, cz, tier = "small") {
   };
 }
 
-function compactL(rng, voidCorner, tier = "small") {
+function compactL(rng, corner, tier = "small") {
   const s = tierScale(tier);
-  const shape = lShape(
-    rng,
-    voidCorner,
-    rng.range(3.0 * s, 5.8 * s),
-    rng.range(3.0 * s, 5.8 * s),
-    tier,
-  );
-  return { ...shape, kind: "compact-L" };
+  const arm = Math.max(MIN_ZONE_DIM_SMALL + 0.6, rng.range(4.5 * s, 7.2 * s));
+  const thick = Math.max(MIN_ZONE_DIM_SMALL, rng.range(2.4 * s, 3.6 * s));
+  const shapes = {
+    se: {
+      zones: [
+        { x0: CHUNK - arm, z0: CHUNK - thick, x1: CHUNK, z1: CHUNK },
+        { x0: CHUNK - thick, z0: CHUNK - arm, x1: CHUNK, z1: CHUNK - thick },
+      ],
+      innerWalls: [
+        { axis: "z", pos: CHUNK - thick, span0: CHUNK - arm, span1: CHUNK, door: doorSpec(rng, arm) },
+        { axis: "x", pos: CHUNK - thick, span0: CHUNK - arm, span1: CHUNK, door: null },
+      ],
+    },
+    sw: {
+      zones: [
+        { x0: 0, z0: CHUNK - thick, x1: arm, z1: CHUNK },
+        { x0: 0, z0: CHUNK - arm, x1: thick, z1: CHUNK - thick },
+      ],
+      innerWalls: [
+        { axis: "z", pos: CHUNK - thick, span0: 0, span1: arm, door: doorSpec(rng, arm) },
+        { axis: "x", pos: thick, span0: CHUNK - arm, span1: CHUNK, door: null },
+      ],
+    },
+    ne: {
+      zones: [
+        { x0: CHUNK - arm, z0: 0, x1: CHUNK, z1: thick },
+        { x0: CHUNK - thick, z0: 0, x1: CHUNK, z1: arm },
+      ],
+      innerWalls: [
+        { axis: "z", pos: thick, span0: CHUNK - arm, span1: CHUNK, door: doorSpec(rng, arm) },
+        { axis: "x", pos: CHUNK - thick, span0: 0, span1: arm, door: null },
+      ],
+    },
+    nw: {
+      zones: [
+        { x0: 0, z0: 0, x1: arm, z1: thick },
+        { x0: 0, z0: 0, x1: thick, z1: arm },
+      ],
+      innerWalls: [
+        { axis: "z", pos: thick, span0: 0, span1: arm, door: doorSpec(rng, arm) },
+        { axis: "x", pos: thick, span0: 0, span1: arm, door: null },
+      ],
+    },
+  };
+  return { kind: "compact-L", ...shapes[corner] };
 }
 
 function smallAlcove(rng, corner, tier = "small") {
   const s = tierScale(tier);
-  const w = rng.range(3.0 * s, 5.8 * s);
-  const d = rng.range(3.0 * s, 5.8 * s);
+  const w = Math.max(MIN_ZONE_DIM_SMALL, rng.range(2.4 * s, 4.6 * s));
+  const d = Math.max(MIN_ZONE_DIM_SMALL, rng.range(2.4 * s, 4.6 * s));
   const shapes = {
     se: {
       zones: [{ x0: CHUNK - w, z0: CHUNK - d, x1: CHUNK, z1: CHUNK }],
@@ -478,7 +514,7 @@ function twinZone(rng, tier = "small") {
     };
   }
 
-  const z = rng.range(5.5, 8.5);
+  const z = rng.range(5.5 * s, 8.5 * s);
   const x0 = rng.range(0.4, 2.5);
   const x1 = rng.range(CHUNK - 2.5, CHUNK - 0.4);
   return {
@@ -620,7 +656,7 @@ function compoundLT(rng) {
 }
 
 function crossHall(rng, tier = "medium") {
-  const arm = tierSpan(rng, tier, 0.18, 0.3, true);
+  const arm = tierSpan(rng, tier, 0.1, 0.16, true);
   const cx0 = (CHUNK - arm) / 2;
   const cz0 = (CHUNK - arm) / 2;
   return {
@@ -629,15 +665,6 @@ function crossHall(rng, tier = "medium") {
       { x0: cx0, z0: 0, x1: cx0 + arm, z1: CHUNK },
       { x0: 0, z0: cz0, x1: CHUNK, z1: cz0 + arm },
     ],
-    innerWalls: [],
-  };
-}
-
-function openChamber(rng) {
-  const m = rng.range(CHUNK * 0.1, CHUNK * 0.16);
-  return {
-    kind: "chamber",
-    zones: [{ x0: m, z0: m, x1: CHUNK - m, z1: CHUNK - m }],
     innerWalls: [],
   };
 }
@@ -797,6 +824,63 @@ function wallsAnchorToBoundary(innerWalls) {
 }
 
 const NAV_CELL = 0.5;
+const ZONE_MARGIN = 0.04;
+const VOID_SEAL_GRID = 0.5;
+
+function pointInZones(x, z, zones, margin = ZONE_MARGIN) {
+  for (const zone of zones) {
+    if (
+      x >= zone.x0 + margin &&
+      x <= zone.x1 - margin &&
+      z >= zone.z0 + margin &&
+      z <= zone.z1 - margin
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function nearestZonePoint(px, pz, zones) {
+  let best = null;
+  let bestD = Infinity;
+  for (const zone of zones) {
+    const tx = Math.max(zone.x0, Math.min(px, zone.x1));
+    const tz = Math.max(zone.z0, Math.min(pz, zone.z1));
+    const d = (px - tx) ** 2 + (pz - tz) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = { x: tx, z: tz };
+    }
+  }
+  return best;
+}
+
+function addLCorridor(extra, px, pz, tx, tz, strip) {
+  const h = strip / 2;
+  if (Math.abs(tz - pz) > 0.08) {
+    extra.push({
+      x0: px - h,
+      z0: Math.min(pz, tz),
+      x1: px + h,
+      z1: Math.max(pz, tz),
+    });
+  }
+  if (Math.abs(tx - px) > 0.08) {
+    extra.push({
+      x0: Math.min(px, tx),
+      z0: tz - h,
+      x1: Math.max(px, tx),
+      z1: tz + h,
+    });
+  }
+}
+
+function wallCoversSegment(wall, axis, pos, span0, span1) {
+  if (wall.axis !== axis) return false;
+  if (Math.abs(wall.pos - pos) > 0.12) return false;
+  return wall.span0 <= span0 + 0.12 && wall.span1 >= span1 - 0.12;
+}
 
 function wallBlocksNav(wall, x, z) {
   const halfT = WALL_T / 2 + 0.05;
@@ -840,11 +924,31 @@ function chunkDoors(cx, cz) {
 function chunkDoorPoints(doors) {
   const h = CHUNK / 2;
   return {
-    north: { x: h + doors.north.offset, z: 0.55 },
-    south: { x: h + doors.south.offset, z: CHUNK - 0.55 },
-    east: { x: CHUNK - 0.55, z: h + doors.east.offset },
-    west: { x: 0.55, z: h + doors.west.offset },
+    north: { x: h + doors.north.offset, z: 0.55, side: "north" },
+    south: { x: h + doors.south.offset, z: CHUNK - 0.55, side: "south" },
+    east: { x: CHUNK - 0.55, z: h + doors.east.offset, side: "east" },
+    west: { x: 0.55, z: h + doors.west.offset, side: "west" },
   };
+}
+
+/** Thin strips from chunk doors into the shape — no wide lounge voids */
+function doorConnectorZones(zones, doors) {
+  const strip = MIN_PASSAGE_SPAN + 0.35;
+  const extra = [];
+  const pts = chunkDoorPoints(doors);
+
+  for (const p of Object.values(pts)) {
+    if (pointInZones(p.x, p.z, zones, 0.02)) continue;
+    const hit = nearestZonePoint(p.x, p.z, zones);
+    if (!hit) continue;
+    addLCorridor(extra, p.x, p.z, hit.x, hit.z, strip);
+  }
+
+  return [...zones, ...extra];
+}
+
+function walkZones(zones, doors) {
+  return doorConnectorZones(zones, doors);
 }
 
 function navCellKey(x, z) {
@@ -898,11 +1002,81 @@ function shapeIsWalkable(shape, minDim = MIN_ZONE_DIM) {
   return true;
 }
 
+/** Reject lounge-scale zones — corridors may be long but not wide open rooms */
+function shapeIsCompact(shape, tier) {
+  const maxRoom = CHUNK * (tier === "medium" ? 0.36 : 0.3);
+  const maxArea = CHUNK * CHUNK * (tier === "medium" ? 0.22 : 0.17);
+  for (const zone of shape.zones) {
+    const w = zone.x1 - zone.x0;
+    const d = zone.z1 - zone.z0;
+    const narrow = Math.min(w, d);
+    const area = w * d;
+    if (narrow > maxRoom) return false;
+    if (area > maxArea) return false;
+  }
+  return true;
+}
+
+/** Seal zone outlines so void floor outside shapes is not walkable */
+function computeVoidSealWalls(zones, innerWalls) {
+  const G = VOID_SEAL_GRID;
+  const cols = Math.round(CHUNK / G);
+  const walk = new Uint8Array(cols * cols);
+
+  for (let iz = 0; iz < cols; iz++) {
+    for (let ix = 0; ix < cols; ix++) {
+      const x = (ix + 0.5) * G;
+      const z = (iz + 0.5) * G;
+      walk[iz * cols + ix] = pointInZones(x, z, zones) ? 1 : 0;
+    }
+  }
+
+  const walls = [];
+  const pushWall = (axis, pos, span0, span1) => {
+    if (span1 - span0 < 0.25) return;
+    if (pos <= BOUND_EPS || pos >= CHUNK - BOUND_EPS) return;
+    for (const wall of innerWalls) {
+      if (wallCoversSegment(wall, axis, pos, span0, span1)) return;
+    }
+    for (const wall of walls) {
+      if (wallCoversSegment(wall, axis, pos, span0, span1)) return;
+    }
+    walls.push({ axis, pos, span0, span1, door: null });
+  };
+
+  for (let iz = 0; iz < cols - 1; iz++) {
+    let runStart = -1;
+    for (let ix = 0; ix <= cols; ix++) {
+      const need =
+        ix < cols && walk[iz * cols + ix] !== walk[(iz + 1) * cols + ix];
+      if (need && runStart < 0) runStart = ix;
+      if ((!need || ix === cols) && runStart >= 0) {
+        pushWall("z", (iz + 1) * G, runStart * G, ix * G);
+        runStart = -1;
+      }
+    }
+  }
+
+  for (let ix = 0; ix < cols - 1; ix++) {
+    let runStart = -1;
+    for (let iz = 0; iz <= cols; iz++) {
+      const need =
+        iz < cols && walk[iz * cols + ix] !== walk[iz * cols + ix + 1];
+      if (need && runStart < 0) runStart = iz;
+      if ((!need || iz === cols) && runStart >= 0) {
+        pushWall("x", (ix + 1) * G, runStart * G, iz * G);
+        runStart = -1;
+      }
+    }
+  }
+
+  return walls;
+}
+
 function pickSizeTier(rng) {
   return rng.pickWeighted([
-    ["small", 94],
-    ["medium", 5],
-    ["large", 1],
+    ["small", 98],
+    ["medium", 2],
   ]);
 }
 
@@ -950,8 +1124,6 @@ function buildShape(size, kind, rng, cx, cz) {
     case "elongated":
     case "slab":
       return offsetSlab(rng, size);
-    case "open-chamber":
-      return openChamber(rng);
     default:
       return smallAlcove(rng, corner(), "small");
   }
@@ -959,39 +1131,29 @@ function buildShape(size, kind, rng, cx, cz) {
 
 const SHAPE_WEIGHTS = {
   small: [
-    ["compact-L", 13],
-    ["L", 11],
-    ["small-alcove", 11],
-    ["hall-ew", 11],
-    ["hall-ns", 11],
-    ["U", 9],
-    ["T", 9],
-    ["elongated", 10],
-    ["zigzag", 8],
-    ["twin", 7],
+    ["compact-L", 18],
+    ["small-alcove", 16],
+    ["hall-ew", 14],
+    ["hall-ns", 14],
+    ["elongated", 12],
+    ["zigzag", 10],
+    ["twin", 8],
+    ["alcove", 6],
     ["fork", 5],
-    ["alcove", 5],
+    ["cross", 4],
   ],
   medium: [
-    ["cross", 10],
-    ["L", 10],
+    ["compact-L", 14],
+    ["alcove", 12],
     ["T", 10],
-    ["H", 9],
-    ["U", 9],
+    ["zigzag", 10],
+    ["stagger", 9],
+    ["diag", 9],
+    ["cross", 8],
     ["hall-pockets", 8],
-    ["alcove", 8],
-    ["diag", 8],
-    ["stagger", 8],
-    ["triple", 7],
+    ["fork", 7],
     ["hall-ew", 7],
     ["hall-ns", 6],
-  ],
-  large: [
-    ["open-chamber", 35],
-    ["cross", 20],
-    ["H", 15],
-    ["L", 15],
-    ["elongated", 15],
   ],
 };
 
@@ -1008,41 +1170,43 @@ function pickValidShape(rng, cx, cz) {
   for (let attempt = 0; attempt < 32; attempt++) {
     const shape = pickShape(rng, cx, cz);
     const minDim =
-      shape.sizeTier === "small"
-        ? MIN_ZONE_DIM_SMALL
-        : shape.sizeTier === "large"
-          ? MIN_ZONE_DIM
-          : MIN_ZONE_DIM_SMALL + 0.35;
+      shape.sizeTier === "medium"
+        ? MIN_ZONE_DIM_SMALL + 0.25
+        : MIN_ZONE_DIM_SMALL;
     if (
       isMazeConnected(shape.innerWalls) &&
       wallsAnchorToBoundary(shape.innerWalls) &&
       !hasFloatingWalls(shape.innerWalls) &&
       shapeIsWalkable(shape, minDim) &&
+      shapeIsCompact(shape, shape.sizeTier) &&
       allExitsConnected(shape.innerWalls, doors)
     ) {
       return shape;
     }
   }
-  return compactL(rng, rng.pick(["nw", "ne", "sw", "se"]), "small");
+  return smallAlcove(rng, rng.pick(["nw", "ne", "sw", "se"]), "small");
 }
 
 export function generateRoom(cx, cz) {
   const rng = createRng(cx, cz, 7);
   const shape = pickValidShape(rng, cx, cz);
+  const doors = {
+    north: getSharedDoor(cx, cz, cx, cz - 1),
+    south: getSharedDoor(cx, cz, cx, cz + 1),
+    east: getSharedDoor(cx, cz, cx + 1, cz),
+    west: getSharedDoor(cx, cz, cx - 1, cz),
+  };
+  const zones = walkZones(shape.zones, doors);
+  const voidWalls = computeVoidSealWalls(zones, shape.innerWalls);
 
   const room = {
     cx,
     cz,
     kind: shape.kind,
-    zones: shape.zones,
-    innerWalls: shape.innerWalls,
+    zones,
+    innerWalls: [...shape.innerWalls, ...voidWalls],
     height: ROOM_H,
-    doors: {
-      north: getSharedDoor(cx, cz, cx, cz - 1),
-      south: getSharedDoor(cx, cz, cx, cz + 1),
-      east: getSharedDoor(cx, cz, cx + 1, cz),
-      west: getSharedDoor(cx, cz, cx - 1, cz),
-    },
+    doors,
     lightSeed: rng.int(0, 99999),
     lightSpacing: rng.pick([3.4, 3.8, 4.2, 4.6, 5.0]),
   };
