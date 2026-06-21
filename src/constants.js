@@ -115,10 +115,10 @@ export const SURFACE_ROUGHNESS = 1;
 export const SURFACE_METALNESS = 0;
 /** Layer mask — only troffer meshes enable this for selective bloom */
 export const BLOOM_LAYER = 1;
-/** Troffer glow — tight, desaturated in postfx mix */
-export const BLOOM_STRENGTH = 0.2;
-export const BLOOM_RADIUS = 0.16;
-export const BLOOM_THRESHOLD = 0.74;
+/** Troffer glow — high threshold keeps bloom on bright panels only */
+export const BLOOM_STRENGTH = 0.18;
+export const BLOOM_RADIUS = 0.14;
+export const BLOOM_THRESHOLD = 0.82;
 /** Lit troffer panels per chunk */
 export const PANELS_PER_CHUNK = 2;
 /** Main scene render scale — was 0.5 and caused jagged ceiling grooves */

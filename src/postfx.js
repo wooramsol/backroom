@@ -5,7 +5,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 import {
-  BLOOM_LAYER,
   BLOOM_STRENGTH,
   BLOOM_RADIUS,
   BLOOM_THRESHOLD,
@@ -13,27 +12,6 @@ import {
   RENDER_RESOLUTION_SCALE,
 } from "./constants.js";
 import { createFilmNoisePass, resizeFilmNoise } from "./filmNoise.js";
-
-const bloomLayer = new THREE.Layers();
-bloomLayer.set(BLOOM_LAYER);
-
-const darkMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
-const swappedMaterials = new Map();
-
-function darkenNonBloomed(obj) {
-  if (!obj.isMesh || bloomLayer.test(obj.layers)) return;
-  swappedMaterials.set(obj.uuid, obj.material);
-  obj.material = darkMaterial;
-}
-
-function restoreMaterials(obj) {
-  if (!obj.isMesh) return;
-  const prev = swappedMaterials.get(obj.uuid);
-  if (prev) {
-    obj.material = prev;
-    swappedMaterials.delete(obj.uuid);
-  }
-}
 
 function renderPixelRatio(renderer) {
   return renderer.getPixelRatio() * RENDER_RESOLUTION_SCALE;
@@ -49,81 +27,37 @@ function fxaaResolution(renderer, w, h) {
   return new THREE.Vector2(1 / (w * pr), 1 / (h * pr));
 }
 
-const mixShader = {
-  uniforms: {
-    baseTexture: { value: null },
-    bloomTexture: { value: null },
-  },
-  vertexShader: `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform sampler2D baseTexture;
-    uniform sampler2D bloomTexture;
-    varying vec2 vUv;
-    void main() {
-      vec4 base = texture2D(baseTexture, vUv);
-      vec3 bloomCol = texture2D(bloomTexture, vUv).rgb;
-      float bloomAmt = max(bloomCol.r, max(bloomCol.g, bloomCol.b));
-      vec3 glow = vec3(1.0, 0.99, 0.96) * bloomAmt;
-      gl_FragColor = base + vec4(glow, 1.0);
-    }
-  `,
-};
-
-/** Base scene + selective troffer bloom + FXAA + VCR noise */
+/** One scene draw + threshold bloom + FXAA + VCR noise (no per-frame traverse) */
 export function createBloomPipeline(renderer, scene, camera) {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const pr = renderPixelRatio(renderer);
 
-  const basePass = new RenderPass(scene, camera);
-
-  const bloomComposer = new EffectComposer(renderer);
-  bloomComposer.renderToScreen = false;
-  bloomComposer.setPixelRatio(pr);
-  bloomComposer.setSize(w, h);
-  bloomComposer.addPass(basePass);
+  const composer = new EffectComposer(renderer);
+  composer.setPixelRatio(pr);
+  composer.setSize(w, h);
+  composer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(
     bloomResolution(renderer, w, h),
     BLOOM_STRENGTH,
     BLOOM_RADIUS,
     BLOOM_THRESHOLD,
   );
-  bloomComposer.addPass(bloomPass);
-
-  const finalComposer = new EffectComposer(renderer);
-  finalComposer.setPixelRatio(pr);
-  finalComposer.setSize(w, h);
-  finalComposer.addPass(new RenderPass(scene, camera));
-  const mixPass = new ShaderPass(new THREE.ShaderMaterial(mixShader), "baseTexture");
-  mixPass.needsSwap = true;
-  mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
-  finalComposer.addPass(mixPass);
+  composer.addPass(bloomPass);
   const fxaa = new ShaderPass(FXAAShader);
   fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
-  finalComposer.addPass(fxaa);
+  composer.addPass(fxaa);
   const noise = createFilmNoisePass();
   resizeFilmNoise(noise, w, h, pr);
-  finalComposer.addPass(noise);
+  composer.addPass(noise);
 
   return {
-    scene,
-    bloomComposer,
-    finalComposer,
+    composer,
     bloomPass,
     fxaa,
     noise,
     render() {
-      scene.traverse(darkenNonBloomed);
-      bloomComposer.render();
-      scene.traverse(restoreMaterials);
-      mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
-      finalComposer.render();
+      composer.render();
     },
   };
 }
@@ -131,11 +65,9 @@ export function createBloomPipeline(renderer, scene, camera) {
 export function resizeBloomPipeline(renderer, pipeline, w, h) {
   const pr = renderPixelRatio(renderer);
   renderer.setSize(w, h);
-  pipeline.bloomComposer.setPixelRatio(pr);
-  pipeline.bloomComposer.setSize(w, h);
+  pipeline.composer.setPixelRatio(pr);
+  pipeline.composer.setSize(w, h);
   pipeline.bloomPass.resolution.copy(bloomResolution(renderer, w, h));
-  pipeline.finalComposer.setPixelRatio(pr);
-  pipeline.finalComposer.setSize(w, h);
   pipeline.fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
   resizeFilmNoise(pipeline.noise, w, h, pr);
 }
