@@ -129,24 +129,8 @@ function panelOverlapsExisting(px, pz, panels) {
   return false;
 }
 
-function generatePanels(rng, room) {
-  const ox = room.cx * CHUNK;
-  const oz = room.cz * CHUNK;
-  const tileM = PANEL_SIZE;
-  const candidates = [];
-  const { tx0, tx1, tz0, tz1 } = chunkTileRange(ox, oz, CHUNK, tileM);
-
-  for (let tx = tx0; tx <= tx1; tx++) {
-    for (let tz = tz0; tz <= tz1; tz++) {
-      const { x: px, z: pz } = tileCenterLocal(tx, tz, ox, oz, tileM);
-      if (!panelBlocked(px, pz, room)) {
-        candidates.push({ x: px, z: pz, on: true, bright: 1 });
-      }
-    }
-  }
-
-  if (!candidates.length) return [];
-  return [rng.pick(candidates)];
+function generatePanels(_rng, _room) {
+  return [];
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
