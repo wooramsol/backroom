@@ -2,7 +2,6 @@ import * as THREE from "three";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  loadFloorOrFallback,
 } from "./textures.js";
 import { createGameMaterials } from "./gameMaterials.js";
 import { World } from "./world.js";
@@ -26,7 +25,7 @@ import {
   CAMERA_FAR,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
-import { formatBuildLabel } from "./version.js";
+import { updateFilmNoise } from "./filmNoise.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -72,8 +71,7 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const floorTex = await loadFloorOrFallback(loader);
-  const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
+  const materials = createGameMaterials(wallpaper, surfaceTex);
 
   const world = new World(scene, materials);
   const player = new Player(camera, renderer.domElement);
@@ -180,6 +178,7 @@ async function init() {
     }
 
     pipeline.render();
+    updateFilmNoise(pipeline.noise, lightT);
 
     if (!world.preloading) {
       const elapsed = performance.now() - frameStart;

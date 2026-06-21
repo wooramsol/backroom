@@ -339,12 +339,12 @@ function shapePassesValidation(shape, doors) {
 
 function pickValidShape(rng, cx, cz) {
   const doors = chunkDoors(cx, cz);
-  for (let attempt = 0; attempt < 64; attempt++) {
+  for (let attempt = 0; attempt < 96; attempt++) {
     const shape = buildPseudoRoom(rng, doorSpec);
     if (shapePassesValidation(shape, doors)) return shape;
   }
   const fallbackRng = createRng(cx, cz, 99);
-  for (let attempt = 0; attempt < 64; attempt++) {
+  for (let attempt = 0; attempt < 96; attempt++) {
     const shape = buildPseudoRoom(fallbackRng, doorSpec);
     if (shapePassesValidation(shape, doors)) return shape;
   }

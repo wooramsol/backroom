@@ -319,7 +319,43 @@ export function createCarpetTexture() {
   });
 }
 
-/** Store tile physical size for floor carpet asset */
+/** Add very light acoustic-ceiling grain — tileable, deterministic */
+export function enrichSurfaceTexture(tex) {
+  const img = tex.image;
+  if (!img?.width || !img?.height) return tex;
+
+  const w = img.width;
+  const h = img.height;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h);
+  const px = data.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const hash = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+      const n = (hash - Math.floor(hash) - 0.5) * 10;
+      px[i] = Math.min(255, Math.max(0, px[i] + n));
+      px[i + 1] = Math.min(255, Math.max(0, px[i + 1] + n * 0.95));
+      px[i + 2] = Math.min(255, Math.max(0, px[i + 2] + n * 0.85));
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+
+  const enriched = new THREE.CanvasTexture(canvas);
+  enriched.wrapS = enriched.wrapT = THREE.RepeatWrapping;
+  enriched.colorSpace = THREE.SRGBColorSpace;
+  enriched.minFilter = THREE.LinearFilter;
+  enriched.generateMipmaps = false;
+  enriched.userData.tileW = tex.userData?.tileW ?? SURFACE_TILE_M;
+  enriched.userData.tileH = tex.userData?.tileH ?? SURFACE_TILE_M;
+  return enriched;
+}
+
+/** @deprecated floor uses baked surface UVs */
 export function applyFloorTileSize(tex) {
   tex.userData.tileW = FLOOR_TILE_M;
   tex.userData.tileH = FLOOR_TILE_M;
@@ -375,7 +411,7 @@ export function loadSurface(loader) {
         tex.minFilter = THREE.LinearFilter;
         tex.generateMipmaps = false;
         applySurfaceTileSize(tex);
-        resolve(tex);
+        resolve(enrichSurfaceTexture(tex));
       },
       undefined,
       reject,

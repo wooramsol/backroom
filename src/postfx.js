@@ -4,6 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 import { RENDER_RESOLUTION_SCALE } from "./constants.js";
+import { createFilmNoisePass } from "./filmNoise.js";
 
 function renderPixelRatio(renderer) {
   return renderer.getPixelRatio() * RENDER_RESOLUTION_SCALE;
@@ -25,7 +26,9 @@ export function createBloomPipeline(renderer, scene, camera) {
   const fxaa = new ShaderPass(FXAAShader);
   fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
   composer.addPass(fxaa);
-  return { composer, fxaa, render() { composer.render(); } };
+  const noise = createFilmNoisePass();
+  composer.addPass(noise);
+  return { composer, fxaa, noise, render() { composer.render(); } };
 }
 
 export function resizeBloomPipeline(renderer, pipeline, w, h) {
