@@ -9,7 +9,7 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { createTiledMaterial, createSurfaceMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
+import { createTiledMaterial, createWallBoxMaterials, createSurfaceMaterial, tiledAt, CEILING_TILE_M } from "./textures.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
@@ -20,40 +20,21 @@ const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
 
-/** Door jamb planes — floor texture, avoids box face-index mistakes */
-function addDoorJambs(group, floorTex, axis, pos, mid, dw, segY, segH, roomWx, roomWz) {
-  const y = segY + segH / 2;
+function doorJambFaceIndex(axis, side) {
+  if (axis === "z") return side === "left" ? 0 : 1;
+  return side === "left" ? 4 : 5;
+}
+
+/** 문 위쪽 한 면만 바닥 텍스처 */
+function addDoorTopJamb(group, floorTex, axis, pos, mid, doorW, roomWx, roomWz) {
   const t = WALL_T;
-  const ht = t * 0.5;
-  const eps = 0.002;
-  const lo = mid - dw;
-  const hi = mid + dw;
-
-  const jambPlane = (w, h, lx, lz, rotY) => {
-    const wx = roomWx + lx;
-    const wz = roomWz + lz;
-    const map = tiledAt(floorTex, CEILING_TILE_M, w, h, wx, wz);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), createSurfaceMaterial(map));
-    m.position.set(lx, y, lz);
-    m.rotation.y = rotY;
-    group.add(m);
-  };
-
-  if (axis === "z") {
-    jambPlane(t, segH, lo + eps, pos, Math.PI / 2);
-    jambPlane(t, segH, hi - eps, pos, -Math.PI / 2);
-    jambPlane(t, segH, lo, pos - ht, 0);
-    jambPlane(t, segH, lo, pos + ht, Math.PI);
-    jambPlane(t, segH, hi, pos - ht, 0);
-    jambPlane(t, segH, hi, pos + ht, Math.PI);
-  } else {
-    jambPlane(t, segH, pos, lo + eps, 0);
-    jambPlane(t, segH, pos, hi - eps, Math.PI);
-    jambPlane(t, segH, pos - ht, lo, -Math.PI / 2);
-    jambPlane(t, segH, pos + ht, lo, Math.PI / 2);
-    jambPlane(t, segH, pos - ht, hi, -Math.PI / 2);
-    jambPlane(t, segH, pos + ht, hi, Math.PI / 2);
-  }
+  const eps = 0.004;
+  const map = tiledAt(floorTex, CEILING_TILE_M, doorW, t, roomWx + mid, roomWz + pos);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(doorW, t), createSurfaceMaterial(map));
+  m.rotation.x = -Math.PI / 2;
+  if (axis === "z") m.position.set(mid, DOOR_H + eps, pos);
+  else m.position.set(pos, DOOR_H + eps, mid);
+  group.add(m);
 }
 
 function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, roomWz) {
@@ -61,7 +42,7 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, r
   const dw = door ? door.width / 2 : 0;
 
   const cap = WALL_T * 0.5;
-  const add = (s0, s1, segH, segY, capStart = true, capEnd = true) => {
+  const add = (s0, s1, segH, segY, capStart = true, capEnd = true, jambSide = null) => {
     const es0 = capStart ? s0 - cap : s0;
     const es1 = capEnd ? s1 + cap : s1;
     const slen = es1 - es0;
@@ -71,16 +52,32 @@ function wallSeg(group, wallTex, floorTex, h, axis, pos, a0, a1, door, roomWx, r
       axis === "z"
         ? new THREE.BoxGeometry(slen, segH, WALL_T)
         : new THREE.BoxGeometry(WALL_T, segH, slen);
-    const m = new THREE.Mesh(geo, createTiledMaterial(wallTex, slen, segH));
+    let mat = createTiledMaterial(wallTex, slen, segH);
+    if (jambSide) {
+      const lo = mid - dw;
+      const hi = mid + dw;
+      const jx = axis === "z" ? roomWx + (jambSide === "left" ? lo : hi) : roomWx + pos;
+      const jz = axis === "z" ? roomWz + pos : roomWz + (jambSide === "left" ? lo : hi);
+      mat = createWallBoxMaterials(
+        wallTex,
+        floorTex,
+        slen,
+        segH,
+        doorJambFaceIndex(axis, jambSide),
+        jx,
+        jz,
+      );
+    }
+    const m = new THREE.Mesh(geo, mat);
     if (axis === "z") m.position.set(smid, segY + segH / 2, pos);
     else m.position.set(pos, segY + segH / 2, smid);
     group.add(m);
   };
 
   if (door) {
-    add(a0, mid - dw, DOOR_H, 0, true, false);
-    add(mid + dw, a1, DOOR_H, 0, false, true);
-    addDoorJambs(group, floorTex, axis, pos, mid, dw, 0, DOOR_H, roomWx, roomWz);
+    add(a0, mid - dw, DOOR_H, 0, true, false, "left");
+    add(mid + dw, a1, DOOR_H, 0, false, true, "right");
+    addDoorTopJamb(group, floorTex, axis, pos, mid, dw * 2, roomWx, roomWz);
     add(a0, a1, h - DOOR_H, DOOR_H, true, true);
   } else {
     add(a0, a1, h, 0, true, true);
