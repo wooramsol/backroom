@@ -18,6 +18,17 @@ export function cloneWallBox(axis, slen, segH, wallT = WALL_T) {
   return base.clone();
 }
 
+/** Bake wallpaper UVs aligned to world metres (material repeat 1×1) */
+export function bakePlaneWallUV(geo, widthM, heightM, tileW, tileH, worldU0, worldV0) {
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) {
+    const u = (worldU0 + uv.getX(i) * widthM) / tileW;
+    const v = (worldV0 + uv.getY(i) * heightM) / tileH;
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+}
+
 /** Bake wallpaper repeat into UVs for a merged wall material (repeat 1×1) */
 export function bakeWallUV(geo, spanU, spanV, tileW, tileH) {
   const uv = geo.attributes.uv;

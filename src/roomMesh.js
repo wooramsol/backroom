@@ -9,9 +9,10 @@ import {
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
-import { tiledAt, CEILING_TILE_M } from "./textures.js";
+import { tiledAt, CEILING_TILE_M, WALL_TILE_W } from "./textures.js";
 import { createChunkFloorMaterial } from "./gameMaterials.js";
 import { buildMergedWallGeometry } from "./wallBuilder.js";
+import { bakePlaneWallUV } from "./geometryPool.js";
 
 const _tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
 _tileGeo.userData.shared = true;
@@ -23,8 +24,6 @@ const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 _chunkPlane.userData.shared = true;
 const _jambSideGeo = new THREE.PlaneGeometry(WALL_T, DOOR_H);
 _jambSideGeo.userData.shared = true;
-const _jambTopGeo = new THREE.PlaneGeometry(1, WALL_T);
-_jambTopGeo.userData.shared = true;
 const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _panelRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _pos = new THREE.Vector3();
@@ -32,13 +31,18 @@ const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
 const JAMB_INSET = 0.01;
 
-function addDoorJambTrim(group, jambMat, axis, pos, mid, dw) {
+function addDoorJambTrim(group, wallMat, wallTex, axis, pos, mid, dw, roomWx, roomWz) {
   const lo = mid - dw;
   const hi = mid + dw;
+  const doorW = dw * 2;
   const yMid = DOOR_H * 0.5;
+  const tileW = wallTex.userData?.tileW ?? WALL_TILE_W;
+  const tileH = wallTex.userData?.tileH ?? WALL_TILE_W;
 
-  const placeSide = (along, rotY) => {
-    const m = new THREE.Mesh(_jambSideGeo, jambMat);
+  const placeSide = (along, rotY, worldU0, worldV0) => {
+    const geo = _jambSideGeo.clone();
+    bakePlaneWallUV(geo, WALL_T, DOOR_H, tileW, tileH, worldU0, worldV0);
+    const m = new THREE.Mesh(geo, wallMat);
     m.rotation.y = rotY;
     m.renderOrder = 1;
     if (axis === "z") m.position.set(along, yMid, pos);
@@ -46,8 +50,13 @@ function addDoorJambTrim(group, jambMat, axis, pos, mid, dw) {
     group.add(m);
   };
 
-  const top = new THREE.Mesh(_jambTopGeo, jambMat);
-  top.scale.x = dw * 2;
+  const topGeo = new THREE.PlaneGeometry(doorW, WALL_T);
+  if (axis === "z") {
+    bakePlaneWallUV(topGeo, doorW, WALL_T, tileW, tileH, roomWx + lo, DOOR_H - JAMB_INSET);
+  } else {
+    bakePlaneWallUV(topGeo, doorW, WALL_T, tileW, tileH, roomWz + lo, DOOR_H - JAMB_INSET);
+  }
+  const top = new THREE.Mesh(topGeo, wallMat);
   top.rotation.x = -Math.PI / 2;
   top.renderOrder = 1;
   if (axis === "z") top.position.set(mid, DOOR_H - JAMB_INSET, pos);
@@ -55,21 +64,23 @@ function addDoorJambTrim(group, jambMat, axis, pos, mid, dw) {
   group.add(top);
 
   if (axis === "z") {
-    placeSide(lo + JAMB_INSET, Math.PI / 2);
-    placeSide(hi - JAMB_INSET, -Math.PI / 2);
+    const wz = roomWz + pos;
+    placeSide(lo + JAMB_INSET, Math.PI / 2, wz - WALL_T * 0.5, 0);
+    placeSide(hi - JAMB_INSET, -Math.PI / 2, wz - WALL_T * 0.5, 0);
   } else {
-    placeSide(lo + JAMB_INSET, 0);
-    placeSide(hi - JAMB_INSET, Math.PI);
+    const wx = roomWx + pos;
+    placeSide(lo + JAMB_INSET, 0, wx - WALL_T * 0.5, 0);
+    placeSide(hi - JAMB_INSET, Math.PI, wx - WALL_T * 0.5, 0);
   }
 }
 
-function addMergedWalls(group, room, materials, h) {
+function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
   const { geometry, jambs } = buildMergedWallGeometry(room, materials.wallTex, h);
   if (geometry) {
     group.add(new THREE.Mesh(geometry, materials.wall));
   }
   for (const j of jambs) {
-    addDoorJambTrim(group, materials.jamb, j.axis, j.pos, j.mid, j.dw);
+    addDoorJambTrim(group, materials.wall, materials.wallTex, j.axis, j.pos, j.mid, j.dw, roomWx, roomWz);
   }
 }
 
@@ -163,7 +174,7 @@ export function buildRoomShell(state) {
 
   addFloor(group, materials, state.worldX, state.worldZ);
   addCeilingTiles(group, h, materials, state.worldX, state.worldZ, room.panels);
-  addMergedWalls(group, room, materials, h);
+  addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
   addLightPanels(group, materials, h, room.panels);
   state.shellDone = true;
 }

@@ -3,10 +3,10 @@ import {
   createCeilingGapMaterial,
   createCeilingTileFaceTexture,
   createCeilingTileMaterial,
-  createDoorJambMaterial,
   createBakedWallMaterial,
   tiledAt,
   CEILING_TILE_M,
+  WALL_TILE_W,
 } from "./textures.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
@@ -22,7 +22,6 @@ export function createGameMaterials(wallpaper, surfaceTex) {
     carpet,
     ceilingGroove: createCeilingGapMaterial(),
     ceilingTile: createCeilingTileMaterial(carpetTileTex),
-    jamb: createDoorJambMaterial(carpet, carpetTileTex),
     lightPanelOn: new THREE.MeshBasicMaterial({
       color: panelOnColor,
       toneMapped: false,
