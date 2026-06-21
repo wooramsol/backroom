@@ -5,6 +5,10 @@ import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, C
 export const WALLPAPER_URL = "./assets/wallpaper2.jpg";
 /** User floor/ceiling surface */
 export const BOTTOM_URL = "./assets/bottom2.jpg";
+/** User floor carpet */
+export const CARPET_URL = "./assets/carpet.jpg";
+/** One floor carpet repeat in world space (30 cm × 30 cm) */
+export const FLOOR_TILE_M = 0.3;
 /** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
 /** @deprecated */ export const CEILING_URL = BOTTOM_URL;
 export const WALL_TILE_SCALE = 0.8;
@@ -315,6 +319,13 @@ export function createCarpetTexture() {
   });
 }
 
+/** Store tile physical size for floor carpet asset */
+export function applyFloorTileSize(tex) {
+  tex.userData.tileW = FLOOR_TILE_M;
+  tex.userData.tileH = FLOOR_TILE_M;
+  return tex;
+}
+
 /** Store tile physical size for floor/ceiling asset */
 export function applySurfaceTileSize(tex) {
   tex.userData.tileW = SURFACE_TILE_M;
@@ -324,6 +335,34 @@ export function applySurfaceTileSize(tex) {
 
 /** @deprecated */ export function applyCeilingTileSize(tex) {
   return applySurfaceTileSize(tex);
+}
+
+export function loadFloor(loader) {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      CARPET_URL,
+      (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        applyFloorTileSize(tex);
+        resolve(tex);
+      },
+      undefined,
+      reject,
+    );
+  });
+}
+
+export async function loadFloorOrFallback(loader) {
+  try {
+    return await loadFloor(loader);
+  } catch {
+    const tex = createCarpetTexture();
+    applyFloorTileSize(tex);
+    return tex;
+  }
 }
 
 export function loadSurface(loader) {

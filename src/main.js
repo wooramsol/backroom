@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
+  loadFloorOrFallback,
 } from "./textures.js";
 import { createGameMaterials } from "./gameMaterials.js";
 import { World } from "./world.js";
@@ -22,6 +23,7 @@ import {
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
+  CAMERA_FAR,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
@@ -58,7 +60,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(FOG_COLOR);
 scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
-const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
+const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
@@ -70,7 +72,8 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const materials = createGameMaterials(wallpaper, surfaceTex);
+  const floorTex = await loadFloorOrFallback(loader);
+  const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
 
   const world = new World(scene, materials);
   const player = new Player(camera, renderer.domElement);
