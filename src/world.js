@@ -11,7 +11,7 @@ import {
   finalizeRoomBuild,
   buildRoomMesh,
 } from "./roomMesh.js";
-import { flushDisposeQueue } from "./sceneDispose.js";
+import { flushDisposeQueue, disposeChunkRoot } from "./sceneDispose.js";
 
 const PANELS_PER_FRAME = 8;
 const PRELOAD_BATCH = 2;
@@ -33,6 +33,26 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
+    this._lightFixtures = [];
+    this._lightFixturesDirty = true;
+    this._lastColliderRebuild = 0;
+  }
+
+  _markLightFixturesDirty() {
+    this._lightFixturesDirty = true;
+  }
+
+  _rebuildLightFixtures() {
+    const out = [];
+    for (const { room } of this.chunks.values()) {
+      if (room?.lightFixtures?.length) {
+        out.push(...room.lightFixtures);
+      } else if (room?.lightFixture) {
+        out.push(room.lightFixture);
+      }
+    }
+    this._lightFixtures = out;
+    this._lightFixturesDirty = false;
   }
 
   key(cx, cz) {
@@ -123,6 +143,7 @@ export class World {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     this.chunks.set(k, { mesh: build.group, room });
+    this._markLightFixturesDirty();
   }
 
   spawnComplete(cx, cz) {
@@ -131,6 +152,7 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
+    this._markLightFixturesDirty();
   }
 
   despawn(k) {
@@ -143,7 +165,7 @@ export class World {
     }
     this.chunks.delete(k);
     this.pendingColliderRebuild = true;
-    flushDisposeQueue(this.disposeQueue);
+    this._markLightFixturesDirty();
   }
 
   enqueue(cx, cz, playerPos) {
@@ -216,7 +238,6 @@ export class World {
     if (job.build?.group) {
       this.scene.remove(job.build.group);
       this.disposeQueue.push(job.build.group);
-      flushDisposeQueue(this.disposeQueue);
     }
     const room = generateRoom(job.cx, job.cz);
     this.addCollidersForRoom(room);
@@ -224,43 +245,43 @@ export class World {
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
     this.pendingKeys.delete(k);
+    this._markLightFixturesDirty();
   }
 
-  processLoadQueue(playerPos, budgetMs) {
-    const t0 = performance.now();
-    while (this.loadQueue.length && performance.now() - t0 < budgetMs) {
-      const job = this.loadQueue[0];
-      const k = this.key(job.cx, job.cz);
+  processLoadQueue(playerPos, _budgetMs) {
+    if (!this.loadQueue.length) return;
 
-      if (!job.room) {
-        job.room = generateRoom(job.cx, job.cz);
-        job.build = createRoomBuildState(job.room, this.materials);
-        this.addCollidersForRoom(job.room);
-      }
+    const job = this.loadQueue[0];
+    const k = this.key(job.cx, job.cz);
 
-      if (!job.build.shellDone) {
-        buildRoomShell(job.build);
-        this.scene.add(job.build.group);
-      }
-
-      const done = buildPanelBatch(job.build, PANELS_PER_FRAME);
-      if (done) {
-        if (this._isPrefetchOnly(job.cx, job.cz, playerPos)) {
-          this._finishPrefetchJob(job);
-        } else {
-          this.attachChunk(job.cx, job.cz, job.room, job.build);
-        }
-        this.loadQueue.shift();
-        this.pendingKeys.delete(k);
-      } else {
-        break;
-      }
+    if (!job.room) {
+      job.room = generateRoom(job.cx, job.cz);
+      job.build = createRoomBuildState(job.room, this.materials);
+      this.addCollidersForRoom(job.room);
+      return;
     }
+
+    if (!job.build.shellDone) {
+      buildRoomShell(job.build);
+      this.scene.add(job.build.group);
+      return;
+    }
+
+    const done = buildPanelBatch(job.build, PANELS_PER_FRAME);
+    if (!done) return;
+
+    if (this._isPrefetchOnly(job.cx, job.cz, playerPos)) {
+      this._finishPrefetchJob(job);
+    } else {
+      this.attachChunk(job.cx, job.cz, job.room, job.build);
+    }
+    this.loadQueue.shift();
+    this.pendingKeys.delete(k);
   }
 
   tick(dt) {
     this.time += dt;
-    if (this.disposeQueue.length) flushDisposeQueue(this.disposeQueue);
+    if (this.disposeQueue.length) disposeChunkRoot(this.disposeQueue.shift());
   }
 
   getColliders() {
@@ -268,19 +289,16 @@ export class World {
   }
 
   getLightFixtures() {
-    const out = [];
-    for (const { room } of this.chunks.values()) {
-      if (room?.lightFixtures?.length) {
-        out.push(...room.lightFixtures);
-      } else if (room?.lightFixture) {
-        out.push(room.lightFixture);
-      }
-    }
-    return out;
+    if (this._lightFixturesDirty) this._rebuildLightFixtures();
+    return this._lightFixtures;
   }
 
   flushColliders() {
-    if (this.pendingColliderRebuild) this.rebuildColliders();
+    if (!this.pendingColliderRebuild) return;
+    const now = performance.now();
+    if (now - (this._lastColliderRebuild ?? 0) < 120) return;
+    this.rebuildColliders();
+    this._lastColliderRebuild = now;
   }
 
   _spawnChunkComplete(cx, cz) {
@@ -291,6 +309,7 @@ export class World {
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
     this.pendingKeys.delete(k);
+    this._markLightFixturesDirty();
   }
 
   _spawnChunkSafe(cx, cz) {

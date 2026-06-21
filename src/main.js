@@ -160,18 +160,18 @@ async function init() {
 
   const clock = new THREE.Clock();
   let lightT = 0;
-  const TARGET_FRAME_MS = 16.7;
 
   function animate() {
     requestAnimationFrame(animate);
-    const frameStart = performance.now();
     const dt = Math.min(clock.getDelta(), 0.05);
     lightT += dt;
 
     world.tick(dt);
     if (!world.preloading) {
       world.update(player.position);
-      lightPool.update(world.getLightFixtures(), camera);
+      if (started) {
+        lightPool.update(world.getLightFixtures(), camera);
+      }
       if (world.consumeColliderRebuild()) {
         world.flushColliders();
         player.setColliders(world.getColliders());
@@ -191,10 +191,8 @@ async function init() {
       renderer.render(scene, camera);
     }
 
-    if (!world.preloading) {
-      const elapsed = performance.now() - frameStart;
-      const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
-      world.processLoadQueue(player.position, loadBudget);
+    if (!world.preloading && started) {
+      world.processLoadQueue(player.position);
     }
   }
 

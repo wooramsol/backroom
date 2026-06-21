@@ -8,7 +8,7 @@ export const FilmNoiseShader = {
     time: { value: 0 },
     resolution: { value: new THREE.Vector2(1280, 720) },
     intensity: { value: 0.16 },
-    blurAmount: { value: 0.58 },
+    blurAmount: { value: 0.42 },
     wobble: { value: 0.0022 },
   },
   vertexShader: /* glsl */ `
@@ -33,14 +33,12 @@ export const FilmNoiseShader = {
 
     vec4 sampleBlur(vec2 uv) {
       vec2 px = 1.0 / resolution;
-      vec4 c = texture2D(tDiffuse, uv) * 2.0;
+      vec4 c = texture2D(tDiffuse, uv);
       c += texture2D(tDiffuse, uv + vec2(px.x, 0.0));
       c += texture2D(tDiffuse, uv - vec2(px.x, 0.0));
       c += texture2D(tDiffuse, uv + vec2(0.0, px.y));
       c += texture2D(tDiffuse, uv - vec2(0.0, px.y));
-      c += texture2D(tDiffuse, uv + px);
-      c += texture2D(tDiffuse, uv - px);
-      return c / 8.0;
+      return c * 0.2;
     }
 
     void main() {
