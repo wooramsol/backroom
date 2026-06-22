@@ -1,30 +1,60 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { WALL_T } from "../../constants.js";
 import { collectRoomWallSegments } from "./wallSegments.js";
-import {
-  segmentsToFootprint,
-  footprintBoundaryEdges,
-  mergeBoundaryEdges,
-} from "./WallFootprint.js";
+import { segmentsToFootprint, segmentToRect } from "./WallFootprint.js";
 import { validateWallMesh, repairFootprint } from "./WallQuality.js";
 import { bakeWorldWallUVBuffer } from "./WorldWallUV.js";
 
 const SNAP = 1e-4;
 
-function vtxKey(x, y, z, nx, nz) {
-  const rx = Math.round(x / SNAP) * SNAP;
-  const ry = Math.round(y / SNAP) * SNAP;
-  const rz = Math.round(z / SNAP) * SNAP;
-  const sx = nx < -0.5 ? -1 : nx > 0.5 ? 1 : 0;
-  const sz = nz < -0.5 ? -1 : nz > 0.5 ? 1 : 0;
-  return `${rx},${ry},${rz},${sx},${sz}`;
+function rectToLoop(r) {
+  return [
+    [r.x0, r.z0],
+    [r.x1, r.z0],
+    [r.x1, r.z1],
+    [r.x0, r.z1],
+  ];
+}
+
+function loopToShape(loop) {
+  const shape = new THREE.Shape();
+  shape.moveTo(loop[0][0], loop[0][1]);
+  for (let i = 1; i < loop.length; i++) shape.lineTo(loop[i][0], loop[i][1]);
+  shape.closePath();
+  return shape;
+}
+
+function loopToPath(loop) {
+  const path = new THREE.Path();
+  path.moveTo(loop[0][0], loop[0][1]);
+  for (let i = 1; i < loop.length; i++) path.lineTo(loop[i][0], loop[i][1]);
+  path.closePath();
+  return path;
+}
+
+function extrudeFootprint(outer, holes, height) {
+  if (!outer || outer.length < 3) return null;
+
+  const shape = loopToShape(outer);
+  shape.holes = holes.filter((h) => h.length >= 3).map(loopToPath);
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: height,
+    bevelEnabled: false,
+    steps: 1,
+    curveSegments: 1,
+  });
+  geo.rotateX(-Math.PI / 2);
+  geo.scale(1, 1, -1);
+  return stripHorizontalCaps(geo);
 }
 
 /**
- * Step 1 wall pipeline — footprint union shell, no BoxGeometry.
- * Corners keep separate vertices per face normal so UV wraps cleanly.
+ * Solid WALL_T prism per wall run, merged into one continuous mesh.
+ * Overlapping corners/end joints weld into closed architectural volumes.
  */
-export function buildContinuousWallGeometry(
+export function buildSolidWallGeometry(
   segments,
   height,
   roomWx,
@@ -35,68 +65,32 @@ export function buildContinuousWallGeometry(
 ) {
   if (!segments.length || height < SNAP) return null;
 
-  let cells = segmentsToFootprint(segments);
+  const cells = segmentsToFootprint(segments);
   if (!cells.length) return null;
 
   let issues = options.room ? validateWallMesh(options.room, segments, cells) : [];
   if (issues.some((i) => i.kind === "protrusion")) {
-    cells = repairFootprint(cells);
-    issues = options.room ? validateWallMesh(options.room, segments, cells) : [];
+    const repaired = repairFootprint(cells);
+    issues = options.room ? validateWallMesh(options.room, segments, repaired) : [];
   }
 
-  const edges = mergeBoundaryEdges(footprintBoundaryEdges(cells));
-  if (!edges.length) return null;
-
-  const positions = [];
-  const indices = [];
-  const map = new Map();
-
-  const addV = (x, y, z, nx, nz) => {
-    const k = vtxKey(x, y, z, nx, nz);
-    if (map.has(k)) return map.get(k);
-    const i = positions.length / 3;
-    positions.push(x, y, z);
-    map.set(k, i);
-    return i;
-  };
-
-  const quad = (a, b, c, d, nx, nz) => {
-    const ia = addV(...a, nx, nz);
-    const ib = addV(...b, nx, nz);
-    const ic = addV(...c, nx, nz);
-    const id = addV(...d, nx, nz);
-    indices.push(ia, ib, ic, ia, ic, id);
-  };
-
-  for (const e of edges) {
-    const nx = e.axis === "x" ? e.sign : 0;
-    const nz = e.axis === "z" ? e.sign : 0;
-
-    if (e.axis === "x") {
-      const x = e.x0;
-      if (e.sign < 0) {
-        quad([x, 0, e.z0], [x, 0, e.z1], [x, height, e.z1], [x, height, e.z0], nx, nz);
-      } else {
-        quad([x, 0, e.z1], [x, 0, e.z0], [x, height, e.z0], [x, height, e.z1], nx, nz);
-      }
-    } else {
-      const z = e.z0;
-      if (e.sign < 0) {
-        quad([e.x0, 0, z], [e.x1, 0, z], [e.x1, height, z], [e.x0, height, z], nx, nz);
-      } else {
-        quad([e.x1, 0, z], [e.x0, 0, z], [e.x0, height, z], [e.x1, height, z], nx, nz);
-      }
-    }
+  const parts = [];
+  for (const seg of segments) {
+    if (seg.span1 - seg.span0 < 0.05) continue;
+    const g = extrudeFootprint(rectToLoop(segmentToRect(seg)), [], height);
+    if (g) parts.push(g);
   }
 
-  if (!indices.length) return null;
+  if (!parts.length) return null;
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geo.setIndex(indices);
+  let geo = parts.length === 1 ? parts[0] : mergeGeometries(parts, false);
+  for (const p of parts) {
+    if (p !== geo) p.dispose();
+  }
+
   geo.computeVertexNormals();
+  geo = removeDegenerateFaces(geo);
   bakeWorldWallUVBuffer(geo, roomWx, roomWz, tileW, tileH);
-  removeDegenerateFaces(geo);
 
   if (options.validate !== false && options.room && issues.length && options.onIssues) {
     options.onIssues(issues);
@@ -105,19 +99,61 @@ export function buildContinuousWallGeometry(
   return geo;
 }
 
+function stripHorizontalCaps(geo) {
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  const idx = geo.index;
+
+  const keepTri = (i0, i1, i2) => Math.abs(norm.getY(i0)) <= 0.85;
+
+  if (idx) {
+    const keep = [];
+    for (let t = 0; t < idx.count; t += 3) {
+      const i0 = idx.getX(t);
+      if (!keepTri(i0)) continue;
+      keep.push(i0, idx.getX(t + 1), idx.getX(t + 2));
+    }
+    if (keep.length === idx.count) return geo;
+    const out = geo.clone();
+    out.setIndex(keep);
+    geo.dispose();
+    return out;
+  }
+
+  const newPos = [];
+  const newNorm = [];
+  for (let i = 0; i < pos.count; i += 3) {
+    if (!keepTri(i)) continue;
+    for (let k = 0; k < 3; k++) {
+      newPos.push(pos.getX(i + k), pos.getY(i + k), pos.getZ(i + k));
+      newNorm.push(norm.getX(i + k), norm.getY(i + k), norm.getZ(i + k));
+    }
+  }
+
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(newPos, 3));
+  out.setAttribute("normal", new THREE.Float32BufferAttribute(newNorm, 3));
+  geo.dispose();
+  return out;
+}
+
+function forEachTriangle(geo, fn) {
+  const idx = geo.index;
+  if (idx) {
+    for (let t = 0; t < idx.count; t += 3) fn(idx.getX(t), idx.getX(t + 1), idx.getX(t + 2));
+  } else {
+    for (let i = 0; i < geo.attributes.position.count; i += 3) fn(i, i + 1, i + 2);
+  }
+}
+
 function removeDegenerateFaces(geo) {
   const pos = geo.attributes.position;
   const idx = geo.index;
-  if (!idx) return geo;
-
   const keep = [];
   const seen = new Set();
 
-  for (let t = 0; t < idx.count; t += 3) {
-    const ia = idx.getX(t);
-    const ib = idx.getX(t + 1);
-    const ic = idx.getX(t + 2);
-    if (ia === ib || ib === ic || ic === ia) continue;
+  forEachTriangle(geo, (ia, ib, ic) => {
+    if (ia === ib || ib === ic || ic === ia) return;
 
     const ax = pos.getX(ia);
     const ay = pos.getY(ia);
@@ -138,36 +174,87 @@ function removeDegenerateFaces(geo) {
     const nx = aby * acz - abz * acy;
     const ny = abz * acx - abx * acz;
     const nz = abx * acy - aby * acx;
-    if (nx * nx + ny * ny + nz * nz < 1e-12) continue;
+    if (nx * nx + ny * ny + nz * nz < 1e-12) return;
 
     const sk = [ia, ib, ic].sort((a, b) => a - b).join(",");
-    if (seen.has(sk)) continue;
+    if (seen.has(sk)) return;
     seen.add(sk);
     keep.push(ia, ib, ic);
+  });
+
+  if (!idx) {
+    const newNorm = geo.attributes.normal;
+    const newUv = geo.attributes.uv;
+    const newPos = [];
+    const norms = [];
+    const uvs = [];
+    for (let t = 0; t < keep.length; t += 3) {
+      for (const vi of [keep[t], keep[t + 1], keep[t + 2]]) {
+        newPos.push(pos.getX(vi), pos.getY(vi), pos.getZ(vi));
+        if (newNorm) norms.push(newNorm.getX(vi), newNorm.getY(vi), newNorm.getZ(vi));
+        if (newUv) uvs.push(newUv.getX(vi), newUv.getY(vi));
+      }
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.Float32BufferAttribute(newPos, 3));
+    if (norms.length) out.setAttribute("normal", new THREE.Float32BufferAttribute(norms, 3));
+    if (uvs.length) out.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geo.dispose();
+    return out;
   }
 
   if (keep.length !== idx.count) geo.setIndex(keep);
   return geo;
 }
 
+export function buildContinuousWallGeometry(segments, height, roomWx, roomWz, tileW, tileH, options) {
+  return buildSolidWallGeometry(segments, height, roomWx, roomWz, tileW, tileH, options);
+}
+
 export function buildRoomWallGeometry(room, wallTex, h, roomWx, roomWz) {
   const tileW = wallTex?.userData?.tileW ?? 0.76;
   const tileH = wallTex?.userData?.tileH ?? tileW;
-  const segments = collectRoomWallSegments(room);
-  return buildContinuousWallGeometry(segments, h, roomWx, roomWz, tileW, tileH, { room });
+  return buildSolidWallGeometry(collectRoomWallSegments(room), h, roomWx, roomWz, tileW, tileH, { room });
 }
 
 export function tileHFromWallTex(wallTex) {
   return wallTex?.userData?.tileH ?? 0.76;
 }
 
-/** QA helper — thin footprint axis must stay at WALL_T (no protrusion). */
 export function wallThicknessOK(cells) {
   for (const c of cells) {
-    const w = c.x1 - c.x0;
-    const d = c.z1 - c.z0;
-    const thin = Math.min(w, d);
-    if (thin > WALL_T + 0.03) return false;
+    if (Math.min(c.x1 - c.x0, c.z1 - c.z0) > WALL_T + 0.03) return false;
   }
   return true;
+}
+
+export function countThicknessFaces(geo) {
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  let n = 0;
+
+  forEachTriangle(geo, (ia, ib, ic) => {
+    const ny = Math.abs(norm.getY(ia));
+    if (ny > 0.5) return;
+
+    const ax = Math.abs(norm.getX(ia));
+    const az = Math.abs(norm.getZ(ia));
+    const xs = [pos.getX(ia), pos.getX(ib), pos.getX(ic)];
+    const ys = [pos.getY(ia), pos.getY(ib), pos.getY(ic)];
+    const zs = [pos.getZ(ia), pos.getZ(ib), pos.getZ(ic)];
+    const dx = Math.max(...xs) - Math.min(...xs);
+    const dz = Math.max(...zs) - Math.min(...zs);
+    const dy = Math.max(...ys) - Math.min(...ys);
+    if (dy < 0.5) return;
+
+    if (ax > az) {
+      if (dz > 0.04 && dz < WALL_T + 0.08) n++;
+    } else if (dz > 0.04 && dz < WALL_T + 0.08) {
+      n++;
+    } else if (dx > 0.04 && dx < WALL_T + 0.08) {
+      n++;
+    }
+  });
+
+  return n;
 }

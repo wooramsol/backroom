@@ -113,122 +113,235 @@ function mergeCells(cells) {
   return merged;
 }
 
-function cellKey(c) {
-  return `${c.x0.toFixed(5)},${c.z0.toFixed(5)},${c.x1.toFixed(5)},${c.z1.toFixed(5)}`;
-}
-
-function hasNeighbor(cells, c, side) {
-  for (const o of cells) {
-    if (o === c) continue;
-    if (side === "west" && Math.abs(o.x1 - c.x0) < EPS) {
-      if (o.z0 < c.z1 - EPS && o.z1 > c.z0 + EPS) return true;
-    }
-    if (side === "east" && Math.abs(o.x0 - c.x1) < EPS) {
-      if (o.z0 < c.z1 - EPS && o.z1 > c.z0 + EPS) return true;
-    }
-    if (side === "north" && Math.abs(o.z1 - c.z0) < EPS) {
-      if (o.x0 < c.x1 - EPS && o.x1 > c.x0 + EPS) return true;
-    }
-    if (side === "south" && Math.abs(o.z0 - c.z1) < EPS) {
-      if (o.x0 < c.x1 - EPS && o.x1 > c.x0 + EPS) return true;
-    }
-  }
-  return false;
+function edgeKey(x0, z0, x1, z1) {
+  const ax = x0.toFixed(5);
+  const az = z0.toFixed(5);
+  const bx = x1.toFixed(5);
+  const bz = z1.toFixed(5);
+  if (ax > bx || (ax === bx && az > bz)) return `${bx},${bz},${ax},${az}`;
+  return `${ax},${az},${bx},${bz}`;
 }
 
 /**
- * Boundary edges of the union footprint — each becomes one vertical wallpaper face.
- * Returns { x0, z0, x1, z1, axis: "x"|"z", sign: ±1 } where axis is face normal axis.
+ * Undirected boundary edges of the solid footprint (internal edges cancel).
+ * Each edge is a wall face at constant thickness — includes end caps and corners.
  */
-export function footprintBoundaryEdges(cells) {
-  const edges = [];
-  const edgeSeen = new Set();
+export function footprintOutlineEdges(cells) {
+  const counts = new Map();
+  const directed = new Map();
 
-  const addEdge = (x0, z0, x1, z1, axis, sign) => {
+  const add = (x0, z0, x1, z1) => {
     if (Math.hypot(x1 - x0, z1 - z0) < EPS) return;
-    const k = `${axis}|${sign}|${x0.toFixed(5)},${z0.toFixed(5)},${x1.toFixed(5)},${z1.toFixed(5)}`;
-    if (edgeSeen.has(k)) return;
-    edgeSeen.add(k);
-    edges.push({ x0, z0, x1, z1, axis, sign });
+    const k = edgeKey(x0, z0, x1, z1);
+    const prev = counts.get(k) || 0;
+    counts.set(k, prev + 1);
+    if (prev === 0) directed.set(k, { x0, z0, x1, z1 });
   };
 
   for (const c of cells) {
-    if (!hasNeighbor(cells, c, "west")) {
-      addEdge(c.x0, c.z0, c.x0, c.z1, "x", -1);
-    }
-    if (!hasNeighbor(cells, c, "east")) {
-      addEdge(c.x1, c.z0, c.x1, c.z1, "x", 1);
-    }
-    if (!hasNeighbor(cells, c, "north")) {
-      addEdge(c.x0, c.z0, c.x1, c.z0, "z", -1);
-    }
-    if (!hasNeighbor(cells, c, "south")) {
-      addEdge(c.x0, c.z1, c.x1, c.z1, "z", 1);
-    }
+    add(c.x0, c.z0, c.x1, c.z0);
+    add(c.x1, c.z0, c.x1, c.z1);
+    add(c.x1, c.z1, c.x0, c.z1);
+    add(c.x0, c.z1, c.x0, c.z0);
   }
 
+  const edges = [];
+  for (const [k, n] of counts) {
+    if (n !== 1) continue;
+    edges.push(directed.get(k));
+  }
   return edges;
 }
 
-/** Merge colinear boundary segments on the same line — fewer faces, no corner change. */
-export function mergeBoundaryEdges(edges) {
-  const buckets = new Map();
+const ptKey = (x, z) => `${x.toFixed(5)},${z.toFixed(5)}`;
 
-  for (const e of edges) {
-    const key = `${e.axis}|${e.sign}`;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(e);
-  }
+function edgeAxis(e) {
+  if (Math.abs(e.z1 - e.z0) < EPS) return "h";
+  if (Math.abs(e.x1 - e.x0) < EPS) return "v";
+  return null;
+}
 
-  const merged = [];
+/** Merge collinear boundary segments that share an endpoint (grid subdivision artifacts). */
+function mergeCollinearEdges(edges) {
+  let list = edges.map((e) => ({ x0: e.x0, z0: e.z0, x1: e.x1, z1: e.z1 }));
+  let changed = true;
 
-  for (const [, group] of buckets) {
-    if (group[0].axis === "x") {
-      const byX = new Map();
-      for (const e of group) {
-        const xk = e.x0.toFixed(5);
-        if (!byX.has(xk)) byX.set(xk, []);
-        byX.get(xk).push(e);
+  while (changed) {
+    changed = false;
+    const adj = new Map();
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      const sk = ptKey(e.x0, e.z0);
+      const ek = ptKey(e.x1, e.z1);
+      if (!adj.has(sk)) adj.set(sk, []);
+      if (!adj.has(ek)) adj.set(ek, []);
+      adj.get(sk).push(i);
+      adj.get(ek).push(i);
+    }
+
+    outer: for (const [pk, idxs] of adj) {
+      if (idxs.length !== 2) continue;
+      const [i, j] = idxs;
+      const a = list[i];
+      const b = list[j];
+      const axis = edgeAxis(a);
+      if (!axis || axis !== edgeAxis(b)) continue;
+
+      const uniq = new Map();
+      for (const [x, z] of [
+        [a.x0, a.z0],
+        [a.x1, a.z1],
+        [b.x0, b.z0],
+        [b.x1, b.z1],
+      ]) {
+        uniq.set(ptKey(x, z), [x, z]);
       }
-      for (const [, xs] of byX) {
-        xs.sort((a, b) => a.z0 - b.z0);
-        let cur = { ...xs[0] };
-        for (let i = 1; i < xs.length; i++) {
-          const e = xs[i];
-          if (Math.abs(e.z0 - cur.z1) < EPS) cur.z1 = e.z1;
-          else {
-            merged.push(cur);
-            cur = { ...e };
-          }
-        }
-        merged.push(cur);
+      if (uniq.size !== 3) continue;
+
+      const pts = [...uniq.values()];
+      if (axis === "h") {
+        pts.sort((p, q) => p[0] - q[0]);
+        if (Math.abs(pts[0][1] - pts[2][1]) > EPS) continue;
+        list = list.filter((_, k) => k !== i && k !== j);
+        list.push({ x0: pts[0][0], z0: pts[0][1], x1: pts[2][0], z1: pts[2][1] });
+      } else {
+        pts.sort((p, q) => p[1] - q[1]);
+        if (Math.abs(pts[0][0] - pts[2][0]) > EPS) continue;
+        list = list.filter((_, k) => k !== i && k !== j);
+        list.push({ x0: pts[0][0], z0: pts[0][1], x1: pts[2][0], z1: pts[2][1] });
       }
-    } else {
-      const byZ = new Map();
-      for (const e of group) {
-        const zk = e.z0.toFixed(5);
-        if (!byZ.has(zk)) byZ.set(zk, []);
-        byZ.get(zk).push(e);
-      }
-      for (const [, zs] of byZ) {
-        zs.sort((a, b) => a.x0 - b.x0);
-        let cur = { ...zs[0] };
-        for (let i = 1; i < zs.length; i++) {
-          const e = zs[i];
-          if (Math.abs(e.x0 - cur.x1) < EPS) cur.x1 = e.x1;
-          else {
-            merged.push(cur);
-            cur = { ...e };
-          }
-        }
-        merged.push(cur);
-      }
+      changed = true;
+      break outer;
     }
   }
 
-  return merged;
+  return list;
+}
+
+function edgeOutDir(e, fromStart) {
+  if (fromStart) {
+    if (Math.abs(e.z1 - e.z0) < EPS) return e.x1 > e.x0 ? "E" : "W";
+    return e.z1 > e.z0 ? "N" : "S";
+  }
+  if (Math.abs(e.z1 - e.z0) < EPS) return e.x0 > e.x1 ? "E" : "W";
+  return e.z0 > e.z1 ? "N" : "S";
+}
+
+const TURN_LEFT = { E: "N", N: "W", W: "S", S: "E" };
+const TURN_STRAIGHT = { E: "E", N: "N", W: "W", S: "S" };
+const TURN_RIGHT = { E: "S", N: "E", W: "N", S: "W" };
+
+function pickNextEdge(inDir, options) {
+  const order = [TURN_LEFT[inDir], TURN_STRAIGHT[inDir], TURN_RIGHT[inDir]];
+  for (const want of order) {
+    const hit = options.find((o) => o.outDir === want);
+    if (hit) return hit;
+  }
+  return options[0];
+}
+
+/** Chain directed boundary edges into closed loops (XZ plane). */
+export function footprintOutlineLoops(cells) {
+  const edges = mergeCollinearEdges(footprintOutlineEdges(cells));
+  if (!edges.length) return [];
+
+  const adj = new Map();
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    const sk = ptKey(e.x0, e.z0);
+    const ek = ptKey(e.x1, e.z1);
+    if (!adj.has(sk)) adj.set(sk, []);
+    if (!adj.has(ek)) adj.set(ek, []);
+    adj.get(sk).push({ i, atStart: true });
+    adj.get(ek).push({ i, atStart: false });
+  }
+
+  const used = new Set();
+  const loops = [];
+
+  for (let s = 0; s < edges.length; s++) {
+    if (used.has(s)) continue;
+
+    const loop = [];
+    let idx = s;
+    let forward = true;
+    let inDir = null;
+    const origin = ptKey(edges[s].x0, edges[s].z0);
+    let guard = 0;
+
+    while (guard++ <= edges.length + 4) {
+      const e = edges[idx];
+      if (!used.has(idx)) {
+        used.add(idx);
+        loop.push([forward ? e.x0 : e.x1, forward ? e.z0 : e.z1]);
+      }
+
+      const outDir = edgeOutDir(e, forward);
+      const next = forward ? ptKey(e.x1, e.z1) : ptKey(e.x0, e.z0);
+      if (next === origin && loop.length >= 3) break;
+
+      const options = (adj.get(next) || [])
+        .filter((c) => !used.has(c.i))
+        .map((c) => ({
+          ...c,
+          outDir: edgeOutDir(edges[c.i], c.atStart),
+        }));
+
+      if (!options.length) break;
+
+      const pick = inDir == null ? options[0] : pickNextEdge(outDir, options);
+      idx = pick.i;
+      forward = pick.atStart;
+      inDir = outDir;
+    }
+
+    if (loop.length >= 3) loops.push(loop);
+  }
+
+  return loops;
+}
+
+function signedArea(loop) {
+  let a = 0;
+  for (let i = 0; i < loop.length; i++) {
+    const [x0, z0] = loop[i];
+    const [x1, z1] = loop[(i + 1) % loop.length];
+    a += x0 * z1 - x1 * z0;
+  }
+  return a * 0.5;
+}
+
+/** Largest loop = outer shell; smaller CCW loops = holes (door openings). */
+export function classifyFootprintLoops(loops) {
+  if (!loops.length) return { outer: null, holes: [] };
+
+  const withArea = loops.map((loop) => ({
+    loop,
+    area: Math.abs(signedArea(loop)),
+    sign: signedArea(loop),
+  }));
+
+  withArea.sort((a, b) => b.area - a.area);
+  const outer = withArea[0].loop;
+  const holes = withArea.slice(1).map((l) => l.loop);
+  return { outer, holes };
 }
 
 export function segmentsToFootprint(segments) {
   return unionFootprint(segments.map(segmentToRect));
+}
+
+/** @deprecated boundary-only extrusion — use solid extrude in WallSolidMesh */
+export function footprintBoundaryEdges(cells) {
+  const edges = footprintOutlineEdges(cells);
+  return edges.map((e) => {
+    if (Math.abs(e.x0 - e.x1) < EPS) {
+      return { x0: e.x0, z0: e.z0, x1: e.x1, z1: e.z1, axis: "x", sign: e.x0 >= 0 ? 1 : -1 };
+    }
+    return { x0: e.x0, z0: e.z0, x1: e.x1, z1: e.z1, axis: "z", sign: e.z0 >= 0 ? 1 : -1 };
+  });
+}
+
+export function mergeBoundaryEdges(edges) {
+  return edges;
 }

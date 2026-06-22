@@ -83,11 +83,20 @@ geo.computeBoundingBox();
 const center = geo.boundingBox.getCenter(new THREE.Vector3()).add(new THREE.Vector3(wx, 0, wz));
 
 if (view === "corner") {
-  camera.position.set(wx + 3.2, 1.55, wz + 8.8);
+  // L-corner at inner walls (x=7, z=2)
+  camera.position.set(wx + 8.6, 1.55, wz + 3.4);
+  controls.target.set(wx + 7.0, 1.25, wz + 2.0);
+} else if (view === "endcap") {
+  // Open end of z-wall at x=2 (span 2→7)
+  camera.position.set(wx + 1.15, 1.45, wz + 2.0);
+  controls.target.set(wx + 2.05, 1.3, wz + 2.0);
 } else if (view === "jamb") {
-  camera.position.set(wx + 7.0, 1.62, wz + 0.6);
+  // Opening in x-wall at x=7 (gap z=2…11)
+  camera.position.set(wx + 6.35, 1.55, wz + 5.8);
+  controls.target.set(wx + 7.15, 1.3, wz + 6.5);
 } else {
-  camera.position.set(center.x + 5, 4.5, center.z + 7);
+  camera.position.set(wx + 9.5, 3.2, wz + 10.5);
+  controls.target.set(wx + 6.5, 1.2, wz + 6.5);
 }
 
 window.__WALL_PREVIEW__ = {
@@ -95,7 +104,8 @@ window.__WALL_PREVIEW__ = {
   cz,
   segments: segs.length,
   cells: cells.length,
-  tris: geo.index ? geo.index.count / 3 : 0,
+  tris: geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3,
+  verts: geo.attributes.position.count,
   issues,
   ready: true,
 };

@@ -9,8 +9,9 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 const shots = [
   ["wall-step1-corner.png", "/wall-preview.html?view=corner&cx=0&cz=0"],
+  ["wall-step1-endcap.png", "/wall-preview.html?view=endcap&cx=0&cz=0"],
   ["wall-step1-jamb.png", "/wall-preview.html?view=jamb&cx=0&cz=0"],
-  ["wall-step1-overview.png", "/wall-preview.html?view=overview&cx=1&cz=0"],
+  ["wall-step1-overview.png", "/wall-preview.html?view=overview&cx=0&cz=0"],
 ];
 
 for (const [name, path] of shots) {
