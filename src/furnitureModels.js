@@ -7,8 +7,8 @@ const STOOL_URL = `${ASSET_BASE}assets/Stool.glb`;
 
 /** Dining chair height (~82 cm) */
 const CHAIR_TARGET_H = 0.82;
-/** Stool height — 1.2× base (~45 cm → ~54 cm) */
-const STOOL_TARGET_H = 0.45 * 1.2;
+/** Stool height (~85 cm) */
+const STOOL_TARGET_H = 0.85;
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();

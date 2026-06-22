@@ -3,6 +3,8 @@ import { CHUNK, ROOM_H, WALL_T } from "./constants.js";
 import { isWalkableLocal } from "./room.js";
 import { createRng } from "./rng.js";
 import { cloneFurnitureTemplate } from "./furnitureModels.js";
+import { colliderFromFurniture, furnitureWorldCenter } from "./furnitureColliders.js";
+import { applyChairStaticVisual } from "./chairStatic.js";
 
 const _box = new THREE.Box3();
 const _euler = new THREE.Euler();
@@ -147,13 +149,14 @@ function pickPose(rng) {
   return rng.pickWeighted(POSES);
 }
 
-function placeOne(group, room, models, rng, used) {
+function placeOne(group, room, models, rng, used, colliders, chairs) {
   const kind = rng.chance(0.55) ? "chair" : "stool";
   const template = models[kind];
   if (!template) return false;
 
   const pivot = cloneFurnitureTemplate(template);
   const meta = pivot.userData;
+  meta.furnitureKind = kind;
   const pose = pickPose(rng);
   let spot = null;
 
@@ -181,21 +184,40 @@ function placeOne(group, room, models, rng, used) {
   applyPose(pivot, pose, spot, rng, meta);
   pivot.userData.chunkOwned = true;
   group.add(pivot);
+
+  const box = colliderFromFurniture(pivot, group);
+  colliders.push(box);
+
+  if (kind === "chair") {
+    applyChairStaticVisual(pivot);
+    chairs.push(furnitureWorldCenter(pivot, group));
+  }
+
   used.add(`${spot.x.toFixed(2)},${spot.z.toFixed(2)}`);
   return true;
 }
 
 /** Scatter chair/stool props in chunk-local space */
 export function addChunkFurniture(group, room, models) {
-  if (!models?.chair && !models?.stool) return;
+  if (!models?.chair && !models?.stool) return { colliders: [], chairs: [] };
 
+  const colliders = [];
+  const chairs = [];
   const rng = createRng(room.cx, room.cz, 881);
-  if (!rng.chance(0.52)) return;
+  if (!rng.chance(0.52)) {
+    group.userData.furnitureColliders = colliders;
+    group.userData.furnitureChairs = chairs;
+    return { colliders, chairs };
+  }
 
   const count = rng.int(1, 2);
   const used = new Set();
   let placed = 0;
   for (let i = 0; i < count * 4 && placed < count; i++) {
-    if (placeOne(group, room, models, rng, used)) placed++;
+    if (placeOne(group, room, models, rng, used, colliders, chairs)) placed++;
   }
+
+  group.userData.furnitureColliders = colliders;
+  group.userData.furnitureChairs = chairs;
+  return { colliders, chairs };
 }

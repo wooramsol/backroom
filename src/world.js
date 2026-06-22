@@ -25,6 +25,7 @@ export class World {
     this.wallMap = new Map();
     this.colliders = [];
     this.collidersDirty = false;
+    this.chairs = [];
     this.time = 0;
     this.loadQueue = [];
     this.pendingKeys = new Set();
@@ -110,6 +111,39 @@ export class World {
     }
   }
 
+  addFurnitureForChunk(mesh, room) {
+    const fc = mesh.userData.furnitureColliders || [];
+    const ch = mesh.userData.furnitureChairs || [];
+    if (fc.length) {
+      this.colliders.push(...fc);
+      this.collidersDirty = true;
+    }
+    if (ch.length) this.chairs.push(...ch);
+    return { furnitureColliders: fc, furnitureChairs: ch };
+  }
+
+  removeFurnitureForChunk(entry) {
+    const fc = entry.furnitureColliders;
+    if (fc?.length) {
+      for (const box of fc) {
+        const idx = this.colliders.indexOf(box);
+        if (idx !== -1) this.colliders.splice(idx, 1);
+      }
+      this.collidersDirty = true;
+    }
+    const ch = entry.furnitureChairs;
+    if (ch?.length) {
+      for (const c of ch) {
+        const idx = this.chairs.indexOf(c);
+        if (idx !== -1) this.chairs.splice(idx, 1);
+      }
+    }
+  }
+
+  getChairs() {
+    return this.chairs;
+  }
+
   consumeColliderRebuild() {
     const v = this.collidersDirty;
     this.collidersDirty = false;
@@ -119,21 +153,25 @@ export class World {
   attachChunk(cx, cz, room, build) {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
-    this.chunks.set(k, { mesh: build.group, room });
+    const mesh = build.group;
+    const furniture = this.addFurnitureForChunk(mesh, room);
+    this.chunks.set(k, { mesh, room, ...furniture });
   }
 
   spawnComplete(cx, cz) {
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
+    const furniture = this.addFurnitureForChunk(mesh, room);
     this.scene.add(mesh);
-    this.chunks.set(this.key(cx, cz), { mesh, room });
+    this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
   }
 
   despawn(k) {
     const entry = this.chunks.get(k);
     if (!entry) return;
     const { mesh, room } = entry;
+    this.removeFurnitureForChunk(entry);
     if (mesh) {
       this.scene.remove(mesh);
       this.disposeQueue.push(mesh);
@@ -251,8 +289,9 @@ export class World {
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
+    const furniture = this.addFurnitureForChunk(mesh, room);
     this.scene.add(mesh);
-    this.chunks.set(k, { mesh, room });
+    this.chunks.set(k, { mesh, room, ...furniture });
     this.pendingKeys.delete(k);
   }
 
