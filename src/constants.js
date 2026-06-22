@@ -81,7 +81,7 @@ export const HEMI_INTENSITY = 0.68;
 /** Square ceiling grid cell spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
-export const CEILING_TILE_GAP_M = 0.002;
+export const CEILING_TILE_GAP_M = 0.001;
 /** Visible carpet tile face inside one grid cell */
 export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
 /** Recessed seam between ceiling tiles — warm beige, not black */
