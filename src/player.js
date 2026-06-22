@@ -44,6 +44,8 @@ export class Player {
     this.groundY = 0;
     this.crouchBlend = 0;
     this.onMove = null;
+    this.onJump = null;
+    this.onLand = null;
     this.onLockLost = null;
     this.onLockAcquired = null;
 
@@ -55,6 +57,7 @@ export class Player {
         if (this.locked && this.grounded && !this.crouching) {
           this.vy = JUMP_V;
           this.grounded = false;
+          this.onJump?.();
         }
       }
       this.keys[e.code] = true;
@@ -284,6 +287,8 @@ export class Player {
 
     if (moved > 0 && this.grounded) this.onMove?.(moved, running, this.crouching, speed);
 
+    const wasGrounded = this.grounded;
+
     const feetY = this._feetY();
     const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);
     const targetEyeY = Math.min(this._eyeOnSupport(supportY), MAX_EYE_Y);
@@ -297,10 +302,13 @@ export class Player {
     }
 
     if (nextEyeY <= targetEyeY && this.vy <= 0) {
+      const impactVy = Math.abs(this.vy);
+      const justLanded = !wasGrounded;
       this.position.y = targetEyeY;
       this.vy = 0;
       this.grounded = true;
       this.groundY = supportY;
+      if (justLanded) this.onLand?.(impactVy);
     } else {
       this.position.y = nextEyeY;
       this.grounded = false;

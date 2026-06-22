@@ -89,6 +89,20 @@ export class GameAudio {
     void this.preload().then(play);
   }
 
+  onLand(impactVy = 4) {
+    if (!this._ensure()) return;
+    if (this.ctx.state === "suspended") void this.ctx.resume();
+    const impact = Math.min(1, Math.max(0.3, impactVy / 7.5));
+    this._stepAccum = 0;
+    this._playFootstep(false, false, { land: true, impact });
+  }
+
+  onJump() {
+    if (!this._ensure()) return;
+    if (this.ctx.state === "suspended") void this.ctx.resume();
+    this._playFootstep(false, false, { jump: true });
+  }
+
   onMove(distance, running, crouching = false, speed = 3.2) {
     if (!this._ensure()) return;
     if (this.ctx.state === "suspended") void this.ctx.resume();
@@ -103,15 +117,38 @@ export class GameAudio {
     }
   }
 
-  _playFootstep(running, crouching) {
+  _playFootstep(running, crouching, { jump = false, land = false, impact = 1 } = {}) {
     const ctx = this.ctx;
     const t = ctx.currentTime;
-    const dur = crouching ? 0.12 : running ? 0.075 : 0.1;
-    const vol = crouching ? 0.24 : running ? 0.42 : 0.34;
+    let dur;
+    let vol;
+    let thumpBase;
+    let lowFreq;
+    let midBase;
+
+    if (jump) {
+      dur = 0.065;
+      vol = 0.22;
+      thumpBase = 128;
+      lowFreq = 860;
+      midBase = 250;
+    } else if (land) {
+      dur = 0.12;
+      vol = 0.3 + impact * 0.38;
+      thumpBase = 72 + impact * 48;
+      lowFreq = 620;
+      midBase = 175;
+    } else {
+      dur = crouching ? 0.12 : running ? 0.075 : 0.1;
+      vol = crouching ? 0.24 : running ? 0.42 : 0.34;
+      thumpBase = crouching ? 88 : running ? 118 : 102;
+      lowFreq = crouching ? 480 : running ? 1050 : 780;
+      midBase = crouching ? 165 : running ? 285 : 220;
+    }
 
     const thump = ctx.createOscillator();
     thump.type = "sine";
-    thump.frequency.value = (crouching ? 88 : running ? 118 : 102) + Math.random() * 28;
+    thump.frequency.value = thumpBase + Math.random() * 28;
     const thumpGain = ctx.createGain();
     thumpGain.gain.setValueAtTime(vol * 1.35, t);
     thumpGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
@@ -133,12 +170,12 @@ export class GameAudio {
 
     const low = ctx.createBiquadFilter();
     low.type = "lowpass";
-    low.frequency.value = crouching ? 480 : running ? 1050 : 780;
+    low.frequency.value = lowFreq;
     low.Q.value = 0.55;
 
     const mid = ctx.createBiquadFilter();
     mid.type = "bandpass";
-    mid.frequency.value = (crouching ? 165 : running ? 285 : 220) + Math.random() * 70;
+    mid.frequency.value = midBase + Math.random() * 70;
     mid.Q.value = 0.65;
 
     const noiseGain = ctx.createGain();

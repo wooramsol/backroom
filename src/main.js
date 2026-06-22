@@ -36,11 +36,12 @@ const vignette = document.getElementById("vignette");
 const crosshair = document.getElementById("crosshair");
 const buildLabel = document.getElementById("build-label");
 const buildBadge = document.getElementById("build-badge");
+const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
 
 const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
-if (buildBadge) buildBadge.textContent = buildText;
+if (buildVersion) buildVersion.textContent = buildText;
 
 function syncCrosshair() {
   if (!crosshair) return;
@@ -115,6 +116,12 @@ async function init() {
 
   player.onMove = (distance, running, crouching, speed) => {
     if (started) audio.onMove(distance, running, crouching, speed);
+  };
+  player.onJump = () => {
+    if (started) audio.onJump();
+  };
+  player.onLand = (impactVy) => {
+    if (started) audio.onLand(impactVy);
   };
 
   renderer.domElement.addEventListener("click", () => {
