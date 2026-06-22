@@ -176,7 +176,7 @@ function finalizePlacement(group, pivot, meta, colliders, used, spot, surfaces) 
   pivot.userData.chunkOwned = true;
   group.add(pivot);
   colliders.push(colliderFromFurniture(pivot, group));
-  if (meta.chairGlitch) applyChairGlitchVisual(pivot);
+  if (meta.furnitureId === "chairGlb") applyChairGlitchVisual(pivot);
   recordFurnitureSurface(pivot, group, surfaces);
   used.add(`${spot.x.toFixed(2)},${spot.z.toFixed(2)}`);
 }
