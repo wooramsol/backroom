@@ -26,10 +26,10 @@ function pointInRect(px, pz, r) {
 }
 
 /**
- * Exact union of orthogonal wall rectangles via coordinate subdivision.
- * Overlapping corners merge into one solid footprint — no pillar protrusions.
+ * Fine grid cells inside the union (before maximal merge).
+ * Used for robust boundary tracing — avoids partial-edge false boundaries.
  */
-export function unionFootprint(rects) {
+export function subdivideFootprintCells(rects) {
   if (!rects.length) return [];
 
   const xs = new Set();
@@ -43,8 +43,8 @@ export function unionFootprint(rects) {
 
   const xArr = [...xs].sort((a, b) => a - b);
   const zArr = [...zs].sort((a, b) => a - b);
-
   const cells = [];
+
   for (let i = 0; i < xArr.length - 1; i++) {
     for (let j = 0; j < zArr.length - 1; j++) {
       const x0 = xArr[i];
@@ -60,7 +60,15 @@ export function unionFootprint(rects) {
     }
   }
 
-  return mergeCells(cells);
+  return cells;
+}
+
+/**
+ * Exact union of orthogonal wall rectangles via coordinate subdivision.
+ * Overlapping corners merge into one solid footprint — no pillar protrusions.
+ */
+export function unionFootprint(rects) {
+  return mergeCells(subdivideFootprintCells(rects));
 }
 
 function mergeCells(cells) {
@@ -155,13 +163,98 @@ export function footprintOutlineEdges(cells) {
 
 const ptKey = (x, z) => `${x.toFixed(5)},${z.toFixed(5)}`;
 
+const cellKey = (c) => `${c.x0},${c.z0},${c.x1},${c.z1}`;
+
+/** Flood-fill adjacent fine-grid cells into connected wall islands. */
+export function connectedFootprintGroups(cells) {
+  const groups = [];
+  const used = new Set();
+
+  const neighbors = (c) => {
+    const out = [];
+    for (const o of cells) {
+      if (o === c) continue;
+      if (Math.abs(o.x0 - c.x1) < EPS && o.z0 < c.z1 - EPS && o.z1 > c.z0 + EPS) out.push(o);
+      if (Math.abs(o.x1 - c.x0) < EPS && o.z0 < c.z1 - EPS && o.z1 > c.z0 + EPS) out.push(o);
+      if (Math.abs(o.z0 - c.z1) < EPS && o.x0 < c.x1 - EPS && o.x1 > c.x0 + EPS) out.push(o);
+      if (Math.abs(o.z1 - c.z0) < EPS && o.x0 < c.x1 - EPS && o.x1 > c.x0 + EPS) out.push(o);
+    }
+    return out;
+  };
+
+  for (const c of cells) {
+    const k = cellKey(c);
+    if (used.has(k)) continue;
+    const group = [];
+    const stack = [c];
+    used.add(k);
+    while (stack.length) {
+      const cur = stack.pop();
+      group.push(cur);
+      for (const nb of neighbors(cur)) {
+        const nk = cellKey(nb);
+        if (used.has(nk)) continue;
+        used.add(nk);
+        stack.push(nb);
+      }
+    }
+    groups.push(group);
+  }
+
+  return groups;
+}
+
+function gridBoundaryEdges(cells) {
+  if (!cells.length) return [];
+
+  const occ = new Set(cells.map(cellKey));
+  const has = (x0, z0, x1, z1) => occ.has(`${x0},${z0},${x1},${z1}`);
+
+  const xs = new Set();
+  const zs = new Set();
+  for (const c of cells) {
+    xs.add(c.x0);
+    xs.add(c.x1);
+    zs.add(c.z0);
+    zs.add(c.z1);
+  }
+  const xArr = [...xs].sort((a, b) => a - b);
+  const zArr = [...zs].sort((a, b) => a - b);
+
+  const edges = [];
+  for (let i = 0; i < xArr.length - 1; i++) {
+    for (let j = 0; j < zArr.length - 1; j++) {
+      const x0 = xArr[i];
+      const x1 = xArr[i + 1];
+      const z0 = zArr[j];
+      const z1 = zArr[j + 1];
+      if (!has(x0, z0, x1, z1)) continue;
+
+      if (j === 0 || !has(x0, zArr[j - 1], x1, z0)) {
+        edges.push({ x0, z0, x1, z1: z0 });
+      }
+      if (i === xArr.length - 2 || !has(x1, z0, xArr[i + 2], z1)) {
+        edges.push({ x0: x1, z0, x1, z1 });
+      }
+      if (j === zArr.length - 2 || !has(x0, z1, x1, zArr[j + 2])) {
+        edges.push({ x0, z0: z1, x1, z1 });
+      }
+      if (i === 0 || !has(xArr[i - 1], z0, x0, z1)) {
+        edges.push({ x0, z0, x1: x0, z1 });
+      }
+    }
+  }
+
+  return edges;
+}
+
 function edgeAxis(e) {
   if (Math.abs(e.z1 - e.z0) < EPS) return "h";
   if (Math.abs(e.x1 - e.x0) < EPS) return "v";
   return null;
 }
 
-/** Merge collinear boundary segments that share an endpoint (grid subdivision artifacts). */
+/** Merge collinear boundary segments that share an endpoint. */
 function mergeCollinearEdges(edges) {
   let list = edges.map((e) => ({ x0: e.x0, z0: e.z0, x1: e.x1, z1: e.z1 }));
   let changed = true;
@@ -179,7 +272,7 @@ function mergeCollinearEdges(edges) {
       adj.get(ek).push(i);
     }
 
-    outer: for (const [pk, idxs] of adj) {
+    outer: for (const [, idxs] of adj) {
       if (idxs.length !== 2) continue;
       const [i, j] = idxs;
       const a = list[i];
@@ -218,31 +311,7 @@ function mergeCollinearEdges(edges) {
   return list;
 }
 
-function edgeOutDir(e, fromStart) {
-  if (fromStart) {
-    if (Math.abs(e.z1 - e.z0) < EPS) return e.x1 > e.x0 ? "E" : "W";
-    return e.z1 > e.z0 ? "N" : "S";
-  }
-  if (Math.abs(e.z1 - e.z0) < EPS) return e.x0 > e.x1 ? "E" : "W";
-  return e.z0 > e.z1 ? "N" : "S";
-}
-
-const TURN_LEFT = { E: "N", N: "W", W: "S", S: "E" };
-const TURN_STRAIGHT = { E: "E", N: "N", W: "W", S: "S" };
-const TURN_RIGHT = { E: "S", N: "E", W: "N", S: "W" };
-
-function pickNextEdge(inDir, options) {
-  const order = [TURN_LEFT[inDir], TURN_STRAIGHT[inDir], TURN_RIGHT[inDir]];
-  for (const want of order) {
-    const hit = options.find((o) => o.outDir === want);
-    if (hit) return hit;
-  }
-  return options[0];
-}
-
-/** Chain directed boundary edges into closed loops (XZ plane). */
-export function footprintOutlineLoops(cells) {
-  const edges = mergeCollinearEdges(footprintOutlineEdges(cells));
+function chainBoundaryLoops(edges) {
   if (!edges.length) return [];
 
   const adj = new Map();
@@ -265,40 +334,48 @@ export function footprintOutlineLoops(cells) {
     const loop = [];
     let idx = s;
     let forward = true;
-    let inDir = null;
     const origin = ptKey(edges[s].x0, edges[s].z0);
     let guard = 0;
 
-    while (guard++ <= edges.length + 4) {
+    while (guard++ <= edges.length + 2) {
       const e = edges[idx];
       if (!used.has(idx)) {
         used.add(idx);
         loop.push([forward ? e.x0 : e.x1, forward ? e.z0 : e.z1]);
       }
 
-      const outDir = edgeOutDir(e, forward);
       const next = forward ? ptKey(e.x1, e.z1) : ptKey(e.x0, e.z0);
       if (next === origin && loop.length >= 3) break;
 
-      const options = (adj.get(next) || [])
-        .filter((c) => !used.has(c.i))
-        .map((c) => ({
-          ...c,
-          outDir: edgeOutDir(edges[c.i], c.atStart),
-        }));
-
-      if (!options.length) break;
-
-      const pick = inDir == null ? options[0] : pickNextEdge(outDir, options);
-      idx = pick.i;
-      forward = pick.atStart;
-      inDir = outDir;
+      const cand = (adj.get(next) || []).find((c) => !used.has(c.i));
+      if (!cand) break;
+      idx = cand.i;
+      forward = cand.atStart;
     }
 
     if (loop.length >= 3) loops.push(loop);
   }
 
   return loops;
+}
+
+/**
+ * Closed outline loops for a connected footprint island (grid-accurate boundary).
+ */
+export function footprintOutlineLoops(cells) {
+  return chainBoundaryLoops(mergeCollinearEdges(gridBoundaryEdges(cells)));
+}
+
+/** Outline → outer shell + optional holes for one connected island. */
+export function footprintSolidOutline(cells) {
+  const loops = footprintOutlineLoops(cells);
+  return classifyFootprintLoops(loops);
+}
+
+/** Per connected island: one outer loop (+ holes) ready for extrusion. */
+export function footprintExtrudeOutlines(segments) {
+  const grid = subdivideFootprintCells(segments.map(segmentToRect));
+  return connectedFootprintGroups(grid).map((group) => footprintSolidOutline(group));
 }
 
 function signedArea(loop) {
@@ -329,6 +406,10 @@ export function classifyFootprintLoops(loops) {
 
 export function segmentsToFootprint(segments) {
   return unionFootprint(segments.map(segmentToRect));
+}
+
+export function segmentsToFootprintGrid(segments) {
+  return subdivideFootprintCells(segments.map(segmentToRect));
 }
 
 /** @deprecated boundary-only extrusion — use solid extrude in WallSolidMesh */

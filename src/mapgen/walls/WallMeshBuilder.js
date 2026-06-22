@@ -2,20 +2,11 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { WALL_T } from "../../constants.js";
 import { collectRoomWallSegments } from "./wallSegments.js";
-import { segmentsToFootprint, segmentToRect } from "./WallFootprint.js";
+import { segmentsToFootprint, footprintExtrudeOutlines } from "./WallFootprint.js";
 import { validateWallMesh, repairFootprint } from "./WallQuality.js";
 import { bakeWorldWallUVBuffer } from "./WorldWallUV.js";
 
 const SNAP = 1e-4;
-
-function rectToLoop(r) {
-  return [
-    [r.x0, r.z0],
-    [r.x1, r.z0],
-    [r.x1, r.z1],
-    [r.x0, r.z1],
-  ];
-}
 
 function loopToShape(loop) {
   const shape = new THREE.Shape();
@@ -51,8 +42,8 @@ function extrudeFootprint(outer, holes, height) {
 }
 
 /**
- * Solid WALL_T prism per wall run, merged into one continuous mesh.
- * Overlapping corners/end joints weld into closed architectural volumes.
+ * Outline → Shape → ExtrudeGeometry per connected footprint island.
+ * One room/chunk yields one merged Wall Mesh (multiple islands = multiple extrudes, one buffer).
  */
 export function buildSolidWallGeometry(
   segments,
@@ -74,10 +65,11 @@ export function buildSolidWallGeometry(
     issues = options.room ? validateWallMesh(options.room, segments, repaired) : [];
   }
 
+  const outlines = footprintExtrudeOutlines(segments);
   const parts = [];
-  for (const seg of segments) {
-    if (seg.span1 - seg.span0 < 0.05) continue;
-    const g = extrudeFootprint(rectToLoop(segmentToRect(seg)), [], height);
+  for (const { outer, holes } of outlines) {
+    if (!outer || outer.length < 3) continue;
+    const g = extrudeFootprint(outer, holes, height);
     if (g) parts.push(g);
   }
 

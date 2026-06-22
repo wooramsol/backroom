@@ -7,7 +7,7 @@ import { ROOM_H, CHUNK } from "../constants.js";
 import { generateRoom } from "../room.js";
 import { buildRoomWallGeometry } from "../mapgen/walls/WallMeshBuilder.js";
 import { collectRoomWallSegments } from "../mapgen/walls/wallSegments.js";
-import { segmentsToFootprint } from "../mapgen/walls/WallFootprint.js";
+import { segmentsToFootprint, footprintExtrudeOutlines } from "../mapgen/walls/WallFootprint.js";
 import { validateWallMesh } from "../mapgen/walls/WallQuality.js";
 import {
   WALLPAPER_URL,
@@ -61,6 +61,7 @@ if (!geo) {
 
 const segs = collectRoomWallSegments(room);
 const cells = segmentsToFootprint(segs);
+const outlines = footprintExtrudeOutlines(segs);
 const issues = validateWallMesh(room, segs, cells).filter(
   (i) => i.kind === "protrusion" || i.kind === "short_segment",
 );
@@ -103,6 +104,7 @@ window.__WALL_PREVIEW__ = {
   cx,
   cz,
   segments: segs.length,
+  islands: outlines.length,
   cells: cells.length,
   tris: geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3,
   verts: geo.attributes.position.count,
