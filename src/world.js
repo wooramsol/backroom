@@ -33,26 +33,7 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
-    this._lightFixtures = [];
-    this._lightFixturesDirty = true;
     this._lastColliderRebuild = 0;
-  }
-
-  _markLightFixturesDirty() {
-    this._lightFixturesDirty = true;
-  }
-
-  _rebuildLightFixtures() {
-    const out = [];
-    for (const { room } of this.chunks.values()) {
-      if (room?.lightFixtures?.length) {
-        out.push(...room.lightFixtures);
-      } else if (room?.lightFixture) {
-        out.push(room.lightFixture);
-      }
-    }
-    this._lightFixtures = out;
-    this._lightFixturesDirty = false;
   }
 
   key(cx, cz) {
@@ -143,7 +124,6 @@ export class World {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     this.chunks.set(k, { mesh: build.group, room });
-    this._markLightFixturesDirty();
   }
 
   spawnComplete(cx, cz) {
@@ -152,7 +132,6 @@ export class World {
     const mesh = buildRoomMesh(room, this.materials);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
-    this._markLightFixturesDirty();
   }
 
   despawn(k) {
@@ -165,7 +144,6 @@ export class World {
     }
     this.chunks.delete(k);
     this.pendingColliderRebuild = true;
-    this._markLightFixturesDirty();
   }
 
   enqueue(cx, cz, playerPos) {
@@ -245,7 +223,6 @@ export class World {
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
     this.pendingKeys.delete(k);
-    this._markLightFixturesDirty();
   }
 
   processLoadQueue(playerPos, _budgetMs) {
@@ -288,11 +265,6 @@ export class World {
     return this.colliders;
   }
 
-  getLightFixtures() {
-    if (this._lightFixturesDirty) this._rebuildLightFixtures();
-    return this._lightFixtures;
-  }
-
   flushColliders() {
     if (!this.pendingColliderRebuild) return;
     const now = performance.now();
@@ -309,7 +281,6 @@ export class World {
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
     this.pendingKeys.delete(k);
-    this._markLightFixturesDirty();
   }
 
   _spawnChunkSafe(cx, cz) {

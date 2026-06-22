@@ -16,12 +16,7 @@ import {
   MIN_CLEAR_DOOR_WIDTH,
   MAX_DOOR_WIDTH,
   ROOM_H,
-  PANEL_EDGE_INSET,
-  PANEL_W,
-  PANEL_H,
-  PANEL_SIZE,
 } from "./constants.js";
-import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 
 export { CHUNK };
 export const CELL = CHUNK;
@@ -56,97 +51,6 @@ function doorSpec(rng, span) {
   if (width < minDoorWidth()) return null;
   const maxOff = Math.max(0, span / 2 - width / 2 - 0.25);
   return { width, offset: rng.range(-maxOff, maxOff) };
-}
-
-function zoneInset(zone) {
-  const w = zone.x1 - zone.x0;
-  const d = zone.z1 - zone.z0;
-  return Math.min(PANEL_EDGE_INSET, w * 0.2, d * 0.2, 0.9);
-}
-
-function panelWallList(room) {
-  return [
-    { axis: "z", pos: 0, span0: 0, span1: CHUNK },
-    { axis: "z", pos: CHUNK, span0: 0, span1: CHUNK },
-    { axis: "x", pos: 0, span0: 0, span1: CHUNK },
-    { axis: "x", pos: CHUNK, span0: 0, span1: CHUNK },
-    ...room.innerWalls,
-  ];
-}
-
-function spansOverlap(a0, a1, b0, b1) {
-  return a0 < b1 && a1 > b0;
-}
-
-/** Keep ceiling panels off wall slabs (open floor only) */
-function panelOnWall(px, pz, wall) {
-  const halfW = PANEL_W / 2;
-  const halfH = PANEL_H / 2;
-  const halfT = WALL_T / 2;
-  const margin = 0.1;
-
-  if (wall.axis === "z") {
-    const wMinZ = wall.pos - halfT - margin;
-    const wMaxZ = wall.pos + halfT + margin;
-    if (pz + halfH <= wMinZ || pz - halfH >= wMaxZ) return false;
-    return spansOverlap(px - halfW, px + halfW, wall.span0, wall.span1);
-  }
-
-  const wMinX = wall.pos - halfT - margin;
-  const wMaxX = wall.pos + halfT + margin;
-  if (px + halfW <= wMinX || px - halfW >= wMaxX) return false;
-  return spansOverlap(pz - halfH, pz + halfH, wall.span0, wall.span1);
-}
-
-function panelBlocked(px, pz, room) {
-  const walls = panelWallList(room);
-  for (let i = 0; i < walls.length; i++) {
-    if (panelOnWall(px, pz, walls[i])) return true;
-  }
-  return false;
-}
-
-const PANEL_MIN_GAP = 0.18;
-
-function panelOverlapsExisting(px, pz, panels) {
-  const halfW = PANEL_W / 2 + PANEL_MIN_GAP;
-  const halfH = PANEL_H / 2 + PANEL_MIN_GAP;
-  const minX = px - halfW;
-  const maxX = px + halfW;
-  const minZ = pz - halfH;
-  const maxZ = pz + halfH;
-
-  for (let i = 0; i < panels.length; i++) {
-    const p = panels[i];
-    const eMinX = p.x - halfW;
-    const eMaxX = p.x + halfW;
-    const eMinZ = p.z - halfH;
-    const eMaxZ = p.z + halfH;
-    if (spansOverlap(minX, maxX, eMinX, eMaxX) && spansOverlap(minZ, maxZ, eMinZ, eMaxZ)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function generatePanels(rng, room) {
-  const ox = room.cx * CHUNK;
-  const oz = room.cz * CHUNK;
-  const tileM = PANEL_SIZE;
-  const candidates = [];
-  const { tx0, tx1, tz0, tz1 } = chunkTileRange(ox, oz, CHUNK, tileM);
-
-  for (let tx = tx0; tx <= tx1; tx++) {
-    for (let tz = tz0; tz <= tz1; tz++) {
-      const { x: px, z: pz } = tileCenterLocal(tx, tz, ox, oz, tileM);
-      if (!panelBlocked(px, pz, room)) {
-        candidates.push({ x: px, z: pz, on: true, bright: 1 });
-      }
-    }
-  }
-
-  if (!candidates.length) return [];
-  return [rng.pick(candidates)];
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
@@ -431,19 +335,9 @@ export function generateRoom(cx, cz) {
       east: getSharedDoor(cx, cz, cx + 1, cz),
       west: getSharedDoor(cx, cz, cx - 1, cz),
     },
-    lightSeed: rng.int(0, 99999),
-    lightSpacing: rng.pick([3.4, 3.8, 4.2, 4.6, 5.0]),
   };
 
-  room.panels = generatePanels(rng, room);
-  room.litRatio =
-    room.panels.length > 0 ? room.panels.filter((p) => p.on).length / room.panels.length : 0;
   return room;
-}
-
-/** 0–1 brightness from how many ceiling panels are on in this room */
-export function roomLitStrength(room) {
-  return room.litRatio ?? 0;
 }
 
 function addBox(out, minX, maxX, minZ, maxZ, minY, maxY) {
