@@ -22,7 +22,7 @@ const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
 _cellBackingGeo.rotateX(Math.PI / 2);
 _cellBackingGeo.userData.shared = true;
 
-const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+const _identityQuat = new THREE.Quaternion();
 const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
@@ -79,10 +79,10 @@ function fillCeilingInstances(state, from, to) {
     const px = tiles[i * 2];
     const pz = tiles[i * 2 + 1];
     _pos.set(px, gapY, pz);
-    _mat4.compose(_pos, _ceilRot, _scale);
+    _mat4.compose(_pos, _identityQuat, _scale);
     state.backingMesh.setMatrixAt(i, _mat4);
     _pos.set(px, tileY, pz);
-    _mat4.compose(_pos, _ceilRot, _scale);
+    _mat4.compose(_pos, _identityQuat, _scale);
     state.tileMesh.setMatrixAt(i, _mat4);
   }
   state.backingMesh.instanceMatrix.needsUpdate = true;
