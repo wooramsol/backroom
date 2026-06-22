@@ -168,6 +168,7 @@ async function init() {
     tickChairGlitchVisuals(scene, lightT);
     if (!world.preloading) {
       world.update(player.position);
+      if (started) world.processLoadQueue(player.position);
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
@@ -182,10 +183,6 @@ async function init() {
       pipeline.render(lightT);
     } else {
       renderer.render(scene, camera);
-    }
-
-    if (!world.preloading && started) {
-      world.processLoadQueue(player.position);
     }
   }
 
