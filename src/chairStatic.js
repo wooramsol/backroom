@@ -111,6 +111,16 @@ export function applyChairGlitchVisual(pivot) {
   });
 }
 
+function isChairGlbRoot(obj) {
+  let node = obj;
+  while (node) {
+    if (node.userData?.furnitureId === "chairGlb") return true;
+    if (node.userData?.furnitureId) return false;
+    node = node.parent;
+  }
+  return false;
+}
+
 export function tickChairGlitchVisuals(scene, time) {
   if ((Math.floor(time * 60) & 1) === 0) refreshStaticTexture();
 
@@ -118,7 +128,7 @@ export function tickChairGlitchVisuals(scene, time) {
   const amp = spike * (1.0 + Math.sin(time * 61.0) * 0.3 + Math.random() * 0.55);
 
   scene.traverse((obj) => {
-    if (!obj.isMesh?.material) return;
+    if (!obj.isMesh?.material || !isChairGlbRoot(obj)) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (const mat of mats) {
       if (!mat.userData?.chairGlitch) continue;
