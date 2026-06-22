@@ -226,7 +226,7 @@ function placeFurniture(group, room, template, rng, used, colliders, surfaces, o
 
   spot.supportY = supportYAt(spot.x, spot.z, meta.footprint, surfaces);
 
-  const sep = opts.minSep ?? meta.footprint * 0.85;
+  const sep = opts.minSep ?? meta.footprint * 0.72;
   if (spotTooClose(spot, used, sep)) return false;
 
   applyPose(pivot, pose, spot, rng, meta, group);
@@ -235,7 +235,7 @@ function placeFurniture(group, room, template, rng, used, colliders, surfaces, o
 }
 
 function placeOne(group, room, models, rng, used, colliders, surfaces) {
-  const isChair = rng.chance(0.55);
+  const isChair = rng.chance(0.78);
   const template = isChair ? pickChairTemplate(models, rng) : models.stool;
   return placeFurniture(group, room, template, rng, used, colliders, surfaces, {
     kind: isChair ? "chair" : "stool",
@@ -243,14 +243,14 @@ function placeOne(group, room, models, rng, used, colliders, surfaces) {
 }
 
 function placePileCluster(group, room, models, rng, used, colliders, surfaces) {
-  const center = sampleWalkable(room.innerWalls, rng, 1.4, 64);
+  const center = sampleWalkable(room.innerWalls, rng, 1.2, 72);
   if (!center) return 0;
 
-  const count = rng.int(4, 8);
-  const radius = rng.range(0.45, 1.15);
+  const count = rng.int(7, 14);
+  const radius = rng.range(0.55, 1.35);
   let placed = 0;
 
-  for (let i = 0; i < count * 4 && placed < count; i++) {
+  for (let i = 0; i < count * 5 && placed < count; i++) {
     const angle = rng.range(0, Math.PI * 2);
     const dist = rng.range(0.02, radius) * Math.sqrt(rng.range(0.15, 1));
     const spot = {
@@ -269,7 +269,7 @@ function placePileCluster(group, room, models, rng, used, colliders, surfaces) {
       placeFurniture(group, room, template, rng, used, colliders, surfaces, {
         spot,
         pileMode: true,
-        minSep: 0.32,
+        minSep: 0.26,
         kind: "pile",
       })
     ) {
@@ -287,7 +287,7 @@ export function addChunkFurniture(group, room, models) {
   const colliders = [];
   const surfaces = [];
   const rng = createRng(room.cx, room.cz, 881);
-  if (!rng.chance(0.55)) {
+  if (!rng.chance(0.88)) {
     group.userData.furnitureColliders = colliders;
     return { colliders };
   }
@@ -295,21 +295,21 @@ export function addChunkFurniture(group, room, models) {
   const used = new Set();
   let placed = 0;
 
-  const pileCount =
-    models.pileChairs?.length && rng.chance(0.34)
-      ? placePileCluster(group, room, models, rng, used, colliders, surfaces)
-      : 0;
-  placed += pileCount;
+  const pileGoal =
+    models.pileChairs?.length && rng.chance(0.58) ? rng.int(1, 2) : 0;
+  for (let p = 0; p < pileGoal; p++) {
+    placed += placePileCluster(group, room, models, rng, used, colliders, surfaces);
+  }
 
-  const scatterGoal = pileCount > 0 ? rng.int(0, 1) : rng.int(1, 2);
+  const scatterGoal = placed > 0 ? rng.int(1, 3) : rng.int(2, 4);
   let scattered = 0;
-  for (let i = 0; i < scatterGoal * 5 && scattered < scatterGoal; i++) {
+  for (let i = 0; i < scatterGoal * 8 && scattered < scatterGoal; i++) {
     if (placeOne(group, room, models, rng, used, colliders, surfaces)) scattered++;
   }
   placed += scattered;
 
   if (placed === 0) {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
       if (placeOne(group, room, models, rng, used, colliders, surfaces)) break;
     }
   }
