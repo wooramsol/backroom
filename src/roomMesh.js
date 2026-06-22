@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CHUNK } from "./room.js";
+import { ROOM_H } from "./constants.js";
 import {
   PANEL_W,
   PANEL_H,
@@ -25,6 +26,17 @@ const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2
 const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
+
+/** Per-chunk bounds — shared InstancedMesh geometry must not share one boundingSphere */
+function fitChunkBounds(mesh, h = ROOM_H) {
+  const center = new THREE.Vector3(CHUNK / 2, h * 0.5, CHUNK / 2);
+  const radius = Math.hypot(CHUNK, h) * 0.75;
+  mesh.geometry.boundingSphere = new THREE.Sphere(center, radius);
+  mesh.geometry.boundingBox = new THREE.Box3(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(CHUNK, h, CHUNK),
+  );
+}
 
 function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
   const { geometry } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
@@ -60,8 +72,10 @@ function addCeiling(group, h, materials, worldX, worldZ) {
 
   const count = tiles.length / 2;
 
-  const backingMesh = new THREE.InstancedMesh(_cellBackingGeo, materials.ceilingGroove, count);
-  const tileMesh = new THREE.InstancedMesh(_tileFaceGeo, materials.ceilingTile, count);
+  const backingGeo = _cellBackingGeo.clone();
+  const tileGeo = _tileFaceGeo.clone();
+  const backingMesh = new THREE.InstancedMesh(backingGeo, materials.ceilingGroove, count);
+  const tileMesh = new THREE.InstancedMesh(tileGeo, materials.ceilingTile, count);
   backingMesh.frustumCulled = false;
   tileMesh.frustumCulled = false;
   tileMesh.renderOrder = 2;
@@ -80,18 +94,18 @@ function addCeiling(group, h, materials, worldX, worldZ) {
 
   backingMesh.instanceMatrix.needsUpdate = true;
   tileMesh.instanceMatrix.needsUpdate = true;
-  backingMesh.computeBoundingSphere();
-  tileMesh.computeBoundingSphere();
+  fitChunkBounds(backingMesh, h);
+  fitChunkBounds(tileMesh, h);
 
   group.add(backingMesh);
   group.add(tileMesh);
 }
 
-function finalizeChunkBounds(group) {
+function finalizeChunkBounds(group, h = ROOM_H) {
   group.traverse((obj) => {
     obj.frustumCulled = false;
     if (obj.isInstancedMesh) {
-      obj.computeBoundingSphere();
+      fitChunkBounds(obj, h);
       return;
     }
     if (!obj.isMesh) return;
@@ -138,9 +152,9 @@ export function buildPanelBatch(state, _maxTiles) {
 
 export function finalizeRoomBuild(state) {
   const { group, room } = state;
-  finalizeChunkBounds(group);
-  group.frustumCulled = false;
   group.userData.room = room;
+  finalizeChunkBounds(group, room.height);
+  group.frustumCulled = false;
   return group;
 }
 

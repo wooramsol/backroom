@@ -70,8 +70,8 @@ export const GRID_RADIUS = 2;
 export const PRELOAD_RADIUS = 3;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
-/** Keep chunks this far before despawning — avoids black holes while streaming */
-export const DESPAWN_RADIUS = PREFETCH_RADIUS + 1;
+/** Keep chunks this far before despawning — extra buffer avoids black holes while streaming */
+export const DESPAWN_RADIUS = PREFETCH_RADIUS + 2;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
 export const AMBIENT_COLOR = 0xfffaf6;

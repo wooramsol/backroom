@@ -22,7 +22,7 @@ import { disposeChunkRoot } from "./sceneDispose.js";
 
 const DESPAWN_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
-const LOAD_QUEUE_BATCH = 2;
+const LOAD_QUEUE_BATCH = 3;
 
 export class World {
   constructor(scene, materials, furnitureModels = null) {
