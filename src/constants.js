@@ -73,13 +73,13 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** ~2700K warm bulb — slightly yellow vs flat white */
-export const FLUORESCENT_COLOR = 0xfff0d8;
+/** ~3000K pale bulb — soft warm white, not orange */
+export const FLUORESCENT_COLOR = 0xfff8f2;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
 export const AMBIENT_INTENSITY = 0.58;
 /** Hemisphere — even indirect on ceiling, walls, and floor */
-export const HEMI_SKY_COLOR = 0xfff6ea;
-export const HEMI_GROUND_COLOR = 0xfff0e0;
+export const HEMI_SKY_COLOR = 0xfffaf6;
+export const HEMI_GROUND_COLOR = 0xfff4ee;
 export const HEMI_INTENSITY = 0.72;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
@@ -102,7 +102,7 @@ export const PANEL_EDGE_INSET = 1.25;
 /** @deprecated all troffers are lit */
 export const PANEL_ON_CHANCE = 1;
 /** Downward square troffer — RectAreaLight matches panel footprint */
-export const PANEL_LIGHT_INTENSITY = 4.8;
+export const PANEL_LIGHT_INTENSITY = 4.2;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
