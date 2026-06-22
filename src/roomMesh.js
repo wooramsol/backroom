@@ -10,8 +10,6 @@ import { getCeilingLayers } from "./ceilingLayers.js";
 import { CEILING_TILE_M, bakeSurfaceUV, FLOOR_TILE_M } from "./textures.js";
 import { buildMergedWallGeometry } from "./wallBuilder.js";
 import { addChunkFurniture } from "./furniturePlacement.js";
-import { addCeilingPanelLight } from "./ceilingPanelLight.js";
-import { createRng } from "./rng.js";
 
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 _chunkPlane.translate(CHUNK / 2, CHUNK / 2, 0);
@@ -48,7 +46,7 @@ function addFloor(group, materials, worldX, worldZ) {
   group.add(floor);
 }
 
-function addCeiling(group, h, materials, worldX, worldZ, room) {
+function addCeiling(group, h, materials, worldX, worldZ) {
   const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
@@ -61,8 +59,6 @@ function addCeiling(group, h, materials, worldX, worldZ, room) {
   }
 
   const count = tiles.length / 2;
-  const lightRng = createRng(room.cx, room.cz, 442);
-  const lightIndex = count > 0 ? lightRng.int(0, count - 1) : -1;
 
   const backingMesh = new THREE.InstancedMesh(_cellBackingGeo, materials.ceilingGroove, count);
   const tileMesh = new THREE.InstancedMesh(_tileFaceGeo, materials.ceilingTile, count);
@@ -70,28 +66,18 @@ function addCeiling(group, h, materials, worldX, worldZ, room) {
   tileMesh.frustumCulled = false;
   tileMesh.renderOrder = 2;
 
-  let bi = 0;
-  let ti = 0;
   for (let i = 0; i < count; i++) {
     const px = tiles[i * 2];
     const pz = tiles[i * 2 + 1];
     _pos.set(px, gapY, pz);
     _mat4.compose(_pos, _identityQuat, _scale);
-    backingMesh.setMatrixAt(bi, _mat4);
-    bi++;
+    backingMesh.setMatrixAt(i, _mat4);
 
-    if (i === lightIndex) {
-      addCeilingPanelLight(group, px, tileY, pz, materials);
-    } else {
-      _pos.set(px, tileY, pz);
-      _mat4.compose(_pos, _identityQuat, _scale);
-      tileMesh.setMatrixAt(ti, _mat4);
-      ti++;
-    }
+    _pos.set(px, tileY, pz);
+    _mat4.compose(_pos, _identityQuat, _scale);
+    tileMesh.setMatrixAt(i, _mat4);
   }
 
-  backingMesh.count = bi;
-  tileMesh.count = ti;
   backingMesh.instanceMatrix.needsUpdate = true;
   tileMesh.instanceMatrix.needsUpdate = true;
 
@@ -119,7 +105,7 @@ export function buildRoomShell(state) {
   const h = room.height;
 
   addFloor(group, materials, state.worldX, state.worldZ);
-  addCeiling(group, h, materials, state.worldX, state.worldZ, room);
+  addCeiling(group, h, materials, state.worldX, state.worldZ);
   addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
   if (state.furnitureModels) addChunkFurniture(group, room, state.furnitureModels);
   state.shellDone = true;
