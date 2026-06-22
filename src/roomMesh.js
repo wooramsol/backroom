@@ -80,6 +80,16 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
         litMesh.layers.enable(BLOOM_LAYER);
         litMesh.renderOrder = 3;
         group.add(litMesh);
+
+        const haloSize = CEILING_TILE_FACE_M * 1.12;
+        const haloGeo = new THREE.PlaneGeometry(haloSize, haloSize);
+        haloGeo.rotateX(Math.PI / 2);
+        haloGeo.translate(px, tileY - 0.002, pz);
+        const haloMesh = new THREE.Mesh(haloGeo, materials.lightPanelBloom);
+        haloMesh.layers.set(BLOOM_LAYER);
+        haloMesh.renderOrder = 2;
+        group.add(haloMesh);
+
         room.lightFixture = {
           wx: worldX + px,
           wy: lightY,

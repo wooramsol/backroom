@@ -53,7 +53,8 @@ function fxaaResolution(renderer, w, h) {
 
 const _glowColor = new THREE.Color(BLOOM_GLOW_COLOR);
 
-const mixShader = {
+/** Applied last so VCR blur/grain cannot wash out the troffer halo */
+const glowMixShader = {
   uniforms: {
     baseTexture: { value: null },
     bloomTexture: { value: null },
@@ -76,26 +77,24 @@ const mixShader = {
     void main() {
       vec4 base = texture2D(baseTexture, vUv);
       vec3 bloomCol = texture2D(bloomTexture, vUv).rgb;
-      float bloomAmt = max(bloomCol.r, max(bloomCol.g, bloomCol.b));
+      float bloomAmt = length(bloomCol);
       vec3 glow = glowColor * bloomAmt * glowMix;
-      gl_FragColor = base + vec4(glow, 1.0);
+      gl_FragColor = vec4(base.rgb + glow, base.a);
     }
   `,
 };
 
-/** Base scene + troffer-only bloom + FXAA + VCR noise */
+/** Scene → FXAA → VCR noise → troffer glow (last) */
 export function createBloomPipeline(renderer, scene, camera) {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const pr = renderPixelRatio(renderer);
 
-  const basePass = new RenderPass(scene, camera);
-
   const bloomComposer = new EffectComposer(renderer);
   bloomComposer.renderToScreen = false;
   bloomComposer.setPixelRatio(pr);
   bloomComposer.setSize(w, h);
-  bloomComposer.addPass(basePass);
+  bloomComposer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(
     bloomResolution(renderer, w, h),
     BLOOM_STRENGTH,
@@ -108,16 +107,16 @@ export function createBloomPipeline(renderer, scene, camera) {
   finalComposer.setPixelRatio(pr);
   finalComposer.setSize(w, h);
   finalComposer.addPass(new RenderPass(scene, camera));
-  const mixPass = new ShaderPass(new THREE.ShaderMaterial(mixShader), "baseTexture");
-  mixPass.needsSwap = true;
-  mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
-  finalComposer.addPass(mixPass);
   const fxaa = new ShaderPass(FXAAShader);
   fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
   finalComposer.addPass(fxaa);
   const noise = createFilmNoisePass();
   resizeFilmNoise(noise, w, h, pr);
   finalComposer.addPass(noise);
+  const glowMix = new ShaderPass(new THREE.ShaderMaterial(glowMixShader), "baseTexture");
+  glowMix.needsSwap = true;
+  glowMix.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
+  finalComposer.addPass(glowMix);
 
   return {
     scene,
@@ -126,11 +125,12 @@ export function createBloomPipeline(renderer, scene, camera) {
     bloomPass,
     fxaa,
     noise,
+    glowMix,
     render() {
       scene.traverse(darkenNonBloomed);
       bloomComposer.render();
       scene.traverse(restoreMaterials);
-      mixPass.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
+      glowMix.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
       finalComposer.render();
     },
   };

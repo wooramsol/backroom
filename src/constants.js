@@ -73,18 +73,20 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** Warm yellow bulb — visibly amber, not white */
-export const FLUORESCENT_COLOR = 0xffe8b0;
+/** Pale warm bulb — midpoint between prior white and yellow */
+export const FLUORESCENT_COLOR = 0xfff0d8;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.54;
-/** Hemisphere — warm yellow indirect */
-export const HEMI_SKY_COLOR = 0xfff4c8;
-export const HEMI_GROUND_COLOR = 0xf0d888;
-export const HEMI_INTENSITY = 0.68;
+export const AMBIENT_INTENSITY = 0.55;
+/** Hemisphere — soft warm fill */
+export const HEMI_SKY_COLOR = 0xfff6ea;
+export const HEMI_GROUND_COLOR = 0xf5e8c8;
+export const HEMI_INTENSITY = 0.69;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
-/** Lit troffer face — saturated yellow square (toneMapped off) */
-export const LIGHT_PANEL_GLOW_COLOR = 0xfff0a0;
+/** Visible troffer face */
+export const LIGHT_PANEL_GLOW_COLOR = 0xfff6e8;
+/** Bloom-only halo — brighter, bloom layer exclusive */
+export const LIGHT_PANEL_BLOOM_COLOR = 0xffffe0;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
@@ -103,15 +105,14 @@ export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 1;
 /** Downward square troffer — RectAreaLight matches panel footprint */
 export const PANEL_LIGHT_INTENSITY = 4.5;
-/** Troffer bloom — layer 1 only, low-res pass */
+/** Troffer bloom — layer 1 only */
 export const BLOOM_LAYER = 1;
-/** Yellow halo tint — slightly richer than bulb for visible glow */
-export const BLOOM_GLOW_COLOR = 0xffd060;
-export const BLOOM_MIX_GAIN = 1.45;
-export const BLOOM_STRENGTH = 0.48;
-export const BLOOM_RADIUS = 0.34;
-export const BLOOM_THRESHOLD = 0.48;
-export const BLOOM_RESOLUTION_SCALE = 0.35;
+export const BLOOM_GLOW_COLOR = 0xfff2c8;
+export const BLOOM_MIX_GAIN = 2.1;
+export const BLOOM_STRENGTH = 0.75;
+export const BLOOM_RADIUS = 0.46;
+export const BLOOM_THRESHOLD = 0.18;
+export const BLOOM_RESOLUTION_SCALE = 0.5;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
