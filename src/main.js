@@ -125,7 +125,7 @@ async function init() {
       }
     })
     .then(() => {
-      player.setColliders(world.syncColliders());
+      player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
@@ -134,7 +134,7 @@ async function init() {
     })
     .catch((err) => {
       console.error(err);
-      player.setColliders(world.syncColliders());
+      player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
@@ -165,18 +165,19 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-    tickChairGlitchVisuals(scene, lightT);
+
+    if (started) {
+      player.setColliders(world.getColliders());
+      player.update(dt);
+      if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
+    }
 
     if (!world.preloading) {
       world.update(player.position);
       world.processLoadQueue(player.position);
     }
 
-    if (started) {
-      player.setColliders(world.syncColliders());
-      player.update(dt);
-      if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-    }
+    tickChairGlitchVisuals(scene, lightT);
 
     if (ready) {
       pipeline.render(lightT);
