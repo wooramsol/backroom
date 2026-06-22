@@ -17,6 +17,7 @@ import {
   MIN_CLEAR_DOOR_WIDTH,
   MAX_DOOR_WIDTH,
   ROOM_H,
+  MIN_PASSAGE_SPAN,
 } from "./constants.js";
 
 export { CHUNK };
@@ -311,6 +312,47 @@ function doorsWideEnough(innerWalls, doors) {
   return true;
 }
 
+/** Total walkable span between opposing walls/boundaries along one axis */
+function passageWidthAlong(x, z, innerWalls, axis) {
+  if (axis === "x") {
+    let neg = x - WALL_T / 2;
+    let pos = CHUNK - WALL_T / 2 - x;
+    for (const wall of innerWalls) {
+      if (wall.axis !== "x") continue;
+      if (z < wall.span0 - 0.05 || z > wall.span1 + 0.05) continue;
+      if (wall.pos <= x) neg = Math.min(neg, x - wall.pos - WALL_T / 2);
+      else pos = Math.min(pos, wall.pos - x - WALL_T / 2);
+    }
+    return neg + pos;
+  }
+  let neg = z - WALL_T / 2;
+  let pos = CHUNK - WALL_T / 2 - z;
+  for (const wall of innerWalls) {
+    if (wall.axis !== "z") continue;
+    if (x < wall.span0 - 0.05 || x > wall.span1 + 0.05) continue;
+    if (wall.pos <= z) neg = Math.min(neg, z - wall.pos - WALL_T / 2);
+    else pos = Math.min(pos, wall.pos - z - WALL_T / 2);
+  }
+  return neg + pos;
+}
+
+/** Reject layouts with walkable cells in gaps too narrow to enter */
+function walkableClearanceOK(innerWalls) {
+  const minW = MIN_PASSAGE_SPAN;
+  const cols = Math.ceil(CHUNK / NAV_CELL);
+  for (let iz = 0; iz < cols; iz++) {
+    for (let ix = 0; ix < cols; ix++) {
+      const x = ix * NAV_CELL + NAV_CELL * 0.5;
+      const z = iz * NAV_CELL + NAV_CELL * 0.5;
+      if (navBlocked(x, z, innerWalls)) continue;
+      const wx = passageWidthAlong(x, z, innerWalls, "x");
+      const wz = passageWidthAlong(x, z, innerWalls, "z");
+      if (wx < minW - 0.02 || wz < minW - 0.02) return false;
+    }
+  }
+  return true;
+}
+
 function shapePassesValidation(shape, doors) {
   return (
     hasThreeSidedStructure(shape.innerWalls) &&
@@ -321,6 +363,7 @@ function shapePassesValidation(shape, doors) {
     !hasFloatingWalls(shape.innerWalls) &&
     nookIsWalkable(shape) &&
     parallelPassagesWideEnough(shape.innerWalls) &&
+    walkableClearanceOK(shape.innerWalls) &&
     doorsWideEnough(shape.innerWalls, doors) &&
     allExitsConnected(shape.innerWalls, doors) &&
     allWalkableConnected(shape.innerWalls)
