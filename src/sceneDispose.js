@@ -1,8 +1,22 @@
 /** Release GPU resources for a despawned room chunk */
 
+const TEXTURE_KEYS = [
+  "map",
+  "normalMap",
+  "roughnessMap",
+  "metalnessMap",
+  "aoMap",
+  "emissiveMap",
+  "alphaMap",
+  "bumpMap",
+];
+
 function disposeMaterial(mat) {
   if (!mat?.userData?.chunkOwned) return;
-  if (mat.map?.userData?.chunkOwned) mat.map.dispose();
+  for (const key of TEXTURE_KEYS) {
+    const tex = mat[key];
+    if (tex?.userData?.chunkOwned) tex.dispose();
+  }
   mat.dispose();
 }
 
