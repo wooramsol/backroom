@@ -19,6 +19,10 @@ export const ROOM_H = 2.7;
 export const MIN_ROOM_H = ROOM_H;
 export const MAX_ROOM_H = ROOM_H;
 export const EYE_H = 1.62;
+/** Eye height above a standable seat surface when sitting */
+export const SIT_EYE_ABOVE_SEAT = 0.58;
+/** Max horizontal distance to snap onto a chair/stool seat */
+export const SIT_RANGE = 1.05;
 /** ~41 cm radius — adult torso / shoulder width */
 export const PLAYER_R = 0.41;
 /** Body depth (front–back) for corner collision samples */

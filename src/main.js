@@ -71,6 +71,14 @@ scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTE
 const hum = new FluorescentHum();
 
 async function init() {
+  const hint = document.querySelector("#overlay .hint");
+  const waitHint = "불러오는 중… 잠시만 기다려 주세요";
+  const defaultHint =
+    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; C · Sit &nbsp; Mouse · Look";
+
+  if (hint) hint.textContent = waitHint;
+  overlay.style.cursor = "wait";
+
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
@@ -111,17 +119,11 @@ async function init() {
 
   let started = false;
   let ready = false;
-  const hint = document.querySelector("#overlay .hint");
-  const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
-
-  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
-  overlay.style.cursor = "wait";
 
   world
     .preloadAround(camera, (done, total) => {
       if (hint && !ready) {
-        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
+        hint.innerHTML = `주변 방 생성 중… ${done}/${total}<br/>잠시만 기다려 주세요`;
       }
     })
     .then(() => {
