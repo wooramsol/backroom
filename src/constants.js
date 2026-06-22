@@ -1,6 +1,19 @@
 /** Level 0 grid — one chunk = one connectable room cell */
 export const CHUNK = 14;
 export const CHUNK_HW = CHUNK / 2;
+/** Grid cell size for procedural map generation (metres) */
+export const MAP_CELL_M = 1;
+/** Cells per chunk edge — must equal CHUNK when MAP_CELL_M is 1 */
+export const MAP_GRID_SIZE = CHUNK;
+/** Room footprint in grid cells */
+export const ROOM_CELLS_MIN = 3;
+export const ROOM_CELLS_MAX = 14;
+/** Corridor width in grid cells */
+export const CORRIDOR_CELLS_MIN = 2;
+export const CORRIDOR_CELLS_MAX = 5;
+/** Extra corridor loops beyond MST (fraction of eligible pairs) */
+export const CORRIDOR_LOOP_FRAC_MIN = 0.15;
+export const CORRIDOR_LOOP_FRAC_MAX = 0.35;
 /** Legacy room size hints — shapes now use zones + inner walls */
 export const MIN_ROOM_W = 5;
 export const MAX_ROOM_W = CHUNK;
@@ -110,8 +123,8 @@ export const TONE_MAPPING_EXPOSURE = 0.92;
 export const CARPET_COLOR = 0xf0e8a8;
 /** @deprecated walls use texture albedo directly */
 export const WALL_COLOR = 0xffffff;
-/** Fluorescent hum — disabled until re-enabled later */
-export const ENABLE_FLUORESCENT_HUM = false;
+/** Looping MP3 background music */
+export const ENABLE_BACKGROUND_MUSIC = true;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

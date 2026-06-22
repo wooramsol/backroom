@@ -8,7 +8,7 @@ import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
-import { FluorescentHum } from "./audio.js";
+import { GameAudio } from "./audio.js";
 import { tickChairGlitchVisuals } from "./chairStatic.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
@@ -26,7 +26,7 @@ import {
   CAMERA_FOV,
   CAMERA_NEAR,
   CAMERA_FAR,
-  ENABLE_FLUORESCENT_HUM,
+  ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -36,11 +36,12 @@ const vignette = document.getElementById("vignette");
 const crosshair = document.getElementById("crosshair");
 const buildLabel = document.getElementById("build-label");
 const buildBadge = document.getElementById("build-badge");
+const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
 
 const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
-if (buildBadge) buildBadge.textContent = buildText;
+if (buildVersion) buildVersion.textContent = buildText;
 
 function syncCrosshair() {
   if (!crosshair) return;
@@ -68,15 +69,14 @@ camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
 scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
 
-const hum = new FluorescentHum();
+const audio = new GameAudio();
 
 async function init() {
-  const hint = document.querySelector("#overlay .hint");
+  const hintStatus = document.getElementById("hint-status");
   const waitHint = "Loading… please wait";
-  const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; C · Crouch &nbsp; Mouse · Look";
+  const clickHint = "Click to start";
 
-  if (hint) hint.textContent = waitHint;
+  if (hintStatus) hintStatus.textContent = waitHint;
   overlay.style.cursor = "wait";
 
   const loader = new THREE.TextureLoader();
@@ -85,6 +85,7 @@ async function init() {
   const floorTex = await loadCarpetFloor(loader);
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
   const furnitureModels = await loadFurnitureModels();
+  if (ENABLE_BACKGROUND_MUSIC) await audio.preload();
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
@@ -112,6 +113,19 @@ async function init() {
   };
   player.onLockAcquired = hideResumePrompt;
 
+  player.onMove = (distance, running, crouching, speed) => {
+    if (started) audio.onMove(distance, running, crouching, speed);
+  };
+  player.onJump = () => {
+    if (started) audio.onJump();
+  };
+  player.onLand = (impactVy) => {
+    if (started) audio.onLand(impactVy);
+  };
+
+  renderer.domElement.addEventListener("click", () => {
+    if (audio.ctx?.state === "suspended") void audio.ctx.resume();
+  });
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
@@ -122,8 +136,8 @@ async function init() {
 
   world
     .preloadAround(camera, (done, total) => {
-      if (hint && !ready) {
-        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Please wait`;
+      if (hintStatus && !ready) {
+        hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br />Please wait`;
       }
     })
     .then(() => {
@@ -132,14 +146,14 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      if (hint) hint.innerHTML = defaultHint;
+      if (hintStatus) hintStatus.textContent = clickHint;
     })
     .catch((err) => {
       console.error(err);
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
-      if (hint) hint.textContent = "Load error — please refresh.";
+      if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
     });
 
   overlay.addEventListener("click", () => {
@@ -153,7 +167,7 @@ async function init() {
       crosshair?.classList.add("visible");
       syncCrosshair();
       buildBadge?.classList.add("visible");
-      if (ENABLE_FLUORESCENT_HUM) hum.start();
+      if (ENABLE_BACKGROUND_MUSIC) audio.start();
     }
   });
 
@@ -181,7 +195,6 @@ async function init() {
 
     if (started) {
       player.update(dt);
-      if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
     if (ready) {
@@ -209,6 +222,6 @@ async function init() {
 
 init().catch((err) => {
   console.error(err);
-  const hint = document.querySelector("#overlay .hint");
-  if (hint) hint.textContent = "Load error — please refresh.";
+  const hintStatus = document.getElementById("hint-status");
+  if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
 });

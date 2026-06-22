@@ -15,8 +15,8 @@ import {
   ROOM_H,
 } from "./constants.js";
 
-const WALK = 5.8;
-const RUN = 9.0;
+const WALK = 3.2;
+const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
@@ -43,6 +43,9 @@ export class Player {
     this.grounded = true;
     this.groundY = 0;
     this.crouchBlend = 0;
+    this.onMove = null;
+    this.onJump = null;
+    this.onLand = null;
     this.onLockLost = null;
     this.onLockAcquired = null;
 
@@ -54,6 +57,7 @@ export class Player {
         if (this.locked && this.grounded && !this.crouching) {
           this.vy = JUMP_V;
           this.grounded = false;
+          this.onJump?.();
         }
       }
       this.keys[e.code] = true;
@@ -259,6 +263,10 @@ export class Player {
     const running = !this.crouching && (this.keys.ShiftLeft || this.keys.ShiftRight);
     const speed = this.crouching ? CROUCH_SPEED : running ? RUN : WALK;
 
+    const px0 = this.position.x;
+    const pz0 = this.position.z;
+    let moved = 0;
+
     if (_move.lengthSq() > 0) {
       _move.normalize().multiplyScalar(speed * dt);
       const nx = this.position.x + _move.x;
@@ -271,10 +279,15 @@ export class Player {
         this.position.x = out.px;
         this.position.z = out.pz;
       }
+      moved = Math.hypot(this.position.x - px0, this.position.z - pz0);
       if (this.grounded) this.bob += dt * BOB_SPEED * (this.crouching ? 0.75 : running ? 1.3 : 1);
     } else if (this.grounded) {
       this.bob *= 0.85;
     }
+
+    if (moved > 0 && this.grounded) this.onMove?.(moved, running, this.crouching, speed);
+
+    const wasGrounded = this.grounded;
 
     const feetY = this._feetY();
     const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);
@@ -289,10 +302,13 @@ export class Player {
     }
 
     if (nextEyeY <= targetEyeY && this.vy <= 0) {
+      const impactVy = Math.abs(this.vy);
+      const justLanded = !wasGrounded;
       this.position.y = targetEyeY;
       this.vy = 0;
       this.grounded = true;
       this.groundY = supportY;
+      if (justLanded) this.onLand?.(impactVy);
     } else {
       this.position.y = nextEyeY;
       this.grounded = false;
