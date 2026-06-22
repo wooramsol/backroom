@@ -5,7 +5,7 @@ import {
   createFloorSurfaceMaterial,
   createBakedWallMaterial,
 } from "./textures.js";
-import { LIGHT_PANEL_GLOW_COLOR } from "./constants.js";
+import { createLightPanelMaterial } from "./lightPanelMaterial.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
@@ -17,10 +17,7 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
     /** bottom2.jpg — subtle grain, world UVs baked per chunk */
     ceilingTile: createCeilingTileMaterial(surfaceTex),
     ceilingGroove: createCeilingGapMaterial(),
-    lightPanelOn: new THREE.MeshBasicMaterial({
-      color: new THREE.Color(LIGHT_PANEL_GLOW_COLOR),
-      toneMapped: false,
-    }),
+    lightPanelOn: createLightPanelMaterial(),
   };
 }
 

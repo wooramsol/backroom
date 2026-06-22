@@ -73,18 +73,21 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** Warm bulb — yellower than pale white, closer to ceiling tile */
-export const FLUORESCENT_COLOR = 0xffe4a8;
-export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.54;
-/** Hemisphere — warm yellow fill */
-export const HEMI_SKY_COLOR = 0xfff2c8;
-export const HEMI_GROUND_COLOR = 0xecd890;
-export const HEMI_INTENSITY = 0.67;
-export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
+/** Neutral white troffer / area light */
+export const FLUORESCENT_COLOR = 0xfffef8;
+export const AMBIENT_COLOR = 0xfffaf6;
+export const AMBIENT_INTENSITY = 0.55;
+/** Hemisphere — even white fill */
+export const HEMI_SKY_COLOR = 0xffffff;
+export const HEMI_GROUND_COLOR = 0xfff6ee;
+export const HEMI_INTENSITY = 0.68;
+export const LIGHT_PANEL_COLOR = 0xffffff;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
-/** Lit troffer face */
-export const LIGHT_PANEL_GLOW_COLOR = 0xffe8b0;
+/** Troffer face — center brighter than edges (area diffuser) */
+export const LIGHT_PANEL_CORE_BOOST = 1.1;
+export const LIGHT_PANEL_EDGE_DIM = 0.82;
+/** @deprecated use LIGHT_PANEL_COLOR */
+export const LIGHT_PANEL_GLOW_COLOR = LIGHT_PANEL_COLOR;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
@@ -102,7 +105,7 @@ export const PANEL_EDGE_INSET = 1.25;
 /** @deprecated all troffers are lit */
 export const PANEL_ON_CHANCE = 1;
 /** Downward square troffer — RectAreaLight matches panel footprint */
-export const PANEL_LIGHT_INTENSITY = 4.5;
+export const PANEL_LIGHT_INTENSITY = 5.2;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
