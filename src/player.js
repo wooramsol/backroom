@@ -282,7 +282,7 @@ export class Player {
       this.bob *= 0.85;
     }
 
-    if (moved > 0 && this.grounded) this.onMove?.(moved, running, this.crouching);
+    if (moved > 0 && this.grounded) this.onMove?.(moved, running, this.crouching, speed);
 
     const feetY = this._feetY();
     const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);

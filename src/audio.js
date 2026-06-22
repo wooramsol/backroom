@@ -1,6 +1,11 @@
 const ASSET_BASE = import.meta.env.BASE_URL;
 const BGM_URL = `${ASSET_BASE}assets/${encodeURIComponent("01. Government Funding.mp3")}`;
 
+/** Steps per second — interval is derived from current move speed */
+const STEP_CADENCE_WALK = 2.0;
+const STEP_CADENCE_RUN = 2.75;
+const STEP_CADENCE_CROUCH = 1.4;
+
 /** Web Audio — MP3 background music + carpet footsteps */
 export class GameAudio {
   constructor() {
@@ -84,13 +89,14 @@ export class GameAudio {
     void this.preload().then(play);
   }
 
-  onMove(distance, running, crouching = false) {
+  onMove(distance, running, crouching = false, speed = 3.2) {
     if (!this._ensure()) return;
     if (this.ctx.state === "suspended") void this.ctx.resume();
-    if (distance < 1e-5) return;
+    if (distance < 1e-5 || speed < 0.1) return;
 
     this._stepAccum += distance;
-    const interval = crouching ? 0.72 : running ? 0.42 : 0.58;
+    const cadence = crouching ? STEP_CADENCE_CROUCH : running ? STEP_CADENCE_RUN : STEP_CADENCE_WALK;
+    const interval = speed / cadence;
     while (this._stepAccum >= interval) {
       this._stepAccum -= interval;
       this._playFootstep(running, crouching);
