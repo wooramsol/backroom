@@ -9,6 +9,7 @@ import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
 import { CEILING_TILE_M, bakeSurfaceUV, FLOOR_TILE_M } from "./textures.js";
 import { buildMergedWallGeometry } from "./wallBuilder.js";
+import { addChunkFurniture } from "./furniturePlacement.js";
 
 const _chunkPlane = new THREE.PlaneGeometry(CHUNK, CHUNK);
 _chunkPlane.translate(CHUNK / 2, CHUNK / 2, 0);
@@ -78,13 +79,14 @@ function addCeiling(group, h, materials, worldX, worldZ) {
   group.add(tileMesh);
 }
 
-export function createRoomBuildState(room, materials) {
+export function createRoomBuildState(room, materials, furnitureModels = null) {
   const group = new THREE.Group();
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   return {
     room,
     group,
     materials,
+    furnitureModels,
     shellDone: false,
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
@@ -99,6 +101,7 @@ export function buildRoomShell(state) {
   addFloor(group, materials, state.worldX, state.worldZ);
   addCeiling(group, h, materials, state.worldX, state.worldZ);
   addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
+  if (state.furnitureModels) addChunkFurniture(group, room, state.furnitureModels);
   state.shellDone = true;
 }
 
@@ -115,8 +118,8 @@ export function finalizeRoomBuild(state) {
   return group;
 }
 
-export function buildRoomMesh(room, materials) {
-  const state = createRoomBuildState(room, materials);
+export function buildRoomMesh(room, materials, furnitureModels = null) {
+  const state = createRoomBuildState(room, materials, furnitureModels);
   buildRoomShell(state);
   return finalizeRoomBuild(state);
 }

@@ -17,9 +17,10 @@ const DESPAWN_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
 
 export class World {
-  constructor(scene, materials) {
+  constructor(scene, materials, furnitureModels = null) {
     this.scene = scene;
     this.materials = materials;
+    this.furnitureModels = furnitureModels;
     this.chunks = new Map();
     this.wallMap = new Map();
     this.colliders = [];
@@ -124,7 +125,7 @@ export class World {
   spawnComplete(cx, cz) {
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
-    const mesh = buildRoomMesh(room, this.materials);
+    const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room });
   }
@@ -215,7 +216,7 @@ export class World {
 
     if (!job.room) {
       job.room = generateRoom(job.cx, job.cz);
-      job.build = createRoomBuildState(job.room, this.materials);
+      job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
       this.addCollidersForRoom(job.room);
       return;
     }
@@ -249,7 +250,7 @@ export class World {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
-    const mesh = buildRoomMesh(room, this.materials);
+    const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room });
     this.pendingKeys.delete(k);
