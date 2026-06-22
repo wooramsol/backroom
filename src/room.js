@@ -436,6 +436,33 @@ export function appendRoomWalls(map, room) {
   return added;
 }
 
+function roomWallKeys(room) {
+  const keys = [
+    `ex,${room.cx + 1},${room.cz}`,
+    `ez,${room.cx},${room.cz + 1}`,
+    `wx,${room.cx},${room.cz}`,
+    `nz,${room.cx},${room.cz}`,
+  ];
+  room.innerWalls.forEach((_, i) => keys.push(`iw,${room.cx},${room.cz},${i}`));
+  return keys;
+}
+
+/** Drop wall boxes this room registered — incremental despawn */
+export function removeRoomWalls(map, colliders, room) {
+  let changed = false;
+  for (const key of roomWallKeys(room)) {
+    const boxes = map.get(key);
+    if (!boxes) continue;
+    map.delete(key);
+    for (const box of boxes) {
+      const idx = colliders.indexOf(box);
+      if (idx !== -1) colliders.splice(idx, 1);
+    }
+    changed = true;
+  }
+  return changed;
+}
+
 export function registerRoomWalls(map, room) {
   appendRoomWalls(map, room);
 }

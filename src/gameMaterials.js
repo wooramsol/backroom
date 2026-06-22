@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {
-  createCeilingGapMaterial,
+  createCeilingSeamTexture,
   createCeilingTileMaterial,
   createFloorSurfaceMaterial,
   createBakedWallMaterial,
@@ -8,14 +8,15 @@ import {
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
+  const ceilingSeamTex = createCeilingSeamTexture(surfaceTex);
+
   return {
     wallTex: wallpaper,
     surfaceTex,
     floorTex,
     wall: createBakedWallMaterial(wallpaper),
-    /** bottom2.jpg — subtle grain, world UVs baked per chunk */
-    ceilingTile: createCeilingTileMaterial(surfaceTex),
-    ceilingGroove: createCeilingGapMaterial(),
+    /** Seam texture — tile grooves baked in, world UVs per chunk */
+    ceilingTile: createCeilingTileMaterial(ceilingSeamTex),
   };
 }
 

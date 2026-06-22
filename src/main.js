@@ -165,7 +165,6 @@ async function init() {
     if (!world.preloading) {
       world.update(player.position);
       if (world.consumeColliderRebuild()) {
-        world.flushColliders();
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }

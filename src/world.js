@@ -1,4 +1,4 @@
-import { CHUNK, generateRoom, appendRoomWalls } from "./room.js";
+import { CHUNK, generateRoom, appendRoomWalls, removeRoomWalls } from "./room.js";
 import {
   GRID_RADIUS,
   PRELOAD_RADIUS,
@@ -24,7 +24,6 @@ export class World {
     this.wallMap = new Map();
     this.colliders = [];
     this.collidersDirty = false;
-    this.pendingColliderRebuild = false;
     this.time = 0;
     this.loadQueue = [];
     this.pendingKeys = new Set();
@@ -33,7 +32,6 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
-    this._lastColliderRebuild = 0;
   }
 
   key(cx, cz) {
@@ -104,14 +102,10 @@ export class World {
     }
   }
 
-  rebuildColliders() {
-    this.wallMap.clear();
-    this.colliders = [];
-    for (const { room } of this.chunks.values()) {
-      this.colliders.push(...appendRoomWalls(this.wallMap, room));
+  removeCollidersForRoom(room) {
+    if (removeRoomWalls(this.wallMap, this.colliders, room)) {
+      this.collidersDirty = true;
     }
-    this.collidersDirty = true;
-    this.pendingColliderRebuild = false;
   }
 
   consumeColliderRebuild() {
@@ -137,13 +131,13 @@ export class World {
   despawn(k) {
     const entry = this.chunks.get(k);
     if (!entry) return;
-    const { mesh } = entry;
+    const { mesh, room } = entry;
     if (mesh) {
       this.scene.remove(mesh);
       this.disposeQueue.push(mesh);
     }
     this.chunks.delete(k);
-    this.pendingColliderRebuild = true;
+    if (room) this.removeCollidersForRoom(room);
   }
 
   enqueue(cx, cz, playerPos) {
@@ -173,8 +167,7 @@ export class World {
       cx === this.cellCx &&
       cz === this.cellCz &&
       atEdge === this.lastPrefetchEdge &&
-      !this.loadQueue.length &&
-      !this.pendingColliderRebuild
+      !this.loadQueue.length
     ) {
       return;
     }
@@ -184,14 +177,16 @@ export class World {
     this.lastPrefetchEdge = atEdge;
 
     const need = this.computeNeed(cx, cz, playerPos);
-    const prevQueueLen = this.loadQueue.length;
 
     for (const k of [...this.chunks.keys()]) {
       if (!need.has(k)) this.despawn(k);
     }
 
-    this.loadQueue = this.loadQueue.filter((job) => need.has(this.key(job.cx, job.cz)));
-    if (this.loadQueue.length < prevQueueLen) this.pendingColliderRebuild = true;
+    this.loadQueue = this.loadQueue.filter((job) => {
+      if (need.has(this.key(job.cx, job.cz))) return true;
+      if (job.room) this.removeCollidersForRoom(job.room);
+      return false;
+    });
 
     for (const k of this.pendingKeys) {
       if (!need.has(k) && !this.chunks.has(k)) this.pendingKeys.delete(k);
@@ -205,27 +200,7 @@ export class World {
     }
   }
 
-  _isPrefetchOnly(cx, cz, playerPos) {
-    const pcx = Math.floor(playerPos.x / CHUNK);
-    const pcz = Math.floor(playerPos.z / CHUNK);
-    return Math.max(Math.abs(cx - pcx), Math.abs(cz - pcz)) > GRID_RADIUS;
-  }
-
-  _finishPrefetchJob(job) {
-    const k = this.key(job.cx, job.cz);
-    if (job.build?.group) {
-      this.scene.remove(job.build.group);
-      this.disposeQueue.push(job.build.group);
-    }
-    const room = generateRoom(job.cx, job.cz);
-    this.addCollidersForRoom(room);
-    const mesh = buildRoomMesh(room, this.materials);
-    this.scene.add(mesh);
-    this.chunks.set(k, { mesh, room });
-    this.pendingKeys.delete(k);
-  }
-
-  processLoadQueue(playerPos, _budgetMs) {
+  processLoadQueue(_playerPos, _budgetMs) {
     if (!this.loadQueue.length) return;
 
     const job = this.loadQueue[0];
@@ -247,11 +222,7 @@ export class World {
     const done = buildPanelBatch(job.build, PANELS_PER_FRAME);
     if (!done) return;
 
-    if (this._isPrefetchOnly(job.cx, job.cz, playerPos)) {
-      this._finishPrefetchJob(job);
-    } else {
-      this.attachChunk(job.cx, job.cz, job.room, job.build);
-    }
+    this.attachChunk(job.cx, job.cz, job.room, job.build);
     this.loadQueue.shift();
     this.pendingKeys.delete(k);
   }
@@ -263,14 +234,6 @@ export class World {
 
   getColliders() {
     return this.colliders;
-  }
-
-  flushColliders() {
-    if (!this.pendingColliderRebuild) return;
-    const now = performance.now();
-    if (now - (this._lastColliderRebuild ?? 0) < 120) return;
-    this.rebuildColliders();
-    this._lastColliderRebuild = now;
   }
 
   _spawnChunkComplete(cx, cz) {
@@ -324,14 +287,11 @@ export class World {
       await new Promise((r) => requestAnimationFrame(r));
     }
 
-    if (this.pendingColliderRebuild) this.rebuildColliders();
-    else this.flushColliders();
-
     this.preloading = false;
     onProgress?.(total || 1, total || 1);
   }
 
   hasPendingLoads() {
-    return !this.preloading && (this.loadQueue.length > 0 || this.pendingColliderRebuild);
+    return !this.preloading && this.loadQueue.length > 0;
   }
 }
