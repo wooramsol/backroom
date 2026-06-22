@@ -75,7 +75,7 @@ async function init() {
   const hint = document.querySelector("#overlay .hint");
   const waitHint = "Loading… please wait";
   const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; C · Crouch &nbsp; Mouse · Look";
+    "Click to start<br /><br />Move: WASD<br />Run: Shift<br />Jump: Space<br />Crouch: C<br />Look: Mouse";
 
   if (hint) hint.textContent = waitHint;
   overlay.style.cursor = "wait";
