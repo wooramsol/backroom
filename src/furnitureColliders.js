@@ -1,26 +1,41 @@
 import * as THREE from "three";
+import { EYE_H, PLAYER_R, ROOM_H } from "./constants.js";
 
 const _box = new THREE.Box3();
-const SHRINK = 0.04;
+const SHRINK = 0.03;
+const MIN_SPAN = 0.38;
+/** Player body column — eye-height circle test only hits boxes overlapping this band */
+const BODY_Y_LO = 0.3;
+const BODY_Y_HI = EYE_H + PLAYER_R * 0.45 + 0.15;
 
-/** World-space AABB for a placed furniture pivot (group must have matrix updated) */
+function expandAxis(min, max, minSpan) {
+  if (max - min >= minSpan) return [min, max];
+  const mid = (min + max) * 0.5;
+  const half = minSpan * 0.5;
+  return [mid - half, mid + half];
+}
+
+/** World-space AABB for player collision (chunk-local coords) */
 export function colliderFromFurniture(pivot, rootGroup) {
   rootGroup.updateMatrixWorld(true);
   _box.setFromObject(pivot);
 
-  return {
-    minX: _box.min.x + SHRINK,
-    maxX: _box.max.x - SHRINK,
-    minY: _box.min.y,
-    maxY: _box.max.y,
-    minZ: _box.min.z + SHRINK,
-    maxZ: _box.max.z - SHRINK,
-  };
-}
+  let [minX, maxX] = expandAxis(_box.min.x + SHRINK, _box.max.x - SHRINK, MIN_SPAN);
+  let [minZ, maxZ] = expandAxis(_box.min.z + SHRINK, _box.max.z - SHRINK, MIN_SPAN);
 
-/** Centre of furniture in world space — for chair static audio */
-export function furnitureWorldCenter(pivot, rootGroup) {
-  rootGroup.updateMatrixWorld(true);
-  _box.setFromObject(pivot);
-  return _box.getCenter(new THREE.Vector3());
+  const meshBottom = _box.min.y;
+  const meshTop = _box.max.y;
+  const isCeiling = meshBottom > ROOM_H * 0.5;
+
+  let minY;
+  let maxY;
+  if (isCeiling) {
+    minY = Math.min(meshBottom, BODY_Y_LO);
+    maxY = Math.max(meshTop, ROOM_H + 0.05);
+  } else {
+    minY = Math.min(meshBottom, BODY_Y_LO);
+    maxY = Math.max(meshTop, BODY_Y_HI);
+  }
+
+  return { minX, maxX, minY, maxY, minZ, maxZ };
 }

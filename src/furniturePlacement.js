@@ -2,7 +2,11 @@ import * as THREE from "three";
 import { CHUNK, ROOM_H, WALL_T } from "./constants.js";
 import { isWalkableLocal } from "./room.js";
 import { createRng } from "./rng.js";
-import { cloneFurnitureTemplate, pickChairTemplate } from "./furnitureModels.js";
+import {
+  cloneFurnitureTemplate,
+  pickChairTemplate,
+  pickPileChairTemplate,
+} from "./furnitureModels.js";
 import { colliderFromFurniture } from "./furnitureColliders.js";
 import { applyChairGlitchVisual } from "./chairStatic.js";
 
@@ -16,6 +20,13 @@ const POSES = [
   ["wall_embedded", 14],
   ["ceiling_stuck", 10],
   ["floor_embedded", 6],
+];
+
+const PILE_POSES = [
+  ["floor_normal", 40],
+  ["floor_tipped", 35],
+  ["floor_embedded", 15],
+  ["wall_lean", 10],
 ];
 
 function alignLowestY(pivot, targetY) {
@@ -145,22 +156,48 @@ function applyPose(pivot, pose, spot, rng, meta) {
   }
 }
 
-function pickPose(rng) {
-  return rng.pickWeighted(POSES);
+function pickPose(rng, pileMode = false) {
+  return rng.pickWeighted(pileMode ? PILE_POSES : POSES);
 }
 
-function placeOne(group, room, models, rng, used, colliders) {
-  const isChair = rng.chance(0.55);
-  const template = isChair ? pickChairTemplate(models, rng) : models.stool;
+function spotTooClose(spot, used, radius) {
+  for (const key of used) {
+    const [ux, uz] = key.split(",").map(Number);
+    const dx = spot.x - ux;
+    const dz = spot.z - uz;
+    if (dx * dx + dz * dz < radius * radius) return true;
+  }
+  return false;
+}
+
+function finalizePlacement(group, pivot, meta, colliders, used, spot) {
+  pivot.userData.chunkOwned = true;
+  group.add(pivot);
+  colliders.push(colliderFromFurniture(pivot, group));
+  if (meta.chairGlitch) applyChairGlitchVisual(pivot);
+  used.add(`${spot.x.toFixed(2)},${spot.z.toFixed(2)}`);
+}
+
+function placeFurniture(
+  group,
+  room,
+  template,
+  rng,
+  used,
+  colliders,
+  opts = {},
+) {
   if (!template) return false;
 
   const pivot = cloneFurnitureTemplate(template);
   const meta = pivot.userData;
-  meta.furnitureKind = isChair ? "chair" : "stool";
-  const pose = pickPose(rng);
+  meta.furnitureKind = opts.kind || (meta.isPile ? "pile" : "chair");
+  const pose = pickPose(rng, opts.pileMode);
   let spot = null;
 
-  if (pose === "floor_normal" || pose === "floor_tipped" || pose === "floor_embedded") {
+  if (opts.spot) {
+    spot = { ...opts.spot, yaw: opts.spot.yaw ?? rng.range(0, Math.PI * 2) };
+  } else if (pose === "floor_normal" || pose === "floor_tipped" || pose === "floor_embedded") {
     const pt = sampleWalkable(room.innerWalls, rng, meta.footprint * 0.45);
     if (!pt) return false;
     spot = { ...pt, yaw: rng.range(0, Math.PI * 2) };
@@ -174,24 +211,58 @@ function placeOne(group, room, models, rng, used, colliders) {
     if (!spot) return false;
   }
 
-  for (const key of used) {
-    const [ux, uz] = key.split(",").map(Number);
-    const dx = spot.x - ux;
-    const dz = spot.z - uz;
-    if (dx * dx + dz * dz < meta.footprint * meta.footprint) return false;
-  }
+  const sep = opts.minSep ?? meta.footprint * 0.85;
+  if (spotTooClose(spot, used, sep)) return false;
 
   applyPose(pivot, pose, spot, rng, meta);
-  pivot.userData.chunkOwned = true;
-  group.add(pivot);
-
-  const box = colliderFromFurniture(pivot, group);
-  colliders.push(box);
-
-  if (meta.chairGlitch) applyChairGlitchVisual(pivot);
-
-  used.add(`${spot.x.toFixed(2)},${spot.z.toFixed(2)}`);
+  finalizePlacement(group, pivot, meta, colliders, used, spot);
   return true;
+}
+
+function placeOne(group, room, models, rng, used, colliders) {
+  const isChair = rng.chance(0.55);
+  const template = isChair ? pickChairTemplate(models, rng) : models.stool;
+  return placeFurniture(group, room, template, rng, used, colliders, {
+    kind: isChair ? "chair" : "stool",
+  });
+}
+
+function placePileCluster(group, room, models, rng, used, colliders) {
+  const center = sampleWalkable(room.innerWalls, rng, 1.4, 64);
+  if (!center) return 0;
+
+  const count = rng.int(4, 7);
+  const radius = rng.range(0.55, 1.35);
+  let placed = 0;
+
+  for (let i = 0; i < count * 3 && placed < count; i++) {
+    const angle = rng.range(0, Math.PI * 2);
+    const dist = rng.range(0.05, radius) * Math.sqrt(rng.range(0.2, 1));
+    const spot = {
+      x: center.x + Math.cos(angle) * dist,
+      z: center.z + Math.sin(angle) * dist,
+      yaw: rng.range(0, Math.PI * 2),
+    };
+
+    if (spot.x < 0.45 || spot.x > CHUNK - 0.45 || spot.z < 0.45 || spot.z > CHUNK - 0.45) {
+      continue;
+    }
+    if (!isWalkableLocal(spot.x, spot.z, room.innerWalls)) continue;
+
+    const template = pickPileChairTemplate(models, rng);
+    if (
+      placeFurniture(group, room, template, rng, used, colliders, {
+        spot,
+        pileMode: true,
+        minSep: 0.42,
+        kind: "pile",
+      })
+    ) {
+      placed++;
+    }
+  }
+
+  return placed;
 }
 
 /** Scatter chair/stool props in chunk-local space */
@@ -200,16 +271,31 @@ export function addChunkFurniture(group, room, models) {
 
   const colliders = [];
   const rng = createRng(room.cx, room.cz, 881);
-  if (!rng.chance(0.52)) {
+  if (!rng.chance(0.55)) {
     group.userData.furnitureColliders = colliders;
     return { colliders };
   }
 
-  const count = rng.int(1, 2);
   const used = new Set();
   let placed = 0;
-  for (let i = 0; i < count * 4 && placed < count; i++) {
-    if (placeOne(group, room, models, rng, used, colliders)) placed++;
+
+  const pileCount =
+    models.pileChairs?.length && rng.chance(0.32)
+      ? placePileCluster(group, room, models, rng, used, colliders)
+      : 0;
+  placed += pileCount;
+
+  const scatterGoal = pileCount > 0 ? rng.int(0, 1) : rng.int(1, 2);
+  let scattered = 0;
+  for (let i = 0; i < scatterGoal * 5 && scattered < scatterGoal; i++) {
+    if (placeOne(group, room, models, rng, used, colliders)) scattered++;
+  }
+  placed += scattered;
+
+  if (placed === 0 && pileCount === 0) {
+    for (let i = 0; i < 4; i++) {
+      if (placeOne(group, room, models, rng, used, colliders)) break;
+    }
   }
 
   group.userData.furnitureColliders = colliders;

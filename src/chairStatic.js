@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-const STATIC_SIZE = 128;
+const STATIC_SIZE = 160;
 let _canvas;
 let _ctx;
 let _staticTex;
@@ -21,7 +21,7 @@ function refreshStaticTexture() {
   const imageData = _ctx.createImageData(STATIC_SIZE, STATIC_SIZE);
   const d = imageData.data;
   for (let i = 0; i < d.length; i += 4) {
-    const on = Math.random() < 0.72;
+    const on = Math.random() < 0.82;
     const v = on ? (Math.random() * 255) | 0 : 0;
     d[i] = d[i + 1] = d[i + 2] = v;
     d[i + 3] = on ? 255 : 0;
@@ -40,7 +40,7 @@ function makeGlitchMaterial(srcMat) {
     color: srcMat.color?.clone?.() ?? new THREE.Color(0xbfb8a0),
     emissiveMap: tex,
     emissive: new THREE.Color(0xffffff),
-    emissiveIntensity: 0.55,
+    emissiveIntensity: 1.1,
   });
   mat.userData.chunkOwned = true;
   mat.userData.chairGlitch = true;
@@ -61,15 +61,17 @@ function makeGlitchMaterial(srcMat) {
       "#include <begin_vertex>",
       `#include <begin_vertex>
       float t = uGlitchTime;
-      float nx = sin(transformed.y * 19.0 + t * 43.0) * cos(transformed.x * 13.0 + t * 31.0);
-      float nz = cos(transformed.z * 17.0 + t * 37.0) * sin(transformed.y * 11.0 + t * 29.0);
-      float snapX = step(0.68, fract(sin(transformed.z * 37.0 + t * 61.0)));
-      float snapY = step(0.62, fract(cos(transformed.x * 29.0 + t * 47.0)));
-      float snapZ = step(0.7, fract(sin(transformed.y * 41.0 + t * 53.0)));
-      transformed += normal * (nx + nz) * uGlitchAmp * 0.065;
-      transformed.x += (snapX - 0.5) * uGlitchAmp * 0.11;
-      transformed.y += (snapY - 0.5) * uGlitchAmp * 0.055;
-      transformed.z += (snapZ - 0.5) * uGlitchAmp * 0.09;
+      float nx = sin(transformed.y * 23.0 + t * 67.0) * cos(transformed.x * 17.0 + t * 53.0);
+      float nz = cos(transformed.z * 21.0 + t * 59.0) * sin(transformed.y * 15.0 + t * 71.0);
+      float burst = step(0.82, fract(sin(t * 31.7 + transformed.x * 7.0)));
+      float snapX = step(0.55, fract(sin(transformed.z * 43.0 + t * 89.0)));
+      float snapY = step(0.5, fract(cos(transformed.x * 37.0 + t * 73.0)));
+      float snapZ = step(0.58, fract(sin(transformed.y * 49.0 + t * 97.0)));
+      float amp = uGlitchAmp * (1.0 + burst * 2.5);
+      transformed += normal * (nx + nz) * amp * 0.19;
+      transformed.x += (snapX - 0.5) * amp * 0.28 + sin(t * 120.0 + transformed.y * 9.0) * amp * 0.04;
+      transformed.y += (snapY - 0.5) * amp * 0.14;
+      transformed.z += (snapZ - 0.5) * amp * 0.22;
       `,
     );
 
@@ -82,10 +84,13 @@ function makeGlitchMaterial(srcMat) {
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <dithering_fragment>",
       `#include <dithering_fragment>
-      float scan = step(0.55, fract(sin(gl_FragCoord.y * 0.85 + uGlitchTime * 95.0)));
-      float block = step(0.78, fract(sin(gl_FragCoord.x * 0.04 + uGlitchTime * 120.0)));
-      gl_FragColor.rgb += (scan * block) * 0.22;
-      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(step(0.5, fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + uGlitchTime * 200.0)))), 0.18);
+      float scan = step(0.42, fract(sin(gl_FragCoord.y * 1.1 + uGlitchTime * 140.0)));
+      float block = step(0.62, fract(sin(gl_FragCoord.x * 0.06 + uGlitchTime * 180.0)));
+      float snow = step(0.48, fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + uGlitchTime * 320.0)));
+      float corrupt = scan * block;
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(snow), 0.42 + corrupt * 0.35);
+      gl_FragColor.rgb += corrupt * 0.45;
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(step(0.5, fract(uGlitchTime * 77.0 + gl_FragCoord.x * 0.2))), 0.12);
       `,
     );
   };
@@ -93,7 +98,7 @@ function makeGlitchMaterial(srcMat) {
   return mat;
 }
 
-/** Strong TV glitch + vertex warp — Chair.glb only */
+/** Extreme TV glitch + mesh warp — Chair.glb only */
 export function applyChairGlitchVisual(pivot) {
   pivot.userData.chairGlitch = true;
   pivot.traverse((obj) => {
@@ -106,9 +111,11 @@ export function applyChairGlitchVisual(pivot) {
 
 export function tickChairGlitchVisuals(scene, time) {
   _frame++;
-  if (_frame % 2 === 0) refreshStaticTexture();
+  refreshStaticTexture();
 
-  const amp = 0.85 + Math.sin(time * 41.3) * 0.25 + Math.random() * 0.35;
+  const spike = Math.random() < 0.08 ? 2.8 : 1;
+  const amp = spike * (1.1 + Math.sin(time * 53.7) * 0.35 + Math.random() * 0.65);
+
   scene.traverse((obj) => {
     if (!obj.isMesh?.material) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -116,10 +123,10 @@ export function tickChairGlitchVisuals(scene, time) {
       if (!mat.userData?.chairGlitch) continue;
       const u = mat.userData.glitchUniforms;
       if (u) {
-        u.uGlitchTime.value = time;
+        u.uGlitchTime.value = time + Math.random() * 0.04;
         u.uGlitchAmp.value = amp;
       }
-      mat.emissiveIntensity = 0.45 + Math.random() * 0.55;
+      mat.emissiveIntensity = 0.75 + Math.random() * 1.25;
     }
   });
 }

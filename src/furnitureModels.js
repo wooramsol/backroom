@@ -41,6 +41,7 @@ function finalizeTemplate(root, meta = {}) {
   root.userData.furnitureTemplate = true;
   root.userData.furnitureId = meta.id || "unknown";
   root.userData.chairGlitch = meta.chairGlitch === true;
+  root.userData.isPile = meta.isPile === true;
   root.userData.footprint = Math.max(_size.x, _size.z);
   root.userData.height = _size.y;
   root.userData.depth = Math.min(_size.x, _size.z);
@@ -106,7 +107,11 @@ async function loadPackChairs(loader) {
   const gltf = await loader.loadAsync(CHAIR_PACK_URL);
   const nodes = extractPackChairNodes(gltf.scene);
   return nodes.map(({ id, node }) =>
-    preparePackChairNode(node, CHAIR_TARGET_H, { id: `pack:${id}`, chairGlitch: false }),
+    preparePackChairNode(node, CHAIR_TARGET_H, {
+      id: `pack:${id}`,
+      chairGlitch: false,
+      isPile: /Pile/i.test(id),
+    }),
   );
 }
 
@@ -123,7 +128,8 @@ export async function loadFurnitureModels() {
       }),
     ]);
     const allChairs = [chairGlb, ...packChairs];
-    return { chairGlb, stool, packChairs, allChairs };
+    const pileChairs = packChairs.filter((t) => t.userData.isPile);
+    return { chairGlb, stool, packChairs, pileChairs, allChairs };
   } catch (err) {
     console.warn("Furniture models unavailable — skipping props", err);
     return null;
@@ -145,6 +151,7 @@ export function cloneFurnitureTemplate(template) {
   pivot.userData.depth = template.userData.depth;
   pivot.userData.furnitureId = template.userData.furnitureId;
   pivot.userData.chairGlitch = template.userData.chairGlitch;
+  pivot.userData.isPile = template.userData.isPile;
   return pivot;
 }
 
@@ -153,4 +160,11 @@ export function pickChairTemplate(models, rng) {
   const pool = models.allChairs?.length ? models.allChairs : models.chairGlb ? [models.chairGlb] : [];
   if (!pool.length) return null;
   return rng.pick(pool);
+}
+
+/** Prefer pile/stack variants from the pack */
+export function pickPileChairTemplate(models, rng) {
+  const piles = models.pileChairs?.length ? models.pileChairs : [];
+  if (piles.length && rng.chance(0.72)) return rng.pick(piles);
+  return pickChairTemplate(models, rng);
 }
