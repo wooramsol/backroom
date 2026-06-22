@@ -13,7 +13,6 @@ import {
 } from "./roomMesh.js";
 import { disposeChunkRoot } from "./sceneDispose.js";
 
-const CEILING_TILES_PER_FRAME = 48;
 const DESPAWN_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
 
@@ -189,6 +188,10 @@ export class World {
     this.loadQueue = this.loadQueue.filter((job) => {
       if (need.has(this.key(job.cx, job.cz))) return true;
       if (job.room) this.removeCollidersForRoom(job.room);
+      if (job.build?.group) {
+        if (job.build.group.parent) this.scene.remove(job.build.group);
+        disposeChunkRoot(job.build.group);
+      }
       return false;
     });
 
@@ -218,9 +221,11 @@ export class World {
     }
 
     if (!job.build.shellDone) {
-      const done = buildPanelBatch(job.build, CEILING_TILES_PER_FRAME);
-      if (!job.build.group.parent) this.scene.add(job.build.group);
-      if (!done) return;
+      buildPanelBatch(job.build);
+    }
+
+    if (!job.build.group.parent) {
+      this.scene.add(job.build.group);
     }
 
     this.attachChunk(job.cx, job.cz, job.room, job.build);
