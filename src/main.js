@@ -80,7 +80,6 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
-  world.init(player.position);
   player.connect();
 
   function showResumePrompt() {
@@ -166,14 +165,15 @@ async function init() {
 
     world.tick(dt);
     tickChairGlitchVisuals(scene, lightT);
+
     if (!world.preloading) {
       world.update(player.position);
-      if (started) world.processLoadQueue(player.position);
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
     }
+
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
@@ -183,6 +183,10 @@ async function init() {
       pipeline.render(lightT);
     } else {
       renderer.render(scene, camera);
+    }
+
+    if (!world.preloading && started) {
+      world.processLoadQueue(player.position);
     }
   }
 
