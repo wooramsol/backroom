@@ -1,11 +1,11 @@
 import {
   CORRIDOR_CELLS_MAX,
-  CORRIDOR_CELLS_MIN,
   CORRIDOR_LOOP_FRAC_MAX,
   CORRIDOR_LOOP_FRAC_MIN,
   MAP_GRID_SIZE,
 } from "../constants.js";
-import { CELL_CORRIDOR, CELL_FLOOR, CELL_VOID, GridMap } from "./grid.js";
+import { CELL_CORRIDOR, CELL_FLOOR, CELL_VOID } from "./grid.js";
+import { doorPassageCells, minCorridorCells } from "./passage.js";
 
 function dist2(a, b) {
   const dx = a.x - b.x;
@@ -39,10 +39,12 @@ function mstEdges(rooms) {
   return edges;
 }
 
-function stampDisc(grid, cx, cz, radius) {
-  const r = Math.max(1, Math.floor(radius / 2));
-  for (let dz = -r; dz <= r; dz++) {
-    for (let dx = -r; dx <= r; dx++) {
+/** Stamp a widthCells × widthCells block centred on (cx, cz) */
+function stampBlock(grid, cx, cz, widthCells) {
+  const half = Math.floor(widthCells / 2);
+  const extra = widthCells % 2;
+  for (let dz = -half; dz < half + extra; dz++) {
+    for (let dx = -half; dx < half + extra; dx++) {
       const x = Math.round(cx) + dx;
       const z = Math.round(cz) + dz;
       if (!grid.inBounds(x, z)) continue;
@@ -51,13 +53,26 @@ function stampDisc(grid, cx, cz, radius) {
   }
 }
 
-function carveSegment(grid, x0, z0, x1, z1, halfW) {
+function stampBlockForce(grid, cx, cz, widthCells) {
+  const half = Math.floor(widthCells / 2);
+  const extra = widthCells % 2;
+  for (let dz = -half; dz < half + extra; dz++) {
+    for (let dx = -half; dx < half + extra; dx++) {
+      const x = Math.round(cx) + dx;
+      const z = Math.round(cz) + dz;
+      if (!grid.inBounds(x, z)) continue;
+      grid.set(x, z, CELL_CORRIDOR);
+    }
+  }
+}
+
+function carveSegment(grid, x0, z0, x1, z1, widthCells) {
   const steps = Math.max(Math.abs(x1 - x0), Math.abs(z1 - z0));
   for (let i = 0; i <= steps; i++) {
     const t = steps === 0 ? 0 : i / steps;
     const x = x0 + (x1 - x0) * t;
     const z = z0 + (z1 - z0) * t;
-    stampDisc(grid, x, z, halfW * 2);
+    stampBlock(grid, x, z, widthCells);
   }
 }
 
@@ -65,20 +80,23 @@ function carveSegment(grid, x0, z0, x1, z1, halfW) {
 export class CorridorGenerator {
   constructor(rng) {
     this.rng = rng;
+    this.minWidth = minCorridorCells();
   }
 
   pickWidth() {
-    return this.rng.int(CORRIDOR_CELLS_MIN, CORRIDOR_CELLS_MAX);
+    const lo = this.minWidth;
+    const hi = Math.max(lo, CORRIDOR_CELLS_MAX);
+    return this.rng.int(lo, hi);
   }
 
-  carvePath(grid, ax, az, bx, bz, width) {
-    const halfW = width / 2;
+  carvePath(grid, ax, az, bx, bz, widthCells) {
+    const w = Math.max(this.minWidth, widthCells);
     if (this.rng.chance(0.55)) {
-      carveSegment(grid, ax, az, bx, az, halfW);
-      carveSegment(grid, bx, az, bx, bz, halfW);
+      carveSegment(grid, ax, az, bx, az, w);
+      carveSegment(grid, bx, az, bx, bz, w);
     } else {
-      carveSegment(grid, ax, az, ax, bz, halfW);
-      carveSegment(grid, ax, bz, bx, bz, halfW);
+      carveSegment(grid, ax, az, ax, bz, w);
+      carveSegment(grid, ax, bz, bx, bz, w);
     }
   }
 
@@ -103,12 +121,35 @@ export class CorridorGenerator {
     }
   }
 
-  connectDoorSpur(grid, doorX, doorZ) {
-    grid.set(doorX, doorZ, CELL_CORRIDOR);
+  /** Wide landing + corridor from chunk door to walkable area */
+  connectDoorSpur(grid, doorX, doorZ, widthCells, inwardDx, inwardDz) {
+    const w = Math.max(this.minWidth, widthCells);
+    const depth = this.minWidth;
+
+    for (let i = 0; i < depth; i++) {
+      stampBlockForce(grid, doorX + inwardDx * i, doorZ + inwardDz * i, w);
+    }
+
+    const mouthX = doorX + inwardDx * (depth - 1);
+    const mouthZ = doorZ + inwardDz * (depth - 1);
     const key = (x, z) => `${x},${z}`;
-    const queue = [[doorX, doorZ]];
-    const visited = new Set([key(doorX, doorZ)]);
+    const queue = [];
+    const visited = new Set();
     const parent = new Map();
+
+    const half = Math.floor(w / 2);
+    const extra = w % 2;
+    for (let dz = -half; dz < half + extra; dz++) {
+      for (let dx = -half; dx < half + extra; dx++) {
+        const x = mouthX + dx;
+        const z = mouthZ + dz;
+        if (!grid.inBounds(x, z)) continue;
+        const k = key(x, z);
+        visited.add(k);
+        queue.push([x, z]);
+      }
+    }
+
     let found = null;
 
     while (queue.length && !found) {
@@ -139,33 +180,46 @@ export class CorridorGenerator {
     }
 
     if (!found) {
-      const mid = MAP_GRID_SIZE / 2;
-      this.carvePath(grid, doorX, doorZ, mid, mid, this.pickWidth());
+      const extraDepth = Math.max(2, Math.ceil(MAP_GRID_SIZE / 3));
+      this.carvePath(
+        grid,
+        mouthX,
+        mouthZ,
+        mouthX + inwardDx * extraDepth,
+        mouthZ + inwardDz * extraDepth,
+        w,
+      );
       return;
     }
 
     let [x, z] = found;
-    while (!(x === doorX && z === doorZ)) {
-      if (grid.get(x, z) === CELL_VOID) grid.set(x, z, CELL_CORRIDOR);
+    while (true) {
+      if (grid.get(x, z) === CELL_VOID) stampBlockForce(grid, x, z, w);
+      if (x === mouthX && z === mouthZ) break;
       const p = parent.get(key(x, z));
       if (!p) break;
       [x, z] = p;
     }
   }
 
-  /** Ensure chunk-edge doors reach the walkable graph */
+  widenAt(grid, x, z, widthCells) {
+    stampBlockForce(grid, x, z, Math.max(this.minWidth, widthCells));
+  }
+
+  /** Ensure chunk-edge doors reach the walkable graph with player-sized openings */
   connectChunkDoors(grid, rooms, doors) {
     const mid = MAP_GRID_SIZE / 2;
     const entries = [
-      { x: Math.round(mid + doors.north.offset), z: 0 },
-      { x: Math.round(mid + doors.south.offset), z: MAP_GRID_SIZE - 1 },
-      { x: MAP_GRID_SIZE - 1, z: Math.round(mid + doors.east.offset) },
-      { x: 0, z: Math.round(mid + doors.west.offset) },
+      { x: Math.round(mid + doors.north.offset), z: 0, door: doors.north, dx: 0, dz: 1 },
+      { x: Math.round(mid + doors.south.offset), z: MAP_GRID_SIZE - 1, door: doors.south, dx: 0, dz: -1 },
+      { x: MAP_GRID_SIZE - 1, z: Math.round(mid + doors.east.offset), door: doors.east, dx: -1, dz: 0 },
+      { x: 0, z: Math.round(mid + doors.west.offset), door: doors.west, dx: 1, dz: 0 },
     ];
 
     for (const entry of entries) {
       if (!grid.inBounds(entry.x, entry.z)) continue;
-      this.connectDoorSpur(grid, entry.x, entry.z);
+      const w = doorPassageCells(entry.door.width);
+      this.connectDoorSpur(grid, entry.x, entry.z, w, entry.dx, entry.dz);
     }
   }
 }

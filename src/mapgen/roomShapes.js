@@ -1,4 +1,6 @@
-/** Orthogonal room footprints as lists of [dx, dz] cell offsets */
+import { minPassageCells } from "./passage.js";
+
+const MIN_DIM = minPassageCells();
 
 function fillRect(w, h) {
   const cells = [];
@@ -21,36 +23,36 @@ function uniqueCells(cells) {
 }
 
 export function shapeSquare(rng) {
-  const s = rng.int(3, 8);
+  const s = rng.int(MIN_DIM, 8);
   return { kind: "square", cells: fillRect(s, s), w: s, h: s };
 }
 
 export function shapeRectangle(rng) {
-  const w = rng.int(4, 12);
-  const h = rng.int(3, 10);
+  const w = rng.int(Math.max(4, MIN_DIM), 12);
+  const h = rng.int(MIN_DIM, 10);
   if (rng.chance(0.5)) return { kind: "rect", cells: fillRect(w, h), w, h };
   return { kind: "rect", cells: fillRect(h, w), w: h, h: w };
 }
 
 export function shapeLongHall(rng) {
   const long = rng.int(10, 14);
-  const narrow = rng.int(3, 5);
+  const narrow = rng.int(MIN_DIM, 5);
   if (rng.chance(0.5)) return { kind: "hall-x", cells: fillRect(long, narrow), w: long, h: narrow };
   return { kind: "hall-z", cells: fillRect(narrow, long), w: narrow, h: long };
 }
 
 export function shapeNarrow(rng) {
   const long = rng.int(6, 12);
-  const narrow = rng.int(3, 4);
+  const narrow = rng.int(MIN_DIM, Math.max(MIN_DIM, 4));
   if (rng.chance(0.5)) return { kind: "narrow-x", cells: fillRect(long, narrow), w: long, h: narrow };
   return { kind: "narrow-z", cells: fillRect(narrow, long), w: narrow, h: long };
 }
 
 export function shapeL(rng) {
-  const w = rng.int(5, 10);
-  const h = rng.int(5, 10);
-  const ax = rng.int(2, Math.max(2, w - 2));
-  const az = rng.int(2, Math.max(2, h - 2));
+  const w = rng.int(MIN_DIM * 2 + 1, 10);
+  const h = rng.int(MIN_DIM * 2 + 1, 10);
+  const ax = rng.int(MIN_DIM, w - MIN_DIM);
+  const az = rng.int(MIN_DIM, h - MIN_DIM);
   const cells = [];
   for (let x = 0; x < w; x++) {
     for (let z = 0; z < h; z++) {
@@ -63,7 +65,7 @@ export function shapeL(rng) {
 export function shapeU(rng) {
   const w = rng.int(6, 11);
   const h = rng.int(5, 9);
-  const thick = rng.int(2, 3);
+  const thick = rng.int(MIN_DIM, 3);
   const cells = [];
   for (let x = 0; x < w; x++) {
     for (let z = 0; z < h; z++) {
@@ -76,8 +78,8 @@ export function shapeU(rng) {
 export function shapeT(rng) {
   const w = rng.int(6, 10);
   const h = rng.int(5, 9);
-  const bar = rng.int(2, 3);
-  const stem = rng.int(2, Math.max(2, Math.floor(w / 2) - 1));
+  const bar = rng.int(MIN_DIM, 3);
+  const stem = rng.int(MIN_DIM, Math.max(MIN_DIM, Math.floor(w / 2) - 1));
   const cells = [];
   for (let x = 0; x < w; x++) {
     for (let z = 0; z < h; z++) {
@@ -92,7 +94,7 @@ export function shapeT(rng) {
 export function shapeZ(rng) {
   const w = rng.int(7, 11);
   const h = rng.int(5, 8);
-  const bar = rng.int(2, 3);
+  const bar = rng.int(MIN_DIM, 3);
   const cells = [];
   for (let x = 0; x < w; x++) {
     for (let z = 0; z < h; z++) {
@@ -111,8 +113,8 @@ export function shapeRandomOrtho(rng) {
   let w = 0;
   let h = 0;
   for (let i = 0; i < parts; i++) {
-    const rw = rng.int(3, 7);
-    const rh = rng.int(3, 7);
+    const rw = rng.int(MIN_DIM, 7);
+    const rh = rng.int(MIN_DIM, 7);
     const ox = rng.int(0, Math.max(0, 10 - rw));
     const oz = rng.int(0, Math.max(0, 10 - rh));
     for (const [x, z] of fillRect(rw, rh)) {
@@ -150,4 +152,36 @@ export function roomCentroid(cells) {
   }
   const n = cells.length || 1;
   return { x: sx / n, z: sz / n };
+}
+
+function widthInShape(set, x, z, axis) {
+  if (axis === "x") {
+    let lo = x;
+    let hi = x;
+    while (set.has(`${lo - 1},${z}`)) lo--;
+    while (set.has(`${hi + 1},${z}`)) hi++;
+    return hi - lo + 1;
+  }
+  let lo = z;
+  let hi = z;
+  while (set.has(`${x},${lo - 1}`)) lo--;
+  while (set.has(`${x},${hi + 1}`)) hi++;
+  return hi - lo + 1;
+}
+
+/** Every cell in an orthogonal room footprint must be passable */
+export function shapePassageOK(shape) {
+  const set = new Set(shape.cells.map(([x, z]) => `${x},${z}`));
+  for (const [x, z] of shape.cells) {
+    const wx = widthInShape(set, x, z, "x");
+    const wz = widthInShape(set, x, z, "z");
+    if (Math.min(wx, wz) < MIN_DIM) return false;
+  }
+  return true;
+}
+
+export function shapeFallback(rng) {
+  const w = rng.int(8, 11);
+  const h = rng.int(7, 10);
+  return { kind: "fallback", cells: fillRect(w, h), w, h };
 }

@@ -1,7 +1,12 @@
-import { MAP_CELL_M, MAP_GRID_SIZE, MIN_PASSAGE_SPAN } from "../constants.js";
-import { CELL_CORRIDOR, CELL_FLOOR, GridMap } from "./grid.js";
+import { MAP_GRID_SIZE } from "../constants.js";
 import { CorridorGenerator } from "./CorridorGenerator.js";
 import { WallGenerator } from "./WallGenerator.js";
+import {
+  allPassagesWideEnough,
+  minCorridorCells,
+  minPassageCells,
+  narrowPassageCells,
+} from "./passage.js";
 
 function doorCells(doors) {
   const mid = MAP_GRID_SIZE / 2;
@@ -17,6 +22,8 @@ function doorCells(doors) {
 export class ConnectivityValidator {
   constructor(rng) {
     this.rng = rng;
+    this.minPassage = minPassageCells();
+    this.minCorridor = minCorridorCells();
   }
 
   allWalkableConnected(grid) {
@@ -61,37 +68,32 @@ export class ConnectivityValidator {
     return true;
   }
 
-  minCorridorWidthOK(grid) {
-    const minCells = Math.ceil(MIN_PASSAGE_SPAN / MAP_CELL_M);
-    for (let z = 0; z < grid.size; z++) {
-      for (let x = 0; x < grid.size; x++) {
-        if (!grid.isWalkable(x, z)) continue;
-        let wx = 0;
-        let wz = 0;
-        while (grid.isWalkable(x + wx, z)) wx++;
-        while (grid.isWalkable(x, z + wz)) wz++;
-        if (wx < minCells && wz < minCells) return false;
-      }
-    }
-    return true;
-  }
-
   validate(grid, rooms, doors, wallSegments) {
     const errors = [];
     if (!this.allWalkableConnected(grid)) errors.push("disconnected_walkable");
     if (!this.allRoomsReachable(grid, rooms)) errors.push("isolated_room");
     if (!this.doorsReachable(grid, doors)) errors.push("door_unreachable");
+    if (!allPassagesWideEnough(grid, this.minPassage)) errors.push("narrow_passage");
     const wallIssues = WallGenerator.validate(wallSegments);
     const criticalWalls = wallIssues.filter((i) => i.kind !== "dangling");
     if (criticalWalls.length) errors.push("wall_issues");
     return { ok: errors.length === 0, errors, wallIssues };
   }
 
+  widenNarrowCells(grid, doors) {
+    const corridor = new CorridorGenerator(this.rng);
+    const narrow = narrowPassageCells(grid, this.minPassage);
+    for (const [x, z] of narrow) {
+      corridor.widenAt(grid, x, z, this.minCorridor);
+    }
+    corridor.connectChunkDoors(grid, [], doors);
+  }
+
   repair(grid, rooms, doors) {
     const corridor = new CorridorGenerator(this.rng);
     let attempts = 0;
 
-    while (attempts < 6) {
+    while (attempts < 8) {
       attempts++;
       if (!this.allWalkableConnected(grid) || !this.allRoomsReachable(grid, rooms)) {
         if (rooms.length >= 2) {
@@ -102,6 +104,9 @@ export class ConnectivityValidator {
       }
       if (!this.doorsReachable(grid, doors)) {
         corridor.connectChunkDoors(grid, rooms, doors);
+      }
+      if (!allPassagesWideEnough(grid, this.minPassage)) {
+        this.widenNarrowCells(grid, doors);
       }
       const segs = WallGenerator.fromGrid(grid);
       const result = this.validate(grid, rooms, doors, segs);
