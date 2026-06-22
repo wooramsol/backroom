@@ -73,20 +73,24 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** Pale warm bulb — midpoint between prior white and yellow */
-export const FLUORESCENT_COLOR = 0xfff0d8;
+/** Warm bulb — yellower than pale white, closer to ceiling tile */
+export const FLUORESCENT_COLOR = 0xffe4a8;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.55;
-/** Hemisphere — soft warm fill */
-export const HEMI_SKY_COLOR = 0xfff6ea;
-export const HEMI_GROUND_COLOR = 0xf5e8c8;
-export const HEMI_INTENSITY = 0.69;
+export const AMBIENT_INTENSITY = 0.54;
+/** Hemisphere — warm yellow fill */
+export const HEMI_SKY_COLOR = 0xfff2c8;
+export const HEMI_GROUND_COLOR = 0xecd890;
+export const HEMI_INTENSITY = 0.67;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
-/** Visible troffer face */
-export const LIGHT_PANEL_GLOW_COLOR = 0xfff6e8;
-/** Bloom-only halo — brighter, bloom layer exclusive */
-export const LIGHT_PANEL_BLOOM_COLOR = 0xffffe0;
+/** Lit troffer face */
+export const LIGHT_PANEL_GLOW_COLOR = 0xffe8b0;
+/** Additive halo around troffer — always visible in base scene */
+export const LIGHT_PANEL_HALO_COLOR = 0xffd070;
+export const PANEL_HALO_OPACITY = 0.52;
+export const PANEL_HALO_SCALE = 1.42;
+/** Bloom pass emissive boost */
+export const LIGHT_PANEL_BLOOM_COLOR = 0xffffcc;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
@@ -107,8 +111,8 @@ export const PANEL_ON_CHANCE = 1;
 export const PANEL_LIGHT_INTENSITY = 4.5;
 /** Troffer bloom — layer 1 only */
 export const BLOOM_LAYER = 1;
-export const BLOOM_GLOW_COLOR = 0xfff2c8;
-export const BLOOM_MIX_GAIN = 2.1;
+export const BLOOM_GLOW_COLOR = 0xffe0a0;
+export const BLOOM_MIX_GAIN = 2.4;
 export const BLOOM_STRENGTH = 0.75;
 export const BLOOM_RADIUS = 0.46;
 export const BLOOM_THRESHOLD = 0.18;

@@ -14,7 +14,7 @@ import {
   BLOOM_GLOW_COLOR,
   BLOOM_MIX_GAIN,
 } from "./constants.js";
-import { createFilmNoisePass, resizeFilmNoise } from "./filmNoise.js";
+import { createFilmNoisePass, resizeFilmNoise, updateFilmNoise } from "./filmNoise.js";
 
 const bloomLayer = new THREE.Layers();
 bloomLayer.set(BLOOM_LAYER);
@@ -51,9 +51,12 @@ function fxaaResolution(renderer, w, h) {
   return new THREE.Vector2(1 / (w * pr), 1 / (h * pr));
 }
 
+function bloomOutputTexture(composer) {
+  return composer.readBuffer.texture;
+}
+
 const _glowColor = new THREE.Color(BLOOM_GLOW_COLOR);
 
-/** Applied last so VCR blur/grain cannot wash out the troffer halo */
 const glowMixShader = {
   uniforms: {
     baseTexture: { value: null },
@@ -77,14 +80,14 @@ const glowMixShader = {
     void main() {
       vec4 base = texture2D(baseTexture, vUv);
       vec3 bloomCol = texture2D(bloomTexture, vUv).rgb;
-      float bloomAmt = length(bloomCol);
+      float bloomAmt = max(bloomCol.r, max(bloomCol.g, bloomCol.b));
       vec3 glow = glowColor * bloomAmt * glowMix;
-      gl_FragColor = vec4(base.rgb + glow, base.a);
+      gl_FragColor = vec4(base.rgb + glow, 1.0);
     }
   `,
 };
 
-/** Scene → FXAA → VCR noise → troffer glow (last) */
+/** Scene → FXAA → VCR noise → troffer bloom mix (last) */
 export function createBloomPipeline(renderer, scene, camera) {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -115,22 +118,29 @@ export function createBloomPipeline(renderer, scene, camera) {
   finalComposer.addPass(noise);
   const glowMix = new ShaderPass(new THREE.ShaderMaterial(glowMixShader), "baseTexture");
   glowMix.needsSwap = true;
+  glowMix.renderToScreen = true;
   glowMix.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
   finalComposer.addPass(glowMix);
 
   return {
     scene,
+    camera,
     bloomComposer,
     finalComposer,
     bloomPass,
     fxaa,
     noise,
     glowMix,
-    render() {
+    render(time = 0) {
+      updateFilmNoise(noise, time);
+
       scene.traverse(darkenNonBloomed);
+      camera.layers.enable(BLOOM_LAYER);
       bloomComposer.render();
+      camera.layers.disable(BLOOM_LAYER);
       scene.traverse(restoreMaterials);
-      glowMix.uniforms.bloomTexture.value = bloomComposer.readBuffer.texture;
+
+      glowMix.uniforms.bloomTexture.value = bloomOutputTexture(bloomComposer);
       finalComposer.render();
     },
   };

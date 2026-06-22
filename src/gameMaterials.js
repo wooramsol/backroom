@@ -5,12 +5,15 @@ import {
   createFloorSurfaceMaterial,
   createBakedWallMaterial,
 } from "./textures.js";
-import { FLUORESCENT_COLOR, LIGHT_PANEL_GLOW_COLOR, LIGHT_PANEL_BLOOM_COLOR } from "./constants.js";
+import {
+  LIGHT_PANEL_GLOW_COLOR,
+  LIGHT_PANEL_BLOOM_COLOR,
+  LIGHT_PANEL_HALO_COLOR,
+  PANEL_HALO_OPACITY,
+} from "./constants.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
-  const panelOnColor = new THREE.Color(LIGHT_PANEL_GLOW_COLOR);
-
   return {
     wallTex: wallpaper,
     surfaceTex,
@@ -20,10 +23,19 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
     ceilingTile: createCeilingTileMaterial(surfaceTex),
     ceilingGroove: createCeilingGapMaterial(),
     lightPanelOn: new THREE.MeshBasicMaterial({
-      color: panelOnColor,
+      color: new THREE.Color(LIGHT_PANEL_GLOW_COLOR),
       toneMapped: false,
     }),
-    /** Bloom pass only — invisible in base scene, drives halo */
+    /** Soft additive wash — visible glow without post-processing */
+    lightPanelHalo: new THREE.MeshBasicMaterial({
+      color: LIGHT_PANEL_HALO_COLOR,
+      transparent: true,
+      opacity: PANEL_HALO_OPACITY,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+    /** Bloom pass boost */
     lightPanelBloom: new THREE.MeshBasicMaterial({
       color: LIGHT_PANEL_BLOOM_COLOR,
       toneMapped: false,

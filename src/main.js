@@ -28,7 +28,6 @@ import {
   CAMERA_FAR,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
-import { updateFilmNoise } from "./filmNoise.js";
 import { formatBuildLabel } from "./version.js";
 
 const overlay = document.getElementById("overlay");
@@ -185,8 +184,7 @@ async function init() {
     }
 
     if (ready) {
-      pipeline.render();
-      updateFilmNoise(pipeline.noise, lightT);
+      pipeline.render(lightT);
     } else {
       renderer.render(scene, camera);
     }
