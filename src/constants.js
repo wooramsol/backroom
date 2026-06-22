@@ -85,12 +85,6 @@ export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face */
 export const LIGHT_PANEL_GLOW_COLOR = 0xffe8b0;
-/** Additive halo around troffer — always visible in base scene */
-export const LIGHT_PANEL_HALO_COLOR = 0xffd070;
-export const PANEL_HALO_OPACITY = 0.52;
-export const PANEL_HALO_SCALE = 1.42;
-/** Bloom pass emissive boost */
-export const LIGHT_PANEL_BLOOM_COLOR = 0xffffcc;
 /** Square ceiling grid cell — troffer bay spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
@@ -109,14 +103,6 @@ export const PANEL_EDGE_INSET = 1.25;
 export const PANEL_ON_CHANCE = 1;
 /** Downward square troffer — RectAreaLight matches panel footprint */
 export const PANEL_LIGHT_INTENSITY = 4.5;
-/** Troffer bloom — layer 1 only */
-export const BLOOM_LAYER = 1;
-export const BLOOM_GLOW_COLOR = 0xffe0a0;
-export const BLOOM_MIX_GAIN = 2.4;
-export const BLOOM_STRENGTH = 0.75;
-export const BLOOM_RADIUS = 0.46;
-export const BLOOM_THRESHOLD = 0.18;
-export const BLOOM_RESOLUTION_SCALE = 0.5;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */

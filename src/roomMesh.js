@@ -5,8 +5,6 @@ import {
   PANEL_W,
   PANEL_H,
   CEILING_TILE_FACE_M,
-  BLOOM_LAYER,
-  PANEL_HALO_SCALE,
 } from "./constants.js";
 import { chunkTileRange, tileCenterLocal } from "./ceilingGrid.js";
 import { getCeilingLayers } from "./ceilingLayers.js";
@@ -74,31 +72,12 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
       backingTransforms.push(_mat4.clone());
 
       if (isLitPanelCell(room, px, pz)) {
-        const haloSize = CEILING_TILE_FACE_M * PANEL_HALO_SCALE;
-        const haloGeo = new THREE.PlaneGeometry(haloSize, haloSize);
-        haloGeo.rotateX(Math.PI / 2);
-        haloGeo.translate(px, tileY - 0.004, pz);
-        const haloMesh = new THREE.Mesh(haloGeo, materials.lightPanelHalo);
-        haloMesh.renderOrder = 2;
-        group.add(haloMesh);
-
-        const bloomSize = CEILING_TILE_FACE_M * 1.15;
-        const bloomGeo = new THREE.PlaneGeometry(bloomSize, bloomSize);
-        bloomGeo.rotateX(Math.PI / 2);
-        bloomGeo.translate(px, tileY - 0.003, pz);
-        const bloomMesh = new THREE.Mesh(bloomGeo, materials.lightPanelBloom);
-        bloomMesh.layers.set(BLOOM_LAYER);
-        bloomMesh.renderOrder = 2;
-        group.add(bloomMesh);
-
         const litGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
         litGeo.rotateX(Math.PI / 2);
         litGeo.translate(px, tileY, pz);
         const litMesh = new THREE.Mesh(litGeo, materials.lightPanelOn);
-        litMesh.layers.enable(BLOOM_LAYER);
         litMesh.renderOrder = 3;
         group.add(litMesh);
-
         room.lightFixture = {
           wx: worldX + px,
           wy: lightY,
