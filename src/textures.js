@@ -133,12 +133,12 @@ export function bakeSurfaceUV(geo, tileM, worldX, worldZ) {
 }
 
 /** Floor/ceiling — matte, texture albedo only (no tint) */
-export function createSurfaceMaterial(map = null) {
+export function createSurfaceMaterial(map = null, { side = THREE.FrontSide } = {}) {
   if (map) map.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({
     map,
     color: 0xffffff,
-    side: THREE.FrontSide,
+    side,
   });
 }
 

@@ -504,18 +504,11 @@ function roomWallKeys(room) {
   return keys;
 }
 
-/** Drop wall boxes this room registered — incremental despawn */
-export function removeRoomWalls(map, colliders, room) {
+/** Drop wall boxes this room registered — map only; rebuild colliders separately */
+export function removeRoomWalls(map, room) {
   let changed = false;
   for (const key of roomWallKeys(room)) {
-    const boxes = map.get(key);
-    if (!boxes) continue;
-    map.delete(key);
-    for (const box of boxes) {
-      const idx = colliders.indexOf(box);
-      if (idx !== -1) colliders.splice(idx, 1);
-    }
-    changed = true;
+    if (map.delete(key)) changed = true;
   }
   return changed;
 }
