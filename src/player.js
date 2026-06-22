@@ -159,10 +159,16 @@ export class Player {
     _right.crossVectors(_fwd, _up).normalize();
   }
 
+  _blocksHorizontal(c, y) {
+    if (c.isCeiling) return false;
+    if (y < c.minY - 0.2 || y > c.maxY + 0.2) return false;
+    return true;
+  }
+
   _insideWall(px, pz, y) {
     const r = PLAYER_R;
     for (const c of this.colliders) {
-      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      if (!this._blocksHorizontal(c, y)) continue;
       if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
         continue;
       }
@@ -178,7 +184,7 @@ export class Player {
     for (let n = 0; n < 14; n++) {
       let hit = false;
       for (const c of this.colliders) {
-        if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+        if (!this._blocksHorizontal(c, y)) continue;
         if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
           continue;
         }
