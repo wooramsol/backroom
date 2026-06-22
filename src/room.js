@@ -393,11 +393,8 @@ function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, ex0, lo, z - t, z + t, y0, DOOR_H);
-  addBox(boxes, hi, ex1, z - t, z + t, y0, DOOR_H);
-  if (DOOR_H < yTop - 0.02) {
-    addBox(boxes, lo, hi, z - t, z + t, DOOR_H, yTop);
-  }
+  addBox(boxes, ex0, lo, z - t, z + t, y0, yTop);
+  addBox(boxes, hi, ex1, z - t, z + t, y0, yTop);
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
@@ -413,11 +410,8 @@ function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x - t, x + t, ez0, lo, y0, DOOR_H);
-  addBox(boxes, x - t, x + t, hi, ez1, y0, DOOR_H);
-  if (DOOR_H < yTop - 0.02) {
-    addBox(boxes, x - t, x + t, lo, hi, DOOR_H, yTop);
-  }
+  addBox(boxes, x - t, x + t, ez0, lo, y0, yTop);
+  addBox(boxes, x - t, x + t, hi, ez1, y0, yTop);
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {
