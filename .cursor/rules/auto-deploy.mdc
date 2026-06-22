@@ -1,0 +1,26 @@
+---
+description: Push changes through CI to GitHub Pages (dev) automatically
+alwaysApply: true
+---
+
+# Auto-deploy (dev)
+
+This repo deploys to **https://wooramsol.github.io/backroom/** via GitHub Actions.
+
+## Agent workflow — every completed task
+
+1. Work on `cursor/<descriptive-name>-b94e` (branch suffix `-b94e` required).
+2. `git commit` and `git push -u origin <branch>`.
+3. CI (`CI, Auto-merge, Deploy`) will:
+   - build and test
+   - auto-merge `cursor/*` PRs / promote `cursor/*` pushes into `main`
+   - publish `dist/` to the `gh-pages` branch
+4. **Do not stop at PR creation.** Pushing the branch is enough; deployment is automatic.
+5. After push, verify deploy: `gh run list --branch <branch> --limit 1` (expect `success`).
+6. Tell the user the dev URL and that a hard refresh (`Ctrl+Shift+R`) may be needed.
+
+## Notes
+
+- Dev base path: `VITE_BASE=/backroom/` (set in CI).
+- Production (`backroom-live`) is **manual** — only when the user asks for prod deploy.
+- Required assets: `public/assets/wallpaper2.jpg`, `public/assets/bottom2.jpg`.

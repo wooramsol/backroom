@@ -9,7 +9,7 @@
 | **개발** | https://wooramsol.github.io/backroom/ | `main` push 시 자동 |
 | **운영 (테스트)** | https://wooramsol.github.io/backroom-live/ | 수동 (아래 참고) |
 
-- `cursor/*` 브랜치 PR → 빌드 성공 시 **자동 머지**
+- `cursor/*` 브랜치 push 또는 PR → 빌드 성공 시 **자동 머지 + 개발 배포**
 - `main` push → 개발 서버(`gh-pages`)에 **자동 배포**
 - 운영 배포는 **GitHub Actions → Deploy Production → Run workflow** 또는 에이전트에게 "운영 배포해줘" 요청 (`production` 브랜치 push로도 트리거)
 
