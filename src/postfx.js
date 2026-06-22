@@ -12,6 +12,7 @@ import {
   BLOOM_RESOLUTION_SCALE,
   RENDER_RESOLUTION_SCALE,
   BLOOM_GLOW_COLOR,
+  BLOOM_MIX_GAIN,
 } from "./constants.js";
 import { createFilmNoisePass, resizeFilmNoise } from "./filmNoise.js";
 
@@ -57,6 +58,7 @@ const mixShader = {
     baseTexture: { value: null },
     bloomTexture: { value: null },
     glowColor: { value: new THREE.Vector3(_glowColor.r, _glowColor.g, _glowColor.b) },
+    glowMix: { value: BLOOM_MIX_GAIN },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -69,12 +71,13 @@ const mixShader = {
     uniform sampler2D baseTexture;
     uniform sampler2D bloomTexture;
     uniform vec3 glowColor;
+    uniform float glowMix;
     varying vec2 vUv;
     void main() {
       vec4 base = texture2D(baseTexture, vUv);
       vec3 bloomCol = texture2D(bloomTexture, vUv).rgb;
       float bloomAmt = max(bloomCol.r, max(bloomCol.g, bloomCol.b));
-      vec3 glow = glowColor * bloomAmt;
+      vec3 glow = glowColor * bloomAmt * glowMix;
       gl_FragColor = base + vec4(glow, 1.0);
     }
   `,

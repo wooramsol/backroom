@@ -5,11 +5,11 @@ import {
   createFloorSurfaceMaterial,
   createBakedWallMaterial,
 } from "./textures.js";
-import { FLUORESCENT_COLOR } from "./constants.js";
+import { FLUORESCENT_COLOR, LIGHT_PANEL_GLOW_COLOR } from "./constants.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
-  const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(2.05);
+  const panelOnColor = new THREE.Color(LIGHT_PANEL_GLOW_COLOR);
 
   return {
     wallTex: wallpaper,
