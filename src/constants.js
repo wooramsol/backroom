@@ -63,7 +63,7 @@ export const MOUSE_SENS = 0.0022;
 export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 8;
 export const FOG_FAR = 34;
-export const FOG_COLOR = 0x9a9478;
+export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — ring must cover FOG_FAR */
 export const GRID_RADIUS = 2;
 /** Full square synced on the title screen before play */

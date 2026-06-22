@@ -34,34 +34,57 @@ function normalizeMaterials(root) {
   });
 }
 
-function finalizeTemplate(root, meta = {}) {
+function measureBounds(root) {
+  root.updateMatrixWorld(true);
   _box.setFromObject(root);
   _box.getSize(_size);
+  _box.getCenter(_center);
+  return {
+    sizeX: _size.x,
+    sizeY: _size.y,
+    sizeZ: _size.z,
+    minY: _box.min.y,
+    centerX: _center.x,
+    centerZ: _center.z,
+  };
+}
+
+/** GLB units → metres (Unreal exports are usually centimetres) */
+function heightMetersFromRaw(rawY) {
+  if (rawY > 2.5) return rawY * 0.01;
+  return rawY;
+}
+
+/** Only clamp broken/outlier GLB bounds — otherwise use authored size */
+function clampPackHeight(heightM) {
+  return THREE.MathUtils.clamp(heightM, 0.18, 2.2);
+}
+
+function centerAndGround(root) {
+  const { minY, centerX, centerZ } = measureBounds(root);
+  root.position.x -= centerX;
+  root.position.z -= centerZ;
+  root.position.y -= minY;
+  root.updateMatrixWorld(true);
+}
+
+function finalizeTemplate(root, meta = {}) {
+  const { sizeX, sizeY, sizeZ } = measureBounds(root);
 
   root.userData.furnitureTemplate = true;
   root.userData.furnitureId = meta.id || "unknown";
   root.userData.chairGlitch = meta.chairGlitch === true;
   root.userData.isPile = meta.isPile === true;
-  root.userData.footprint = Math.max(_size.x, _size.z);
-  root.userData.height = _size.y;
-  root.userData.depth = Math.min(_size.x, _size.z);
+  root.userData.footprint = Math.max(sizeX, sizeZ);
+  root.userData.height = sizeY;
+  root.userData.depth = Math.min(sizeX, sizeZ);
   return root;
 }
 
-function scaleAndGround(root, targetHeight) {
-  _box.setFromObject(root);
-  _box.getSize(_size);
-  const scale = targetHeight / Math.max(_size.y, 1e-6);
-  root.scale.multiplyScalar(scale);
-
-  root.updateMatrixWorld(true);
-  _box.setFromObject(root);
-  _box.getCenter(_center);
-  root.position.x -= _center.x;
-  root.position.z -= _center.z;
-  root.position.y -= _box.min.y;
-
-  root.updateMatrixWorld(true);
+function scaleToHeight(root, rawHeight, targetHeight) {
+  const scale = targetHeight / Math.max(rawHeight, 1e-6);
+  root.scale.setScalar(scale);
+  centerAndGround(root);
   return root;
 }
 
@@ -70,16 +93,21 @@ function prepareTemplate(gltfScene, targetHeight, meta = {}) {
   const model = gltfScene.clone(true);
   normalizeMaterials(model);
   root.add(model);
-  scaleAndGround(root, targetHeight);
+  const { sizeY } = measureBounds(root);
+  scaleToHeight(root, sizeY, targetHeight);
   return finalizeTemplate(root, meta);
 }
 
-function preparePackChairNode(node, targetHeight, meta = {}) {
+function preparePackChairNode(node, meta = {}) {
   const root = new THREE.Group();
   const model = node.clone(true);
   normalizeMaterials(model);
   root.add(model);
-  scaleAndGround(root, targetHeight);
+
+  const { sizeY } = measureBounds(root);
+  const naturalH = heightMetersFromRaw(sizeY);
+  const targetH = clampPackHeight(naturalH);
+  scaleToHeight(root, sizeY, targetH);
   return finalizeTemplate(root, meta);
 }
 
@@ -107,7 +135,7 @@ async function loadPackChairs(loader) {
   const gltf = await loader.loadAsync(CHAIR_PACK_URL);
   const nodes = extractPackChairNodes(gltf.scene);
   return nodes.map(({ id, node }) =>
-    preparePackChairNode(node, CHAIR_TARGET_H, {
+    preparePackChairNode(node, {
       id: `pack:${id}`,
       chairGlitch: false,
       isPile: /Pile/i.test(id),

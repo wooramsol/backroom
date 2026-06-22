@@ -475,6 +475,20 @@ export function appendRoomWalls(map, room) {
     });
   });
 
+  put(`cl,${room.cx},${room.cz}`, () => {
+    const b = [];
+    b.push({
+      minX: ox,
+      maxX: ox + CHUNK,
+      minZ: oz,
+      maxZ: oz + CHUNK,
+      minY: yTop - 0.06,
+      maxY: yTop + 0.12,
+      isCeiling: true,
+    });
+    return b;
+  });
+
   return added;
 }
 
@@ -484,6 +498,7 @@ function roomWallKeys(room) {
     `ez,${room.cx},${room.cz + 1}`,
     `wx,${room.cx},${room.cz}`,
     `nz,${room.cx},${room.cz}`,
+    `cl,${room.cx},${room.cz}`,
   ];
   room.innerWalls.forEach((_, i) => keys.push(`iw,${room.cx},${room.cz},${i}`));
   return keys;
