@@ -172,7 +172,6 @@ async function init() {
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      syncCrosshair();
     }
 
     if (ready) {

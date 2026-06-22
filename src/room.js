@@ -318,7 +318,13 @@ function pickValidShape(rng, cx, cz) {
   };
 }
 
+const _roomCache = new Map();
+
 export function generateRoom(cx, cz) {
+  const key = `${cx},${cz}`;
+  const cached = _roomCache.get(key);
+  if (cached) return cached;
+
   const rng = createRng(cx, cz, 7);
   const shape = pickValidShape(rng, cx, cz);
 
@@ -337,6 +343,7 @@ export function generateRoom(cx, cz) {
     },
   };
 
+  _roomCache.set(key, room);
   return room;
 }
 

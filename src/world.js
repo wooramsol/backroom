@@ -11,9 +11,10 @@ import {
   finalizeRoomBuild,
   buildRoomMesh,
 } from "./roomMesh.js";
-import { flushDisposeQueue, disposeChunkRoot } from "./sceneDispose.js";
+import { disposeChunkRoot } from "./sceneDispose.js";
 
-const PANELS_PER_FRAME = 8;
+const CEILING_TILES_PER_FRAME = 48;
+const DESPAWN_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
 
 export class World {
@@ -28,6 +29,7 @@ export class World {
     this.loadQueue = [];
     this.pendingKeys = new Set();
     this.disposeQueue = [];
+    this.despawnPending = [];
     this.cellCx = NaN;
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
@@ -167,7 +169,8 @@ export class World {
       cx === this.cellCx &&
       cz === this.cellCz &&
       atEdge === this.lastPrefetchEdge &&
-      !this.loadQueue.length
+      !this.loadQueue.length &&
+      !this.despawnPending.length
     ) {
       return;
     }
@@ -177,9 +180,10 @@ export class World {
     this.lastPrefetchEdge = atEdge;
 
     const need = this.computeNeed(cx, cz, playerPos);
+    const pending = new Set(this.despawnPending);
 
-    for (const k of [...this.chunks.keys()]) {
-      if (!need.has(k)) this.despawn(k);
+    for (const k of this.chunks.keys()) {
+      if (!need.has(k) && !pending.has(k)) this.despawnPending.push(k);
     }
 
     this.loadQueue = this.loadQueue.filter((job) => {
@@ -200,7 +204,7 @@ export class World {
     }
   }
 
-  processLoadQueue(_playerPos, _budgetMs) {
+  processLoadQueue(_playerPos) {
     if (!this.loadQueue.length) return;
 
     const job = this.loadQueue[0];
@@ -214,13 +218,10 @@ export class World {
     }
 
     if (!job.build.shellDone) {
-      buildRoomShell(job.build);
-      this.scene.add(job.build.group);
-      return;
+      const done = buildPanelBatch(job.build, CEILING_TILES_PER_FRAME);
+      if (!job.build.group.parent) this.scene.add(job.build.group);
+      if (!done) return;
     }
-
-    const done = buildPanelBatch(job.build, PANELS_PER_FRAME);
-    if (!done) return;
 
     this.attachChunk(job.cx, job.cz, job.room, job.build);
     this.loadQueue.shift();
@@ -230,6 +231,9 @@ export class World {
   tick(dt) {
     this.time += dt;
     if (this.disposeQueue.length) disposeChunkRoot(this.disposeQueue.shift());
+    for (let i = 0; i < DESPAWN_PER_FRAME && this.despawnPending.length; i++) {
+      this.despawn(this.despawnPending.shift());
+    }
   }
 
   getColliders() {
