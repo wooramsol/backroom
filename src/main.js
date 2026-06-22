@@ -72,12 +72,11 @@ scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTE
 const audio = new GameAudio();
 
 async function init() {
-  const hint = document.querySelector("#overlay .hint");
+  const hintStatus = document.getElementById("hint-status");
   const waitHint = "Loading… please wait";
-  const defaultHint =
-    "Click to start<br /><br />Move: WASD<br />Run: Shift<br />Jump: Space<br />Crouch: C<br />Look: Mouse";
+  const clickHint = "Click to start";
 
-  if (hint) hint.textContent = waitHint;
+  if (hintStatus) hintStatus.textContent = waitHint;
   overlay.style.cursor = "wait";
 
   const loader = new THREE.TextureLoader();
@@ -137,8 +136,8 @@ async function init() {
 
   world
     .preloadAround(camera, (done, total) => {
-      if (hint && !ready) {
-        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Please wait`;
+      if (hintStatus && !ready) {
+        hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br />Please wait`;
       }
     })
     .then(() => {
@@ -147,14 +146,14 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      if (hint) hint.innerHTML = defaultHint;
+      if (hintStatus) hintStatus.textContent = clickHint;
     })
     .catch((err) => {
       console.error(err);
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
-      if (hint) hint.textContent = "Load error — please refresh.";
+      if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
     });
 
   overlay.addEventListener("click", () => {
@@ -223,6 +222,6 @@ async function init() {
 
 init().catch((err) => {
   console.error(err);
-  const hint = document.querySelector("#overlay .hint");
-  if (hint) hint.textContent = "Load error — please refresh.";
+  const hintStatus = document.getElementById("hint-status");
+  if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
 });

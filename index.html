@@ -73,6 +73,9 @@
         max-width: 22rem;
         margin-bottom: 1.75rem;
       }
+      #overlay .hint-controls {
+        margin-top: 1.5rem;
+      }
       #overlay.hidden {
         opacity: 0;
         pointer-events: none;
@@ -201,7 +204,16 @@
       <h1>BACKROOMS</h1>
       <p class="sub">LEVEL 0 — THE LOBBY</p>
       <p class="build" id="build-label"></p>
-      <div class="hint">Loading… please wait</div>
+      <div class="hint">
+        <div class="hint-status" id="hint-status">Loading… please wait</div>
+        <div class="hint-controls">
+          Move: WASD<br />
+          Run: Shift<br />
+          Jump: Space<br />
+          Crouch: C<br />
+          Look: Mouse
+        </div>
+      </div>
       <p class="credit">Created by @wooramsol</p>
       <p class="bgm-credit">BGM credit: Kane Parsons, Kane Pixel</p>
     </div>
