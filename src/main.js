@@ -26,7 +26,7 @@ import {
   CAMERA_FOV,
   CAMERA_NEAR,
   CAMERA_FAR,
-  ENABLE_FLUORESCENT_HUM,
+  ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 
@@ -85,6 +85,7 @@ async function init() {
   const floorTex = await loadCarpetFloor(loader);
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
   const furnitureModels = await loadFurnitureModels();
+  if (ENABLE_BACKGROUND_MUSIC) await audio.preload();
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
@@ -160,7 +161,7 @@ async function init() {
       crosshair?.classList.add("visible");
       syncCrosshair();
       buildBadge?.classList.add("visible");
-      if (ENABLE_FLUORESCENT_HUM) audio.start();
+      if (ENABLE_BACKGROUND_MUSIC) audio.start();
     }
   });
 
@@ -188,7 +189,6 @@ async function init() {
 
     if (started) {
       player.update(dt);
-      if (ENABLE_FLUORESCENT_HUM) audio.tickHum(lightT);
     }
 
     if (ready) {

@@ -1,11 +1,17 @@
-/** Shared Web Audio — fluorescent VCR hum + carpet footsteps */
+const ASSET_BASE = import.meta.env.BASE_URL;
+const BGM_URL = `${ASSET_BASE}assets/${encodeURIComponent("01. Government Funding.mp3")}`;
+
+/** Web Audio — MP3 background music + carpet footsteps */
 export class GameAudio {
   constructor() {
     this.ctx = null;
     this.master = null;
-    this.humGain = null;
-    this.running = false;
+    this.sfxGain = null;
+    this.bgmGain = null;
+    this.bgmBuffer = null;
+    this.bgmSource = null;
     this._stepAccum = 0;
+    this._bgmLoading = null;
   }
 
   _ensure() {
@@ -15,73 +21,76 @@ export class GameAudio {
       this.master = this.ctx.createGain();
       this.master.gain.value = 1;
       this.master.connect(this.ctx.destination);
+
+      this.sfxGain = this.ctx.createGain();
+      this.sfxGain.gain.value = 2.1;
+      this.sfxGain.connect(this.master);
       return true;
     } catch {
       return false;
     }
   }
 
+  async preload() {
+    if (this.bgmBuffer) return this.bgmBuffer;
+    if (this._bgmLoading) return this._bgmLoading;
+
+    this._bgmLoading = fetch(BGM_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error(`BGM load failed: ${res.status}`);
+        return res.arrayBuffer();
+      })
+      .then((ab) => {
+        if (!this._ensure()) return null;
+        return this.ctx.decodeAudioData(ab);
+      })
+      .then((buf) => {
+        this.bgmBuffer = buf;
+        return buf;
+      })
+      .catch((err) => {
+        console.warn("[audio] background music unavailable", err);
+        return null;
+      });
+
+    return this._bgmLoading;
+  }
+
   start() {
     if (!this._ensure()) return;
     if (this.ctx.state === "suspended") void this.ctx.resume();
-    if (this.running) return;
+    if (this.bgmSource) return;
 
-    const humBus = this.ctx.createGain();
-    humBus.gain.value = 0.22;
-    humBus.connect(this.master);
-    this.humGain = humBus;
+    const play = () => {
+      if (!this.bgmBuffer || this.bgmSource) return;
 
-    const hum = this.ctx.createOscillator();
-    hum.type = "sawtooth";
-    hum.frequency.value = 60;
-    const humGain = this.ctx.createGain();
-    humGain.gain.value = 0.35;
-    hum.connect(humGain);
-    humGain.connect(humBus);
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.bgmBuffer;
+      src.loop = true;
 
-    const buzz = this.ctx.createOscillator();
-    buzz.type = "square";
-    buzz.frequency.value = 120;
-    const buzzGain = this.ctx.createGain();
-    buzzGain.gain.value = 0.08;
-    buzz.connect(buzzGain);
-    buzzGain.connect(humBus);
+      this.bgmGain = this.ctx.createGain();
+      this.bgmGain.gain.value = 0.42;
+      src.connect(this.bgmGain);
+      this.bgmGain.connect(this.master);
+      src.start();
+      this.bgmSource = src;
+    };
 
-    const bufferSize = 2 * this.ctx.sampleRate;
-    const noiseBuf = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = noiseBuf.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = noiseBuf;
-    noise.loop = true;
-    const noiseFilter = this.ctx.createBiquadFilter();
-    noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = 180;
-    noiseFilter.Q.value = 0.8;
-    const noiseGain = this.ctx.createGain();
-    noiseGain.gain.value = 0.12;
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(humBus);
+    if (this.bgmBuffer) {
+      play();
+      return;
+    }
 
-    hum.start();
-    buzz.start();
-    noise.start();
-    this.running = true;
-  }
-
-  tickHum(time) {
-    if (!this.ctx || !this.humGain) return;
-    const flicker = 0.2 + Math.sin(time * 7.3) * 0.04 + Math.sin(time * 11.1) * 0.02;
-    this.humGain.gain.setTargetAtTime(flicker, this.ctx.currentTime, 0.05);
+    void this.preload().then(play);
   }
 
   onMove(distance, running, crouching = false) {
     if (!this._ensure()) return;
     if (this.ctx.state === "suspended") void this.ctx.resume();
     if (distance < 1e-5) return;
+
     this._stepAccum += distance;
-    const interval = crouching ? 0.78 : running ? 0.44 : 0.64;
+    const interval = crouching ? 0.72 : running ? 0.42 : 0.58;
     while (this._stepAccum >= interval) {
       this._stepAccum -= interval;
       this._playFootstep(running, crouching);
@@ -91,28 +100,49 @@ export class GameAudio {
   _playFootstep(running, crouching) {
     const ctx = this.ctx;
     const t = ctx.currentTime;
-    const dur = crouching ? 0.09 : running ? 0.06 : 0.085;
+    const dur = crouching ? 0.12 : running ? 0.075 : 0.1;
+    const vol = crouching ? 0.24 : running ? 0.42 : 0.34;
+
+    const thump = ctx.createOscillator();
+    thump.type = "sine";
+    thump.frequency.value = (crouching ? 88 : running ? 118 : 102) + Math.random() * 28;
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(vol * 1.35, t);
+    thumpGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    thump.connect(thumpGain);
+    thumpGain.connect(this.sfxGain);
+    thump.start(t);
+    thump.stop(t + dur + 0.02);
+
     const frames = Math.max(1, Math.floor(ctx.sampleRate * dur));
     const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
     const data = buf.getChannelData(0);
     for (let i = 0; i < frames; i++) {
-      const env = 1 - i / frames;
-      data[i] = (Math.random() * 2 - 1) * env * env;
+      const env = Math.pow(1 - i / frames, 1.4);
+      data[i] = (Math.random() * 2 - 1) * env;
     }
 
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    const base = crouching ? 120 : running ? 210 : 155;
-    filter.frequency.value = base + Math.random() * 55;
-    filter.Q.value = 0.45;
-    const gain = ctx.createGain();
-    gain.gain.value = crouching ? 0.07 : running ? 0.13 : 0.1;
-    gain.gain.setTargetAtTime(0.001, t + dur * 0.55, 0.025);
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.master);
+
+    const low = ctx.createBiquadFilter();
+    low.type = "lowpass";
+    low.frequency.value = crouching ? 480 : running ? 1050 : 780;
+    low.Q.value = 0.55;
+
+    const mid = ctx.createBiquadFilter();
+    mid.type = "bandpass";
+    mid.frequency.value = (crouching ? 165 : running ? 285 : 220) + Math.random() * 70;
+    mid.Q.value = 0.65;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(vol, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.92);
+
+    src.connect(low);
+    low.connect(mid);
+    mid.connect(noiseGain);
+    noiseGain.connect(this.sfxGain);
     src.start(t);
     src.stop(t + dur + 0.02);
   }
