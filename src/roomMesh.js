@@ -42,51 +42,40 @@ function addFloor(group, materials, worldX, worldZ) {
   group.add(floor);
 }
 
-function initCeilingBuild(state) {
-  const { room, group, materials } = state;
-  const { gapY, tileY } = getCeilingLayers(room.height);
-  state.ceilingGapY = gapY;
-  state.ceilingTileY = tileY;
-
+function addCeiling(group, h, materials, worldX, worldZ) {
+  const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
-  const { tx0, tx1, tz0, tz1 } = chunkTileRange(state.worldX, state.worldZ, CHUNK, tileM);
+  const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
   const tiles = [];
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
-      const { x: px, z: pz } = tileCenterLocal(tx, tz, state.worldX, state.worldZ, tileM);
+      const { x: px, z: pz } = tileCenterLocal(tx, tz, worldX, worldZ, tileM);
       tiles.push(px, pz);
     }
   }
 
   const count = tiles.length / 2;
-  state.ceilingTiles = tiles;
-  state.ceilingTileCount = count;
-  state.ceilingIndex = 0;
+  const backingMesh = new THREE.InstancedMesh(_cellBackingGeo, materials.ceilingGroove, count);
+  const tileMesh = new THREE.InstancedMesh(_tileFaceGeo, materials.ceilingTile, count);
+  backingMesh.frustumCulled = false;
+  tileMesh.frustumCulled = false;
+  tileMesh.renderOrder = 2;
 
-  state.backingMesh = new THREE.InstancedMesh(_cellBackingGeo, materials.ceilingGroove, count);
-  state.tileMesh = new THREE.InstancedMesh(_tileFaceGeo, materials.ceilingTile, count);
-  state.tileMesh.renderOrder = 2;
-  group.add(state.backingMesh);
-  group.add(state.tileMesh);
-}
-
-function fillCeilingInstances(state, from, to) {
-  const tiles = state.ceilingTiles;
-  const gapY = state.ceilingGapY;
-  const tileY = state.ceilingTileY;
-
-  for (let i = from; i < to; i++) {
+  for (let i = 0; i < count; i++) {
     const px = tiles[i * 2];
     const pz = tiles[i * 2 + 1];
     _pos.set(px, gapY, pz);
     _mat4.compose(_pos, _identityQuat, _scale);
-    state.backingMesh.setMatrixAt(i, _mat4);
+    backingMesh.setMatrixAt(i, _mat4);
     _pos.set(px, tileY, pz);
     _mat4.compose(_pos, _identityQuat, _scale);
-    state.tileMesh.setMatrixAt(i, _mat4);
+    tileMesh.setMatrixAt(i, _mat4);
   }
-  state.backingMesh.instanceMatrix.needsUpdate = true;
-  state.tileMesh.instanceMatrix.needsUpdate = true;
+  backingMesh.instanceMatrix.needsUpdate = true;
+  tileMesh.instanceMatrix.needsUpdate = true;
+
+  group.add(backingMesh);
+  group.add(tileMesh);
 }
 
 export function createRoomBuildState(room, materials) {
@@ -96,47 +85,28 @@ export function createRoomBuildState(room, materials) {
     room,
     group,
     materials,
-    floorWallsDone: false,
     shellDone: false,
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
 }
 
-/** Floor + walls only — ceiling is spread across buildPanelBatch */
 export function buildRoomShell(state) {
-  if (state.floorWallsDone) return;
+  if (state.shellDone) return;
   const { room, group, materials } = state;
   const h = room.height;
 
   addFloor(group, materials, state.worldX, state.worldZ);
+  addCeiling(group, h, materials, state.worldX, state.worldZ);
   addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
-  state.floorWallsDone = true;
+  state.shellDone = true;
 }
 
-/** Instanced ceiling tiles — maxTiles per call to spread work across frames */
-export function buildPanelBatch(state, maxTiles) {
+/** @deprecated kept for world load queue API */
+export function buildPanelBatch(state, _maxTiles) {
   if (state.shellDone) return true;
-
-  if (!state.floorWallsDone) {
-    buildRoomShell(state);
-    return false;
-  }
-
-  if (!state.ceilingTiles) {
-    initCeilingBuild(state);
-  }
-
-  const from = state.ceilingIndex;
-  const to = Math.min(from + maxTiles, state.ceilingTileCount);
-  fillCeilingInstances(state, from, to);
-  state.ceilingIndex = to;
-
-  if (to >= state.ceilingTileCount) {
-    state.shellDone = true;
-    return true;
-  }
-  return false;
+  buildRoomShell(state);
+  return true;
 }
 
 export function finalizeRoomBuild(state) {
@@ -147,6 +117,6 @@ export function finalizeRoomBuild(state) {
 
 export function buildRoomMesh(room, materials) {
   const state = createRoomBuildState(room, materials);
-  while (!buildPanelBatch(state, Infinity)) {}
+  buildRoomShell(state);
   return finalizeRoomBuild(state);
 }
