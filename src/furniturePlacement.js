@@ -30,6 +30,21 @@ const PILE_POSES = [
   ["wall_lean", 12],
 ];
 
+/** Preset floor spots (pile cluster) — wall poses need spot.wall */
+const FIXED_SPOT_POSES = [
+  ["floor_normal", 32],
+  ["floor_tipped", 28],
+  ["floor_embedded", 14],
+  ["ceiling_stuck", 10],
+];
+
+const FIXED_SPOT_PILE_POSES = [
+  ["floor_normal", 38],
+  ["floor_tipped", 32],
+  ["floor_embedded", 18],
+  ["ceiling_stuck", 12],
+];
+
 function alignLowestY(pivot, rootGroup, targetY) {
   rootGroup.updateMatrixWorld(true);
   _box.setFromObject(pivot);
@@ -158,7 +173,10 @@ function applyPose(pivot, pose, spot, rng, meta, group) {
   }
 }
 
-function pickPose(rng, pileMode = false) {
+function pickPose(rng, pileMode = false, fixedSpot = false) {
+  if (fixedSpot) {
+    return rng.pickWeighted(pileMode ? FIXED_SPOT_PILE_POSES : FIXED_SPOT_POSES);
+  }
   return rng.pickWeighted(pileMode ? PILE_POSES : POSES);
 }
 
@@ -187,7 +205,7 @@ function placeFurniture(group, room, template, rng, used, colliders, surfaces, o
   const pivot = cloneFurnitureTemplate(template);
   const meta = pivot.userData;
   meta.furnitureKind = opts.kind || (meta.isPile ? "pile" : "chair");
-  const pose = pickPose(rng, opts.pileMode);
+  const pose = pickPose(rng, opts.pileMode, Boolean(opts.spot));
   let spot = null;
 
   if (opts.spot) {
