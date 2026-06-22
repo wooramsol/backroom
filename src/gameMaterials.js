@@ -14,14 +14,18 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
 
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
 
+  const ceilingTile = createCeilingTileMaterial(ceilingSeamTex);
+  const ceilingLightTile = ceilingTile.clone();
+  ceilingLightTile.color = new THREE.Color(0xfffdf2);
+
   return {
     wallTex: wallpaper,
     surfaceTex,
     floorTex,
     wall: createBakedWallMaterial(wallpaper),
     floor: createFloorSurfaceMaterial(floorTex),
-    /** Per-tile seam face — clamped UVs, no chunk-boundary double lines */
-    ceilingTile: createCeilingTileMaterial(ceilingSeamTex),
+    ceilingTile,
+    ceilingLightTile,
     ceilingGroove: createCeilingGapMaterial(),
   };
 }

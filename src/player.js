@@ -7,6 +7,7 @@ import {
   PITCH_LIMIT,
   JUMP_V,
   GRAVITY,
+  ROOM_H,
 } from "./constants.js";
 
 const WALK = 3.2;
@@ -14,6 +15,7 @@ const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const LAND_EPS = 0.09;
+const MAX_EYE_Y = ROOM_H - 0.1;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -236,17 +238,23 @@ export class Player {
 
     const feetY = this._feetY();
     const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);
-    const targetEyeY = this._eyeOnSupport(supportY);
+    const targetEyeY = Math.min(this._eyeOnSupport(supportY), MAX_EYE_Y);
 
     this.vy -= GRAVITY * dt;
-    this.position.y += this.vy * dt;
+    let nextEyeY = this.position.y + this.vy * dt;
 
-    if (this.position.y <= targetEyeY && this.vy <= 0) {
+    if (nextEyeY > MAX_EYE_Y) {
+      nextEyeY = MAX_EYE_Y;
+      this.vy = 0;
+    }
+
+    if (nextEyeY <= targetEyeY && this.vy <= 0) {
       this.position.y = targetEyeY;
       this.vy = 0;
       this.grounded = true;
       this.groundY = supportY;
     } else {
+      this.position.y = nextEyeY;
       this.grounded = false;
     }
 

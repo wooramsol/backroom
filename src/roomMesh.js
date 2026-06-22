@@ -33,7 +33,9 @@ const _mat4 = new THREE.Matrix4();
 function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
   const { geometry } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
   if (geometry) {
-    group.add(new THREE.Mesh(geometry, materials.wall));
+    const wall = new THREE.Mesh(geometry, materials.wall);
+    wall.frustumCulled = false;
+    group.add(wall);
   }
 }
 
@@ -42,6 +44,7 @@ function addFloor(group, materials, worldX, worldZ) {
   bakeSurfaceUV(floorGeo, FLOOR_TILE_M, worldX, worldZ);
   const floor = new THREE.Mesh(floorGeo, materials.floor);
   floor.rotation.x = -Math.PI / 2;
+  floor.frustumCulled = false;
   group.add(floor);
 }
 
@@ -78,7 +81,7 @@ function addCeiling(group, h, materials, worldX, worldZ, room) {
     bi++;
 
     if (i === lightIndex) {
-      addCeilingPanelLight(group, px, tileY, pz);
+      addCeilingPanelLight(group, px, tileY, pz, materials);
     } else {
       _pos.set(px, tileY, pz);
       _mat4.compose(_pos, _identityQuat, _scale);
@@ -131,6 +134,7 @@ export function buildPanelBatch(state, _maxTiles) {
 
 export function finalizeRoomBuild(state) {
   const { group, room } = state;
+  group.frustumCulled = false;
   group.userData.room = room;
   return group;
 }

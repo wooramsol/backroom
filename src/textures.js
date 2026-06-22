@@ -154,9 +154,13 @@ export function createDoorJambMaterial(carpetBase, floorTex) {
   return mat;
 }
 
-/** Floor — bottom2.jpg, same unlit treatment as walls */
+/** Floor — Lambert so ceiling lights can wash the carpet below */
 export function createFloorSurfaceMaterial(map) {
-  return createUnlitSurfaceMaterial(map);
+  if (map) map.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshLambertMaterial({
+    map,
+    color: 0xffffff,
+  });
 }
 
 /** Matte ceiling carpet — underside; DoubleSide avoids facing issues */
