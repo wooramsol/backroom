@@ -32,7 +32,7 @@ export class World {
     this.chunks = new Map();
     this.wallMap = new Map();
     this.colliders = [];
-    this._collidersDirty = true;
+    this.collidersDirty = false;
     this.time = 0;
     this.loadQueue = [];
     this.pendingKeys = new Set();
@@ -104,64 +104,57 @@ export class World {
     this.loadQueue.splice(lo, 0, job);
   }
 
-  _markCollidersDirty() {
-    this._collidersDirty = true;
-  }
-
-  /** Build collider list from wall map + furniture (cheap — no wall re-registration) */
-  syncColliders() {
+  /** Wall map + furniture boxes — single source of truth (fixes noclip desync) */
+  rebuildColliderList() {
     const list = collidersFromMap(this.wallMap);
     for (const entry of this.chunks.values()) {
       const fc = entry.furnitureColliders;
       if (fc?.length) list.push(...fc);
     }
     this.colliders = list;
-    this._collidersDirty = false;
-    return list;
-  }
-
-  getColliders() {
-    if (this._collidersDirty) this.syncColliders();
-    return this.colliders;
-  }
-
-  /** Idempotent — call when a chunk is spawned or attached */
-  registerRoomWalls(room) {
-    appendRoomWalls(this.wallMap, room);
-    this._markCollidersDirty();
+    this.collidersDirty = true;
   }
 
   addCollidersForRoom(room) {
-    this.registerRoomWalls(room);
-    return this.syncColliders();
+    appendRoomWalls(this.wallMap, room);
+    this.rebuildColliderList();
   }
 
   removeCollidersForRoom(room) {
     if (removeRoomWalls(this.wallMap, room)) {
-      this._markCollidersDirty();
-      return this.syncColliders();
+      this.rebuildColliderList();
     }
-    return this.getColliders();
   }
 
-  addFurnitureForChunk(mesh) {
+  addFurnitureForChunk(mesh, room) {
     const fc = mesh.userData.furnitureColliders || [];
+    this.rebuildColliderList();
     return { furnitureColliders: fc };
   }
 
+  removeFurnitureForChunk(_entry) {
+    this.rebuildColliderList();
+  }
+
+  consumeColliderRebuild() {
+    const v = this.collidersDirty;
+    this.collidersDirty = false;
+    return v;
+  }
+
   attachChunk(cx, cz, room, build) {
+    const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     const mesh = build.group;
-    this.registerRoomWalls(room);
-    const furniture = this.addFurnitureForChunk(mesh);
-    this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
+    const furniture = this.addFurnitureForChunk(mesh, room);
+    this.chunks.set(k, { mesh, room, ...furniture });
   }
 
   spawnComplete(cx, cz) {
     const room = generateRoom(cx, cz);
+    this.addCollidersForRoom(room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
-    this.registerRoomWalls(room);
-    const furniture = this.addFurnitureForChunk(mesh);
+    const furniture = this.addFurnitureForChunk(mesh, room);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
   }
@@ -175,7 +168,7 @@ export class World {
       this.disposeQueue.push(mesh);
     }
     this.chunks.delete(k);
-    if (room && removeRoomWalls(this.wallMap, room)) this._markCollidersDirty();
+    if (room) this.removeCollidersForRoom(room);
   }
 
   enqueue(cx, cz, playerPos) {
@@ -191,6 +184,7 @@ export class World {
     this.cellCx = cx;
     this.cellCz = cz;
     this.lastPrefetchEdge = this.nearPrefetchEdge(playerPos, cx, cz);
+    this.spawnComplete(cx, cz);
   }
 
   update(playerPos) {
@@ -224,13 +218,12 @@ export class World {
       if (chebyshev > DESPAWN_RADIUS) this.despawnPending.push(k);
     }
 
-    let wallsChanged = false;
     this.loadQueue = this.loadQueue.filter((job) => {
       const k = this.key(job.cx, job.cz);
       if (need.has(k)) return true;
-      const live = this.chunks.has(k);
-      if (job.room && !live && removeRoomWalls(this.wallMap, job.room)) {
-        wallsChanged = true;
+      if (job.room && !this.chunks.has(k)) {
+        removeRoomWalls(this.wallMap, job.room);
+        this.rebuildColliderList();
       }
       if (job.build?.group) {
         if (job.build.group.parent) this.scene.remove(job.build.group);
@@ -238,7 +231,6 @@ export class World {
       }
       return false;
     });
-    if (wallsChanged) this._markCollidersDirty();
 
     for (const k of this.pendingKeys) {
       if (!need.has(k) && !this.chunks.has(k)) this.pendingKeys.delete(k);
@@ -261,6 +253,10 @@ export class World {
       if (!job.room) {
         job.room = generateRoom(job.cx, job.cz);
         job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
+        if (!this.chunks.has(k)) {
+          appendRoomWalls(this.wallMap, job.room);
+          this.rebuildColliderList();
+        }
         continue;
       }
 
@@ -281,20 +277,22 @@ export class World {
 
   tick(dt) {
     this.time += dt;
-    if (this.disposeQueue.length) {
-      disposeChunkRoot(this.disposeQueue.shift());
-    }
+    if (this.disposeQueue.length) disposeChunkRoot(this.disposeQueue.shift());
     for (let i = 0; i < DESPAWN_PER_FRAME && this.despawnPending.length; i++) {
       this.despawn(this.despawnPending.shift());
     }
   }
 
+  getColliders() {
+    return this.colliders;
+  }
+
   _spawnChunkComplete(cx, cz) {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
+    this.addCollidersForRoom(room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
-    this.registerRoomWalls(room);
-    const furniture = this.addFurnitureForChunk(mesh);
+    const furniture = this.addFurnitureForChunk(mesh, room);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room, ...furniture });
     this.pendingKeys.delete(k);
@@ -342,7 +340,7 @@ export class World {
         await new Promise((r) => requestAnimationFrame(r));
       }
 
-      this.syncColliders();
+      this.rebuildColliderList();
       onProgress?.(total || 1, total || 1);
     } finally {
       this.preloading = false;

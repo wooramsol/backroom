@@ -15,84 +15,21 @@ const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
 const _center = new THREE.Vector3();
 
-const TEXTURE_KEYS = [
-  "map",
-  "normalMap",
-  "roughnessMap",
-  "metalnessMap",
-  "aoMap",
-  "emissiveMap",
-  "alphaMap",
-  "bumpMap",
-];
-
-function cloneTexture(tex, { srgb = true } = {}) {
-  if (!tex) return null;
-  const next = tex.clone();
-  if (srgb && "colorSpace" in next) {
-    next.colorSpace = THREE.SRGBColorSpace;
-  }
-  next.userData.chunkOwned = true;
-  return next;
-}
-
-/** Preserve GLB PBR maps and colours — clone so each instance can dispose safely */
-function cloneGltfMaterial(mat) {
-  if (!mat) {
-    const fallback = new THREE.MeshStandardMaterial({ color: 0xbfb8a0, roughness: 1, metalness: 0 });
-    fallback.userData.chunkOwned = true;
-    return fallback;
-  }
-
-  let next;
-  if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
-    next = mat.clone();
-  } else if (mat.isMeshLambertMaterial || mat.isMeshPhongMaterial) {
-    next = new THREE.MeshStandardMaterial({
-      color: mat.color?.clone?.() ?? new THREE.Color(0xffffff),
-      map: mat.map || null,
-      emissive: mat.emissive?.clone?.() ?? new THREE.Color(0x000000),
-      emissiveMap: mat.emissiveMap || null,
-      transparent: mat.transparent === true,
-      opacity: mat.opacity ?? 1,
-      alphaTest: mat.alphaTest ?? 0,
-      side: mat.side ?? THREE.FrontSide,
-      roughness: 0.85,
-      metalness: 0.05,
-    });
-  } else {
-    next = new THREE.MeshStandardMaterial({
-      color: mat.color?.clone?.() ?? new THREE.Color(0xffffff),
-      map: mat.map || null,
-      roughness: 1,
-      metalness: 0,
-    });
-  }
-
-  for (const key of TEXTURE_KEYS) {
-    if (!next[key]) continue;
-    const linear =
-      key === "normalMap" ||
-      key === "roughnessMap" ||
-      key === "metalnessMap" ||
-      key === "aoMap" ||
-      key === "bumpMap";
-    next[key] = cloneTexture(next[key], { srgb: !linear });
-  }
-
-  if (next.emissive && !(next.emissive instanceof THREE.Color)) {
-    next.emissive = new THREE.Color(next.emissive);
-  }
-
-  next.userData.chunkOwned = true;
-  return next;
-}
-
 function normalizeMaterials(root) {
   root.traverse((obj) => {
-    if (!obj.isMesh || !obj.material) return;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    const out = mats.map((mat) => cloneGltfMaterial(mat));
+    if (!obj.isMesh) return;
+    const src = obj.material;
+    if (!src) return;
+    const mats = Array.isArray(src) ? src : [src];
+    const out = mats.map((mat) => {
+      const next = new THREE.MeshLambertMaterial({
+        map: mat.map || null,
+        color: mat.color?.clone?.() ?? new THREE.Color(0xbfb8a0),
+      });
+      if (next.map) next.map.colorSpace = THREE.SRGBColorSpace;
+      next.userData.chunkOwned = true;
+      return next;
+    });
     obj.material = out.length === 1 ? out[0] : out;
   });
 }
@@ -234,8 +171,7 @@ export function cloneFurnitureTemplate(template) {
   model.traverse((obj) => {
     if (!obj.isMesh || !obj.material) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    const out = mats.map((mat) => cloneGltfMaterial(mat));
-    obj.material = out.length === 1 ? out[0] : out;
+    for (const mat of mats) mat.userData.chunkOwned = true;
   });
   pivot.add(model);
   pivot.userData.footprint = template.userData.footprint;
