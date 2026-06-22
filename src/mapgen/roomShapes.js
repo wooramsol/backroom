@@ -35,10 +35,27 @@ export function shapeRectangle(rng) {
 }
 
 export function shapeLongHall(rng) {
-  const long = rng.int(10, 14);
+  const long = rng.int(8, 14);
   const narrow = rng.int(MIN_DIM, 5);
-  if (rng.chance(0.5)) return { kind: "hall-x", cells: fillRect(long, narrow), w: long, h: narrow };
-  return { kind: "hall-z", cells: fillRect(narrow, long), w: narrow, h: long };
+  if (rng.chance(0.5)) return { kind: "meeting-x", cells: fillRect(long, narrow), w: long, h: narrow };
+  return { kind: "meeting-z", cells: fillRect(narrow, long), w: narrow, h: long };
+}
+
+/** Wide open office / lounge */
+export function shapeLounge(rng) {
+  const w = rng.int(8, 13);
+  const h = rng.int(7, 12);
+  if (rng.chance(0.45)) return { kind: "lounge", cells: fillRect(w, h), w, h };
+  return { kind: "lounge", cells: fillRect(h, w), w: h, h: w };
+}
+
+export function pickLoungeShape(rng) {
+  return rng.pickWeighted([
+    [shapeLounge, 55],
+    [shapeRectangle, 20],
+    [shapeLongHall, 15],
+    [shapeRandomOrtho, 10],
+  ])(rng);
 }
 
 export function shapeNarrow(rng) {
