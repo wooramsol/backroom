@@ -9,7 +9,7 @@ import { FLUORESCENT_COLOR } from "./constants.js";
 
 /** Shared materials for the whole session — lightweight MeshBasic where possible */
 export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
-  const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(1.85);
+  const panelOnColor = new THREE.Color(FLUORESCENT_COLOR).multiplyScalar(2.05);
 
   return {
     wallTex: wallpaper,

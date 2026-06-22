@@ -73,14 +73,14 @@ export const PRELOAD_RADIUS = 2;
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
-/** ~3000K pale bulb — soft warm white, not orange */
-export const FLUORESCENT_COLOR = 0xfff8f2;
+/** Warm ceiling-tile bulb — matches bottom2.jpg beige/yellow tone */
+export const FLUORESCENT_COLOR = 0xf0e8b0;
 export const AMBIENT_COLOR = FLUORESCENT_COLOR;
-export const AMBIENT_INTENSITY = 0.58;
-/** Hemisphere — even indirect on ceiling, walls, and floor */
-export const HEMI_SKY_COLOR = 0xfffaf6;
-export const HEMI_GROUND_COLOR = 0xfff4ee;
-export const HEMI_INTENSITY = 0.72;
+export const AMBIENT_INTENSITY = 0.56;
+/** Hemisphere — ceiling-warm indirect fill */
+export const HEMI_SKY_COLOR = 0xf5edd8;
+export const HEMI_GROUND_COLOR = 0xe8ddb0;
+export const HEMI_INTENSITY = 0.7;
 export const LIGHT_PANEL_COLOR = FLUORESCENT_COLOR;
 export const LIGHT_PANEL_OFF_COLOR = 0x8a8478;
 /** Lit troffer face — bright square, glow stays inside panel bounds */
@@ -102,7 +102,14 @@ export const PANEL_EDGE_INSET = 1.25;
 /** @deprecated all troffers are lit */
 export const PANEL_ON_CHANCE = 1;
 /** Downward square troffer — RectAreaLight matches panel footprint */
-export const PANEL_LIGHT_INTENSITY = 4.2;
+export const PANEL_LIGHT_INTENSITY = 4.5;
+/** Troffer bloom — layer 1 only, low-res pass */
+export const BLOOM_LAYER = 1;
+export const BLOOM_GLOW_COLOR = FLUORESCENT_COLOR;
+export const BLOOM_STRENGTH = 0.32;
+export const BLOOM_RADIUS = 0.24;
+export const BLOOM_THRESHOLD = 0.62;
+export const BLOOM_RESOLUTION_SCALE = 0.35;
 /** Rebuild pooled lights after the camera moves this far (metres) */
 export const LIGHT_POOL_MOVE_THRESHOLD = 0.45;
 /** Minimum ms between pool rebuilds while moving */
