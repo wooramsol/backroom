@@ -1,14 +1,13 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { CHUNK, isWalkableLocal } from "./room.js";
+import { CHUNK } from "./room.js";
 import { WALL_T, WALL_JOINT_OVERLAP } from "./constants.js";
 import { WALL_TILE_W } from "./textures.js";
-import { bakePlaneWallUV } from "./geometryPool.js";
+import { cloneWallBox, bakeWallBoxUV } from "./geometryPool.js";
 
 const JUNCTION_EPS = 0.02;
 const COLINEAR_CAP = WALL_JOINT_OVERLAP * 0.5;
 const CORNER_TRIM = WALL_T / 2;
-const WALK_PROBE = 0.55;
 
 function tileHFromWallTex(wallTex) {
   return wallTex.userData?.tileH ?? WALL_TILE_W;
@@ -21,25 +20,25 @@ function spansMeet(value, s0, s1) {
 function expandWallSegments(room) {
   const segments = [];
 
-  const push = (axis, pos, a0, a1, door, boundary = false) => {
+  const push = (axis, pos, a0, a1, door) => {
     if (door) {
       const mid = (a0 + a1) / 2 + (door.offset || 0);
       const dw = door.width / 2;
-      if (mid - dw - a0 > 0.1) segments.push({ axis, pos, s0: a0, s1: mid - dw, boundary });
-      if (a1 - (mid + dw) > 0.1) segments.push({ axis, pos, s0: mid + dw, s1: a1, boundary });
+      if (mid - dw - a0 > 0.1) segments.push({ axis, pos, s0: a0, s1: mid - dw });
+      if (a1 - (mid + dw) > 0.1) segments.push({ axis, pos, s0: mid + dw, s1: a1 });
       return;
     }
-    if (a1 - a0 >= 0.1) segments.push({ axis, pos, s0: a0, s1: a1, boundary });
+    if (a1 - a0 >= 0.1) segments.push({ axis, pos, s0: a0, s1: a1 });
   };
 
-  push("z", 0, 0, CHUNK, room.doors.north, true);
-  push("z", CHUNK, 0, CHUNK, room.doors.south, true);
-  push("x", 0, 0, CHUNK, room.doors.west, true);
-  push("x", CHUNK, 0, CHUNK, room.doors.east, true);
+  push("z", 0, 0, CHUNK, room.doors.north);
+  push("z", CHUNK, 0, CHUNK, room.doors.south);
+  push("x", 0, 0, CHUNK, room.doors.west);
+  push("x", CHUNK, 0, CHUNK, room.doors.east);
 
   for (const wall of room.innerWalls) {
     const axis = wall.axis === "x" ? "x" : "z";
-    push(axis, wall.pos, wall.span0, wall.span1, wall.door, false);
+    push(axis, wall.pos, wall.span0, wall.span1, wall.door);
   }
 
   return segments;
@@ -70,9 +69,9 @@ function hasPerpendicularJoin(segments, seg, end) {
 }
 
 /**
- * L-corner rule for plane walls:
- * - Walls along X (axis "z") keep full span at perpendicular joins.
- * - Walls along Z (axis "x") trim by half thickness so their edge meets the runner plane.
+ * L-corner span rule (works for boxes and keeps thickness visible):
+ * - X-spanning walls (axis "z") run through the corner.
+ * - Z-spanning walls (axis "x") stop half a thickness early at perpendicular joins.
  */
 function adjustStart(segments, seg) {
   if (hasColinearJoin(segments, seg, "start")) return -COLINEAR_CAP;
@@ -86,57 +85,26 @@ function adjustEnd(segments, seg) {
   return 0;
 }
 
-function walkableSides(seg, innerWalls) {
-  if (seg.boundary) {
-    if (seg.axis === "z") return [seg.pos < CHUNK * 0.5 ? 1 : -1];
-    return [seg.pos < CHUNK * 0.5 ? 1 : -1];
-  }
-
-  const mid = (seg.s0 + seg.s1) / 2;
-  if (seg.axis === "z") {
-    const neg = isWalkableLocal(mid, seg.pos - WALK_PROBE, innerWalls);
-    const pos = isWalkableLocal(mid, seg.pos + WALK_PROBE, innerWalls);
-    const sides = [];
-    if (neg) sides.push(-1);
-    if (pos) sides.push(1);
-    return sides.length ? sides : [1];
-  }
-
-  const neg = isWalkableLocal(seg.pos - WALK_PROBE, mid, innerWalls);
-  const pos = isWalkableLocal(seg.pos + WALK_PROBE, mid, innerWalls);
-  const sides = [];
-  if (neg) sides.push(-1);
-  if (pos) sides.push(1);
-  return sides.length ? sides : [1];
-}
-
-function appendWallPlane(parts, seg, es0, es1, side, h, roomWx, roomWz, tileH) {
+function appendWallBox(parts, seg, es0, es1, h, roomWx, roomWz, tileH) {
   const slen = es1 - es0;
   if (slen < 0.05) return;
 
-  const geo = new THREE.PlaneGeometry(slen, h);
-  geo.translate(0, h / 2, 0);
+  const smid = (es0 + es1) / 2;
+  const geo = cloneWallBox(seg.axis, slen, h);
+  const baked = geo.index ? geo.toNonIndexed() : geo;
+  if (baked !== geo) geo.dispose();
+
   const worldU0 = seg.axis === "z" ? roomWx + es0 : roomWz + es0;
-  bakePlaneWallUV(geo, slen, h, WALL_TILE_W, tileH, worldU0, 0);
-
-  const mid = (es0 + es1) / 2;
-  if (seg.axis === "z") {
-    if (side < 0) geo.rotateY(Math.PI);
-    geo.translate(mid, 0, seg.pos + side * (WALL_T / 2));
-  } else {
-    geo.rotateY(side < 0 ? -Math.PI / 2 : Math.PI / 2);
-    geo.translate(seg.pos + side * (WALL_T / 2), 0, mid);
-  }
-
-  parts.push(geo);
+  bakeWallBoxUV(baked, seg.axis, slen, h, WALL_TILE_W, tileH, worldU0, 0);
+  if (seg.axis === "z") baked.translate(smid, h / 2, seg.pos);
+  else baked.translate(seg.pos, h / 2, smid);
+  parts.push(baked);
 }
 
-function appendWallSegment(parts, segments, seg, h, roomWx, roomWz, tileH, innerWalls) {
+function appendWallSegment(parts, segments, seg, h, roomWx, roomWz, tileH) {
   const es0 = seg.s0 + adjustStart(segments, seg);
   const es1 = seg.s1 + adjustEnd(segments, seg);
-  for (const side of walkableSides(seg, innerWalls)) {
-    appendWallPlane(parts, seg, es0, es1, side, h, roomWx, roomWz, tileH);
-  }
+  appendWallBox(parts, seg, es0, es1, h, roomWx, roomWz, tileH);
 }
 
 /** One merged BufferGeometry for all wallpaper walls in a chunk */
@@ -146,7 +114,7 @@ export function buildMergedWallGeometry(room, wallTex, h, roomWx, roomWz) {
   const tileH = tileHFromWallTex(wallTex);
 
   for (const seg of segments) {
-    appendWallSegment(parts, segments, seg, h, roomWx, roomWz, tileH, room.innerWalls);
+    appendWallSegment(parts, segments, seg, h, roomWx, roomWz, tileH);
   }
 
   if (!parts.length) return { geometry: null };
