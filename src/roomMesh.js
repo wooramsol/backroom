@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHUNK } from "./room.js";
+import { CHUNK, ROOM_H } from "./constants.js";
 import {
   PANEL_W,
   PANEL_H,
@@ -25,6 +25,14 @@ const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2
 const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
+
+/** Per InstancedMesh — never call computeBoundingSphere on shared plane geometry */
+function setInstancedLocalBounds(mesh, h = ROOM_H) {
+  mesh.boundingSphere = new THREE.Sphere(
+    new THREE.Vector3(CHUNK / 2, h * 0.5, CHUNK / 2),
+    Math.hypot(CHUNK, h) * 0.75,
+  );
+}
 
 function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
   const { geometry } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
@@ -80,6 +88,8 @@ function addCeiling(group, h, materials, worldX, worldZ) {
 
   backingMesh.instanceMatrix.needsUpdate = true;
   tileMesh.instanceMatrix.needsUpdate = true;
+  setInstancedLocalBounds(backingMesh, h);
+  setInstancedLocalBounds(tileMesh, h);
 
   group.add(backingMesh);
   group.add(tileMesh);

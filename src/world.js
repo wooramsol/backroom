@@ -76,17 +76,18 @@ export class World {
 
     const lx = playerPos.x - cx * CHUNK;
     const lz = playerPos.z - cz * CHUNK;
+    const outer = radius + 1;
     if (lx > CHUNK * EDGE_PREFETCH) {
-      for (const k of this.ringKeys(cx + 1, cz, radius)) need.add(k);
+      for (let z = cz - radius; z <= cz + radius; z++) need.add(this.key(cx + outer, z));
     }
     if (lx < CHUNK * (1 - EDGE_PREFETCH)) {
-      for (const k of this.ringKeys(cx - 1, cz, radius)) need.add(k);
+      for (let z = cz - radius; z <= cz + radius; z++) need.add(this.key(cx - outer, z));
     }
     if (lz > CHUNK * EDGE_PREFETCH) {
-      for (const k of this.ringKeys(cx, cz + 1, radius)) need.add(k);
+      for (let x = cx - radius; x <= cx + radius; x++) need.add(this.key(x, cz + outer));
     }
     if (lz < CHUNK * (1 - EDGE_PREFETCH)) {
-      for (const k of this.ringKeys(cx, cz - 1, radius)) need.add(k);
+      for (let x = cx - radius; x <= cx + radius; x++) need.add(this.key(x, cz - outer));
     }
 
     return need;
