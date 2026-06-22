@@ -8,6 +8,14 @@ import { buildExtrudedWallGeometry, tileHFromWallTex } from "./mapgen/WallExtrud
 
 const COLINEAR_CAP = WALL_JOINT_OVERLAP * 0.5;
 
+/** mergeGeometries requires every part to be indexed or none — boundary boxes are non-indexed */
+function toNonIndexedGeometry(geo) {
+  if (!geo?.index) return geo;
+  const flat = geo.toNonIndexed();
+  geo.dispose();
+  return flat;
+}
+
 function appendBoundaryBox(parts, seg, h, roomWx, roomWz, tileH) {
   const slen = seg.s1 - seg.s0;
   if (slen < 0.05) return;
@@ -36,7 +44,7 @@ export function buildMergedWallGeometry(room, wallTex, h, roomWx, roomWz) {
       WALL_TILE_W,
       tileH,
     );
-    if (inner) parts.push(inner);
+    if (inner) parts.push(toNonIndexedGeometry(inner));
   } else if (room.innerWalls?.length) {
     const inner = buildExtrudedWallGeometry(
       room.innerWalls.map((w) => ({
@@ -51,7 +59,7 @@ export function buildMergedWallGeometry(room, wallTex, h, roomWx, roomWz) {
       WALL_TILE_W,
       tileH,
     );
-    if (inner) parts.push(inner);
+    if (inner) parts.push(toNonIndexedGeometry(inner));
   }
 
   const boundary = expandWallSegments(room).filter((seg) => {
