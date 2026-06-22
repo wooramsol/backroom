@@ -22,6 +22,7 @@ function disposeMeshObject(obj) {
 export function disposeChunkRoot(root) {
   if (!root) return;
   root.traverse((obj) => {
+    if (obj.isLight) return;
     if (obj.isMesh || obj.isInstancedMesh) disposeMeshObject(obj);
   });
 }

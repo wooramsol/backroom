@@ -13,6 +13,7 @@ const WALK = 3.2;
 const RUN = 5.8;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
+const LAND_EPS = 0.09;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -32,6 +33,7 @@ export class Player {
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
+    this.groundY = 0;
     this.onLockLost = null;
     this.onLockAcquired = null;
 
@@ -105,6 +107,38 @@ export class Player {
     this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
     this.vy = 0;
     this.grounded = true;
+    this.groundY = 0;
+  }
+
+  _feetY() {
+    return this.position.y - EYE_H;
+  }
+
+  _eyeOnSupport(supportY) {
+    return supportY + EYE_H;
+  }
+
+  _overlapsXZ(px, pz, c, r = PLAYER_R) {
+    return !(px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ);
+  }
+
+  /** Highest standable surface under the player feet */
+  _findSupportY(px, pz, feetY, vy, dt) {
+    let best = 0;
+    const nextFeet = feetY + vy * dt;
+    const r = PLAYER_R;
+
+    for (const c of this.colliders) {
+      if (!c.standable || c.standTopY === undefined) continue;
+      if (!this._overlapsXZ(px, pz, c, r)) continue;
+
+      const top = c.standTopY;
+      const onTop = Math.abs(feetY - top) < LAND_EPS;
+      const landing = vy <= 0 && nextFeet <= top + LAND_EPS && feetY >= top - 0.55;
+      if (onTop || landing) best = Math.max(best, top);
+    }
+
+    return best;
   }
 
   _applyLook(bobY = 0) {
@@ -115,7 +149,6 @@ export class Player {
     this.camera.updateMatrixWorld(true);
   }
 
-  /** Walk axes = horizontal center-ray of the camera (matches crosshair) */
   _syncWalkFromCamera() {
     this.camera.getWorldDirection(_fwd);
     _fwd.y = 0;
@@ -201,12 +234,18 @@ export class Player {
       this.bob *= 0.85;
     }
 
+    const feetY = this._feetY();
+    const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);
+    const targetEyeY = this._eyeOnSupport(supportY);
+
     this.vy -= GRAVITY * dt;
     this.position.y += this.vy * dt;
-    if (this.position.y <= EYE_H) {
-      this.position.y = EYE_H;
+
+    if (this.position.y <= targetEyeY && this.vy <= 0) {
+      this.position.y = targetEyeY;
       this.vy = 0;
       this.grounded = true;
+      this.groundY = supportY;
     } else {
       this.grounded = false;
     }

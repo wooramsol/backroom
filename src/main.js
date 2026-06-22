@@ -11,6 +11,7 @@ import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
 import { tickChairGlitchVisuals } from "./chairStatic.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   CHUNK,
   EYE_H,
@@ -71,6 +72,8 @@ scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTE
 const hum = new FluorescentHum();
 
 async function init() {
+  RectAreaLightUniformsLib.init();
+
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);

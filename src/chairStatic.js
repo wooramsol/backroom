@@ -1,10 +1,9 @@
 import * as THREE from "three";
 
-const STATIC_SIZE = 160;
+const STATIC_SIZE = 128;
 let _canvas;
 let _ctx;
 let _staticTex;
-let _frame = 0;
 
 function staticTexture() {
   if (_staticTex) return _staticTex;
@@ -21,13 +20,29 @@ function refreshStaticTexture() {
   const imageData = _ctx.createImageData(STATIC_SIZE, STATIC_SIZE);
   const d = imageData.data;
   for (let i = 0; i < d.length; i += 4) {
-    const on = Math.random() < 0.82;
+    const on = Math.random() < 0.78;
     const v = on ? (Math.random() * 255) | 0 : 0;
     d[i] = d[i + 1] = d[i + 2] = v;
     d[i + 3] = on ? 255 : 0;
   }
   _ctx.putImageData(imageData, 0, 0);
   tex.needsUpdate = true;
+}
+
+function injectFragmentGlitch(shader) {
+  const hook = "#include <fog_fragment>";
+  if (!shader.fragmentShader.includes(hook)) return;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    hook,
+    `float scan = step(0.4, fract(sin(gl_FragCoord.y * 1.2 + uGlitchTime * 160.0)));
+      float block = step(0.7, fract(sin(gl_FragCoord.x * 0.05 + uGlitchTime * 200.0)));
+      float snow = step(0.5, fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + uGlitchTime * 380.0)));
+      float corrupt = scan * block;
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(snow), 0.28 + corrupt * 0.38);
+      gl_FragColor.rgb += corrupt * 0.35;
+      gl_FragColor.r += step(0.92, fract(uGlitchTime * 17.0 + gl_FragCoord.y * 0.03)) * 0.25;
+      ${hook}`,
+  );
 }
 
 function makeGlitchMaterial(srcMat) {
@@ -39,8 +54,8 @@ function makeGlitchMaterial(srcMat) {
     map: baseMap,
     color: srcMat.color?.clone?.() ?? new THREE.Color(0xbfb8a0),
     emissiveMap: tex,
-    emissive: new THREE.Color(0xffffff),
-    emissiveIntensity: 1.1,
+    emissive: new THREE.Color(0xcccccc),
+    emissiveIntensity: 0.65,
   });
   mat.userData.chunkOwned = true;
   mat.userData.chairGlitch = true;
@@ -61,17 +76,15 @@ function makeGlitchMaterial(srcMat) {
       "#include <begin_vertex>",
       `#include <begin_vertex>
       float t = uGlitchTime;
-      float nx = sin(transformed.y * 23.0 + t * 67.0) * cos(transformed.x * 17.0 + t * 53.0);
-      float nz = cos(transformed.z * 21.0 + t * 59.0) * sin(transformed.y * 15.0 + t * 71.0);
-      float burst = step(0.82, fract(sin(t * 31.7 + transformed.x * 7.0)));
-      float snapX = step(0.55, fract(sin(transformed.z * 43.0 + t * 89.0)));
-      float snapY = step(0.5, fract(cos(transformed.x * 37.0 + t * 73.0)));
-      float snapZ = step(0.58, fract(sin(transformed.y * 49.0 + t * 97.0)));
-      float amp = uGlitchAmp * (1.0 + burst * 2.5);
-      transformed += normal * (nx + nz) * amp * 0.19;
-      transformed.x += (snapX - 0.5) * amp * 0.28 + sin(t * 120.0 + transformed.y * 9.0) * amp * 0.04;
-      transformed.y += (snapY - 0.5) * amp * 0.14;
-      transformed.z += (snapZ - 0.5) * amp * 0.22;
+      float nx = sin(transformed.y * 21.0 + t * 59.0) * cos(transformed.x * 15.0 + t * 47.0);
+      float nz = cos(transformed.z * 19.0 + t * 53.0);
+      float burst = step(0.88, fract(sin(t * 29.0 + transformed.x * 9.0)));
+      float snapX = step(0.58, fract(sin(transformed.z * 41.0 + t * 83.0)));
+      float snapZ = step(0.56, fract(sin(transformed.y * 37.0 + t * 71.0)));
+      float amp = uGlitchAmp * (1.0 + burst * 1.8);
+      transformed += normal * (nx + nz) * amp * 0.055;
+      transformed.x += (snapX - 0.5) * amp * 0.09;
+      transformed.z += (snapZ - 0.5) * amp * 0.075;
       `,
     );
 
@@ -81,24 +94,13 @@ function makeGlitchMaterial(srcMat) {
       uniform float uGlitchTime;`,
     );
 
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <dithering_fragment>",
-      `#include <dithering_fragment>
-      float scan = step(0.42, fract(sin(gl_FragCoord.y * 1.1 + uGlitchTime * 140.0)));
-      float block = step(0.62, fract(sin(gl_FragCoord.x * 0.06 + uGlitchTime * 180.0)));
-      float snow = step(0.48, fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + uGlitchTime * 320.0)));
-      float corrupt = scan * block;
-      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(snow), 0.42 + corrupt * 0.35);
-      gl_FragColor.rgb += corrupt * 0.45;
-      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(step(0.5, fract(uGlitchTime * 77.0 + gl_FragCoord.x * 0.2))), 0.12);
-      `,
-    );
+    injectFragmentGlitch(shader);
   };
 
   return mat;
 }
 
-/** Extreme TV glitch + mesh warp — Chair.glb only */
+/** TV glitch + mesh warp — Chair.glb only */
 export function applyChairGlitchVisual(pivot) {
   pivot.userData.chairGlitch = true;
   pivot.traverse((obj) => {
@@ -110,11 +112,10 @@ export function applyChairGlitchVisual(pivot) {
 }
 
 export function tickChairGlitchVisuals(scene, time) {
-  _frame++;
-  refreshStaticTexture();
+  if ((Math.floor(time * 60) & 1) === 0) refreshStaticTexture();
 
-  const spike = Math.random() < 0.08 ? 2.8 : 1;
-  const amp = spike * (1.1 + Math.sin(time * 53.7) * 0.35 + Math.random() * 0.65);
+  const spike = Math.random() < 0.11 ? 2.2 : 1;
+  const amp = spike * (1.0 + Math.sin(time * 61.0) * 0.3 + Math.random() * 0.55);
 
   scene.traverse((obj) => {
     if (!obj.isMesh?.material) return;
@@ -123,10 +124,10 @@ export function tickChairGlitchVisuals(scene, time) {
       if (!mat.userData?.chairGlitch) continue;
       const u = mat.userData.glitchUniforms;
       if (u) {
-        u.uGlitchTime.value = time + Math.random() * 0.04;
+        u.uGlitchTime.value = time;
         u.uGlitchAmp.value = amp;
       }
-      mat.emissiveIntensity = 0.75 + Math.random() * 1.25;
+      mat.emissiveIntensity = 0.5 + Math.random() * 0.95;
     }
   });
 }
