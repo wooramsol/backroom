@@ -1,14 +1,17 @@
 import { MAP_CELL_M, MAP_GRID_SIZE } from "../constants.js";
 import { CELL_FLOOR, GridMap } from "./grid.js";
-import { RoomGenerator } from "./RoomGenerator.js";
+import { BackroomsRoomPacker } from "./BackroomsRoomPacker.js";
+import { RoomConnector } from "./RoomConnector.js";
 import { CorridorGenerator } from "./CorridorGenerator.js";
-import { WallGenerator } from "./WallGenerator.js";
 import { ConnectivityValidator } from "./ConnectivityValidator.js";
+import { mergeFloorIslands } from "./floorConnect.js";
+import { corridorBudgetOK, roomSpaceOK } from "./backroomsMetrics.js";
+import { innerWallsFromGrid, wallsFromGrid } from "./wallOutline.js";
 import { shapeFallback } from "./roomShapes.js";
 
 /**
- * Orchestrates grid-based map generation:
- * rooms → corridors → outline walls → validation
+ * Backrooms-first map generation:
+ * pack offices → punch doorways in shared walls → minimal door spurs only
  */
 export class MapGenerator {
   constructor(rng) {
@@ -38,34 +41,43 @@ export class MapGenerator {
 
   buildOnce(doors) {
     const grid = new GridMap(MAP_GRID_SIZE);
-    const roomGen = new RoomGenerator(this.rng);
-    const rooms = roomGen.generate(grid);
+    const packer = new BackroomsRoomPacker(this.rng);
+    const rooms = packer.generate(grid);
+
+    const connector = new RoomConnector(this.rng);
+    connector.connect(grid, rooms);
+    mergeFloorIslands(grid, connector, rooms);
+    const openEdges = connector.openEdges;
 
     const corridorGen = new CorridorGenerator(this.rng);
-    corridorGen.connectRooms(grid, rooms);
     corridorGen.connectChunkDoors(grid, rooms, doors);
 
-    let wallSegments = WallGenerator.fromGrid(grid);
+    let wallSegments = wallsFromGrid(grid, openEdges);
     const validator = new ConnectivityValidator(this.rng);
     let validation = validator.validate(grid, rooms, doors, wallSegments);
 
     if (!validation.ok) {
-      const repaired = validator.repair(grid, rooms, doors);
+      const repaired = validator.repair(grid, rooms, doors, openEdges, connector);
       wallSegments = repaired.wallSegments;
       validation = validator.validate(grid, rooms, doors, wallSegments);
     }
 
-    const innerWalls = WallGenerator.toInnerWalls(wallSegments);
-    const kind = rooms.length === 1 ? rooms[0].kind : `grid-${rooms.length}`;
+    const kind =
+      rooms.length === 1 ? rooms[0].kind : `backrooms-${rooms.length}`;
 
     return {
       kind,
       zones: this.zonesFromRooms(rooms),
       rooms,
       grid,
-      innerWalls,
+      openEdges,
+      innerWalls: innerWallsFromGrid(grid, openEdges),
       wallSegments,
       validation,
+      metrics: {
+        roomSpace: roomSpaceOK(grid),
+        corridorBudget: corridorBudgetOK(grid),
+      },
     };
   }
 
@@ -87,14 +99,16 @@ export class MapGenerator {
       },
     ];
 
+    const openEdges = new Set();
     const corridorGen = new CorridorGenerator(this.rng);
     corridorGen.connectChunkDoors(grid, rooms, doors);
 
     const validator = new ConnectivityValidator(this.rng);
-    let wallSegments = WallGenerator.fromGrid(grid);
+    let wallSegments = wallsFromGrid(grid, openEdges);
     let validation = validator.validate(grid, rooms, doors, wallSegments);
     if (!validation.ok) {
-      const repaired = validator.repair(grid, rooms, doors);
+      const stub = new RoomConnector(this.rng);
+      const repaired = validator.repair(grid, rooms, doors, openEdges, stub);
       wallSegments = repaired.wallSegments;
       validation = validator.validate(grid, rooms, doors, wallSegments);
     }
@@ -104,16 +118,20 @@ export class MapGenerator {
       zones: this.zonesFromRooms(rooms),
       rooms,
       grid,
-      innerWalls: WallGenerator.toInnerWalls(wallSegments),
+      openEdges,
+      innerWalls: innerWallsFromGrid(grid, openEdges),
       wallSegments,
       validation,
+      metrics: { roomSpace: true, corridorBudget: true },
     };
   }
 
   generate(doors) {
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
       const result = this.buildOnce(doors);
-      if (result.validation.ok) return result;
+      if (result.validation.ok && result.metrics.roomSpace && result.metrics.corridorBudget) {
+        return result;
+      }
     }
     return this.generateFallback(doors);
   }

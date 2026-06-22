@@ -1,12 +1,15 @@
 import { MAP_GRID_SIZE } from "../constants.js";
 import { CorridorGenerator } from "./CorridorGenerator.js";
 import { WallGenerator } from "./WallGenerator.js";
+import { RoomConnector } from "./RoomConnector.js";
+import { corridorBudgetOK, roomSpaceOK } from "./backroomsMetrics.js";
 import {
   allPassagesWideEnough,
   minCorridorCells,
   minPassageCells,
   narrowPassageCells,
 } from "./passage.js";
+import { wallsFromGrid } from "./wallOutline.js";
 
 function doorCells(doors) {
   const mid = MAP_GRID_SIZE / 2;
@@ -74,45 +77,40 @@ export class ConnectivityValidator {
     if (!this.allRoomsReachable(grid, rooms)) errors.push("isolated_room");
     if (!this.doorsReachable(grid, doors)) errors.push("door_unreachable");
     if (!allPassagesWideEnough(grid, this.minPassage)) errors.push("narrow_passage");
+    if (!roomSpaceOK(grid)) errors.push("low_room_space");
+    if (!corridorBudgetOK(grid)) errors.push("corridor_heavy");
     const wallIssues = WallGenerator.validate(wallSegments);
     const criticalWalls = wallIssues.filter((i) => i.kind !== "dangling");
     if (criticalWalls.length) errors.push("wall_issues");
     return { ok: errors.length === 0, errors, wallIssues };
   }
 
-  widenNarrowCells(grid, doors) {
-    const corridor = new CorridorGenerator(this.rng);
-    const narrow = narrowPassageCells(grid, this.minPassage);
-    for (const [x, z] of narrow) {
-      corridor.widenAt(grid, x, z, this.minCorridor);
-    }
-    corridor.connectChunkDoors(grid, [], doors);
-  }
-
-  repair(grid, rooms, doors) {
+  repair(grid, rooms, doors, openEdges, connector) {
     const corridor = new CorridorGenerator(this.rng);
     let attempts = 0;
 
     while (attempts < 8) {
       attempts++;
-      if (!this.allWalkableConnected(grid) || !this.allRoomsReachable(grid, rooms)) {
-        if (rooms.length >= 2) {
-          const a = rooms[0].centroid;
-          const b = rooms[rooms.length - 1].centroid;
-          corridor.carvePath(grid, a.x, a.z, b.x, b.z, corridor.pickWidth());
-        }
+      if (!this.allRoomsReachable(grid, rooms) || !this.allWalkableConnected(grid)) {
+        connector.connect(grid, rooms);
       }
       if (!this.doorsReachable(grid, doors)) {
         corridor.connectChunkDoors(grid, rooms, doors);
       }
       if (!allPassagesWideEnough(grid, this.minPassage)) {
-        this.widenNarrowCells(grid, doors);
+        const narrow = narrowPassageCells(grid, this.minPassage);
+        const roomId = rooms[0]?.id ?? 0;
+        for (const [x, z] of narrow) corridor.widenAt(grid, x, z, this.minCorridor, roomId);
       }
-      const segs = WallGenerator.fromGrid(grid);
+      const segs = wallsFromGrid(grid, openEdges);
       const result = this.validate(grid, rooms, doors, segs);
-      if (result.ok) return { grid, wallSegments: segs, repaired: attempts };
+      if (result.ok) return { openEdges: connector.openEdges, wallSegments: segs, repaired: attempts };
     }
 
-    return { grid, wallSegments: WallGenerator.fromGrid(grid), repaired: attempts };
+    return {
+      openEdges: connector.openEdges,
+      wallSegments: wallsFromGrid(grid, openEdges),
+      repaired: attempts,
+    };
   }
 }
