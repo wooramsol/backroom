@@ -10,6 +10,7 @@ import {
 import {
   CHUNK,
   WALL_T,
+  WALL_JOINT_OVERLAP,
   DOOR_H,
   DOOR_JAMB_INSET,
   MIN_DOOR_WIDTH,
@@ -272,6 +273,28 @@ function allExitsConnected(innerWalls, doors) {
   return true;
 }
 
+/** Every walkable floor cell must belong to one component — no sealed pockets */
+function allWalkableConnected(innerWalls) {
+  const cols = Math.ceil(CHUNK / NAV_CELL);
+  let start = null;
+  let walkable = 0;
+
+  for (let iz = 0; iz < cols; iz++) {
+    for (let ix = 0; ix < cols; ix++) {
+      const x = ix * NAV_CELL + NAV_CELL * 0.5;
+      const z = iz * NAV_CELL + NAV_CELL * 0.5;
+      if (navBlocked(x, z, innerWalls)) continue;
+      walkable++;
+      if (!start) start = [x, z];
+    }
+  }
+
+  if (!start || walkable === 0) return true;
+
+  const reached = navFloodKeys(innerWalls, start[0], start[1]);
+  return reached.size >= walkable;
+}
+
 function doorsWideEnough(innerWalls, doors) {
   const minW = minDoorWidth();
   for (const wall of innerWalls) {
@@ -294,7 +317,8 @@ function shapePassesValidation(shape, doors) {
     nookIsWalkable(shape) &&
     parallelPassagesWideEnough(shape.innerWalls) &&
     doorsWideEnough(shape.innerWalls, doors) &&
-    allExitsConnected(shape.innerWalls, doors)
+    allExitsConnected(shape.innerWalls, doors) &&
+    allWalkableConnected(shape.innerWalls)
   );
 }
 
@@ -358,30 +382,42 @@ function doorCollideHalf(door) {
 
 function wallAlongZ(boxes, z, x0, x1, door, y0, yTop) {
   const t = WALL_T;
+  const overlap = WALL_JOINT_OVERLAP * 0.5;
+  const ex0 = x0 - overlap;
+  const ex1 = x1 + overlap;
   if (!door) {
-    addBox(boxes, x0, x1, z - t, z + t, y0, yTop);
+    addBox(boxes, ex0, ex1, z - t, z + t, y0, yTop);
     return;
   }
   const mid = (x0 + x1) / 2 + door.offset;
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x0, lo, z - t, z + t, y0, DOOR_H);
-  addBox(boxes, hi, x1, z - t, z + t, y0, DOOR_H);
+  addBox(boxes, ex0, lo, z - t, z + t, y0, DOOR_H);
+  addBox(boxes, hi, ex1, z - t, z + t, y0, DOOR_H);
+  if (DOOR_H < yTop - 0.02) {
+    addBox(boxes, lo, hi, z - t, z + t, DOOR_H, yTop);
+  }
 }
 
 function wallAlongX(boxes, x, z0, z1, door, y0, yTop) {
   const t = WALL_T;
+  const overlap = WALL_JOINT_OVERLAP * 0.5;
+  const ez0 = z0 - overlap;
+  const ez1 = z1 + overlap;
   if (!door) {
-    addBox(boxes, x - t, x + t, z0, z1, y0, yTop);
+    addBox(boxes, x - t, x + t, ez0, ez1, y0, yTop);
     return;
   }
   const mid = (z0 + z1) / 2 + door.offset;
   const half = doorCollideHalf(door);
   const lo = mid - half;
   const hi = mid + half;
-  addBox(boxes, x - t, x + t, z0, lo, y0, DOOR_H);
-  addBox(boxes, x - t, x + t, hi, z1, y0, DOOR_H);
+  addBox(boxes, x - t, x + t, ez0, lo, y0, DOOR_H);
+  addBox(boxes, x - t, x + t, hi, ez1, y0, DOOR_H);
+  if (DOOR_H < yTop - 0.02) {
+    addBox(boxes, x - t, x + t, lo, hi, DOOR_H, yTop);
+  }
 }
 
 function addInnerWall(boxes, ox, oz, wall, y0, yTop) {

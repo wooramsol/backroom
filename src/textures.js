@@ -245,7 +245,7 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  const gapPx = Math.max(2, Math.round((size * CEILING_TILE_GAP_M) / tileM * 0.5));
+  const gapPx = Math.max(1, Math.round((size * CEILING_TILE_GAP_M) / tileM * 0.25));
   const gapHex = `#${CEILING_GAP_COLOR.toString(16).padStart(6, "0")}`;
 
   ctx.fillStyle = gapHex;
@@ -258,7 +258,7 @@ export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
     ctx.fillRect(gapPx, gapPx, size - gapPx * 2, size - gapPx * 2);
   }
 
-  const edge = Math.max(2, Math.round(gapPx * 0.9));
+  const edge = Math.max(1, Math.round(gapPx * 0.45));
   const shade = (x0, y0, x1, y1, x, y, w, h) => {
     const g = ctx.createLinearGradient(x0, y0, x1, y1);
     g.addColorStop(0, "rgba(70,66,42,0.14)");
