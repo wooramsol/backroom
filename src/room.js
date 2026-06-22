@@ -1,26 +1,15 @@
 import { createRng } from "./rng.js";
-import {
-  buildPseudoRoom,
-  buildFallbackPseudoRoom,
-  wallsWithinTileLimit,
-  hasThreeSidedStructure,
-  nookIsWalkable,
-  parallelPassagesWideEnough,
-} from "./roomShapes.js";
+import { buildGridMap } from "./mapgen/MapGenerator.js";
 import {
   CHUNK,
   WALL_T,
   WALL_JOINT_OVERLAP,
-  DOOR_H,
   DOOR_JAMB_INSET,
   MIN_DOOR_WIDTH,
   MIN_CLEAR_DOOR_WIDTH,
   MAX_DOOR_WIDTH,
   ROOM_H,
-  MIN_PASSAGE_SPAN,
 } from "./constants.js";
-import { passageWidthAlong } from "./passage.js";
-import { cornerSealColliderBoxes } from "./wallCorners.js";
 
 export { CHUNK };
 export const CELL = CHUNK;
@@ -35,26 +24,6 @@ function minDoorWidth() {
 
 function maxDoorSpan(span) {
   return Math.min(span - 0.8, MAX_DOOR_WIDTH);
-}
-
-function pickDoorWidth(rng, span) {
-  const maxW = maxDoorSpan(span);
-  const minW = minDoorWidth();
-  if (maxW < minW) return null;
-  if (rng.chance(0.52)) {
-    const w = rng.range(minW, maxW);
-    return Math.round(w * 20) / 20;
-  }
-  const choices = DOOR_WIDTHS.filter((w) => w >= minW - 0.01 && w <= maxW + 0.01);
-  return Math.max(minW, rng.pick(choices.length ? choices : [minW]));
-}
-
-function doorSpec(rng, span) {
-  const maxW = maxDoorSpan(span);
-  const width = Math.min(pickDoorWidth(rng, span) ?? minDoorWidth(), maxW);
-  if (width < minDoorWidth()) return null;
-  const maxOff = Math.max(0, span / 2 - width / 2 - 0.25);
-  return { width, offset: rng.range(-maxOff, maxOff) };
 }
 
 export function getSharedDoor(cx0, cz0, cx1, cz1) {
@@ -82,107 +51,19 @@ export function getSharedDoor(cx0, cz0, cx1, cz1) {
   };
 }
 
-const BOUND_EPS = 0.25;
-
-function wallTouchesBoundary(wall) {
-  return wall.span0 <= BOUND_EPS || wall.span1 >= CHUNK - BOUND_EPS;
-}
-
-function wallEndpoints(wall) {
-  if (wall.axis === "z") {
-    return [
-      { x: wall.span0, z: wall.pos },
-      { x: wall.span1, z: wall.pos },
-    ];
+function doorsWideEnough(innerWalls, doors) {
+  const minW = minDoorWidth();
+  for (const wall of innerWalls) {
+    if (wall.door && wall.door.width < minW) return false;
   }
-  return [
-    { x: wall.pos, z: wall.span0 },
-    { x: wall.pos, z: wall.span1 },
-  ];
-}
-
-function pointOnWall(point, wall, eps = 0.2) {
-  if (wall.axis === "z") {
-    if (Math.abs(point.z - wall.pos) > eps) return false;
-    return point.x >= wall.span0 - eps && point.x <= wall.span1 + eps;
-  }
-  if (Math.abs(point.x - wall.pos) > eps) return false;
-  return point.z >= wall.span0 - eps && point.z <= wall.span1 + eps;
-}
-
-function wallsLinked(a, b) {
-  const eps = 0.2;
-  const ea = wallEndpoints(a);
-  const eb = wallEndpoints(b);
-  for (const p of ea) {
-    for (const q of eb) {
-      if (Math.abs(p.x - q.x) <= eps && Math.abs(p.z - q.z) <= eps) return true;
-    }
-    if (pointOnWall(p, b, eps)) return true;
-    for (const q of eb) {
-      if (pointOnWall(q, a, eps)) return true;
-    }
-  }
-  return false;
-}
-
-/** Every inner wall must link to the chunk boundary through connected segments */
-export function isMazeConnected(innerWalls) {
-  if (!innerWalls.length) return true;
-
-  const anchored = innerWalls.map(wallTouchesBoundary);
-  if (!anchored.some(Boolean)) return false;
-
-  const visited = new Set();
-  const queue = [];
-  innerWalls.forEach((wall, i) => {
-    if (anchored[i]) {
-      visited.add(i);
-      queue.push(i);
-    }
-  });
-
-  while (queue.length) {
-    const i = queue.shift();
-    for (let j = 0; j < innerWalls.length; j++) {
-      if (visited.has(j)) continue;
-      if (wallsLinked(innerWalls[i], innerWalls[j])) {
-        visited.add(j);
-        queue.push(j);
-      }
-    }
-  }
-
-  return visited.size === innerWalls.length;
-}
-
-/** Every inner wall must touch at least one other inner wall — no lone segments */
-export function wallsPairwiseConnected(innerWalls) {
-  if (innerWalls.length < 3) return false;
-  for (let i = 0; i < innerWalls.length; i++) {
-    let linked = false;
-    for (let j = 0; j < innerWalls.length; j++) {
-      if (i !== j && wallsLinked(innerWalls[i], innerWalls[j])) {
-        linked = true;
-        break;
-      }
-    }
-    if (!linked) return false;
+  for (const door of Object.values(doors)) {
+    if (door.width < minW) return false;
   }
   return true;
 }
 
-/** No wall segment with both ends floating in open floor */
-function hasFloatingWalls(innerWalls) {
-  return innerWalls.some(
-    (wall) => wall.span0 > BOUND_EPS && wall.span1 < CHUNK - BOUND_EPS,
-  );
-}
-
-/** Every inner wall must reach a chunk edge — no floating segments in open floor */
-function wallsAnchorToBoundary(innerWalls) {
-  return innerWalls.every(wallTouchesBoundary);
-}
+/** Total walkable span between opposing walls/boundaries along one axis */
+export { passageWidthAlong } from "./passage.js";
 
 const NAV_CELL = 0.5;
 
@@ -303,71 +184,23 @@ function allWalkableConnected(innerWalls) {
   return reached.size >= walkable;
 }
 
-function doorsWideEnough(innerWalls, doors) {
-  const minW = minDoorWidth();
-  for (const wall of innerWalls) {
-    if (wall.door && wall.door.width < minW) return false;
-  }
-  for (const door of Object.values(doors)) {
-    if (door.width < minW) return false;
-  }
-  return true;
-}
-
-/** Total walkable span between opposing walls/boundaries along one axis */
-export { passageWidthAlong } from "./passage.js";
-
-function walkableClearanceOK(innerWalls) {
-  const minW = MIN_PASSAGE_SPAN;
-  const cols = Math.ceil(CHUNK / NAV_CELL);
-  for (let iz = 0; iz < cols; iz++) {
-    for (let ix = 0; ix < cols; ix++) {
-      const x = ix * NAV_CELL + NAV_CELL * 0.5;
-      const z = iz * NAV_CELL + NAV_CELL * 0.5;
-      if (navBlocked(x, z, innerWalls)) continue;
-      const wx = passageWidthAlong(x, z, innerWalls, "x");
-      const wz = passageWidthAlong(x, z, innerWalls, "z");
-      if (wx < minW - 0.02 || wz < minW - 0.02) return false;
-    }
-  }
-  return true;
-}
-
-function shapePassesValidation(shape, doors) {
+function mapPassesValidation(shape, doors) {
   return (
-    hasThreeSidedStructure(shape.innerWalls) &&
-    wallsWithinTileLimit(shape.innerWalls) &&
-    isMazeConnected(shape.innerWalls) &&
-    wallsPairwiseConnected(shape.innerWalls) &&
-    wallsAnchorToBoundary(shape.innerWalls) &&
-    !hasFloatingWalls(shape.innerWalls) &&
-    nookIsWalkable(shape) &&
-    parallelPassagesWideEnough(shape.innerWalls) &&
-    walkableClearanceOK(shape.innerWalls) &&
+    shape.validation?.ok &&
     doorsWideEnough(shape.innerWalls, doors) &&
     allExitsConnected(shape.innerWalls, doors) &&
     allWalkableConnected(shape.innerWalls)
   );
 }
 
-function pickValidShape(rng, cx, cz) {
+function pickValidShape(cx, cz) {
   const doors = chunkDoors(cx, cz);
-  for (let attempt = 0; attempt < 96; attempt++) {
-    const shape = buildPseudoRoom(rng, doorSpec);
-    if (shapePassesValidation(shape, doors)) return shape;
+  for (let attempt = 0; attempt < 48; attempt++) {
+    const rng = createRng(cx, cz, attempt + 7);
+    const shape = buildGridMap(doors, rng);
+    if (mapPassesValidation(shape, doors)) return shape;
   }
-  const fallbackRng = createRng(cx, cz, 99);
-  for (let attempt = 0; attempt < 96; attempt++) {
-    const shape = buildPseudoRoom(fallbackRng, doorSpec);
-    if (shapePassesValidation(shape, doors)) return shape;
-  }
-  const guaranteed = buildFallbackPseudoRoom(createRng(cx, cz, 77), doorSpec);
-  if (shapePassesValidation(guaranteed, doors)) return guaranteed;
-  return {
-    kind: "open",
-    zones: [{ x0: 0, z0: 0, x1: CHUNK, z1: CHUNK }],
-    innerWalls: [],
-  };
+  return buildGridMap(doors, createRng(cx, cz, 999));
 }
 
 const _roomCache = new Map();
@@ -377,8 +210,7 @@ export function generateRoom(cx, cz) {
   const cached = _roomCache.get(key);
   if (cached) return cached;
 
-  const rng = createRng(cx, cz, 7);
-  const shape = pickValidShape(rng, cx, cz);
+  const shape = pickValidShape(cx, cz);
 
   const room = {
     cx,
@@ -386,6 +218,8 @@ export function generateRoom(cx, cz) {
     kind: shape.kind,
     zones: shape.zones,
     innerWalls: shape.innerWalls,
+    wallSegments: shape.wallSegments,
+    rooms: shape.rooms,
     height: ROOM_H,
     doors: {
       north: getSharedDoor(cx, cz, cx, cz - 1),
@@ -498,8 +332,6 @@ export function appendRoomWalls(map, room) {
     });
   });
 
-  put(`cs,${room.cx},${room.cz}`, () => cornerSealColliderBoxes(room));
-
   put(`cl,${room.cx},${room.cz}`, () => {
     const b = [];
     b.push({
@@ -524,7 +356,6 @@ function roomWallKeys(room) {
     `wx,${room.cx},${room.cz}`,
     `nz,${room.cx},${room.cz}`,
     `cl,${room.cx},${room.cz}`,
-    `cs,${room.cx},${room.cz}`,
   ];
   room.innerWalls.forEach((_, i) => keys.push(`iw,${room.cx},${room.cz},${i}`));
   return keys;
