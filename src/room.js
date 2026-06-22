@@ -20,7 +20,6 @@ import {
   MIN_PASSAGE_SPAN,
 } from "./constants.js";
 import { passageWidthAlong } from "./passage.js";
-import { cornerSealColliderBoxes } from "./wallCorners.js";
 
 export { CHUNK };
 export const CELL = CHUNK;
@@ -497,8 +496,6 @@ export function appendRoomWalls(map, room) {
       return b;
     });
   });
-
-  put(`cs,${room.cx},${room.cz}`, () => cornerSealColliderBoxes(room));
 
   put(`cl,${room.cx},${room.cz}`, () => {
     const b = [];

@@ -1,8 +1,7 @@
-import { CHUNK, WALL_T, DOOR_JAMB_INSET, MIN_PASSAGE_SPAN } from "./constants.js";
-import { passageWidthAlong } from "./passage.js";
+import { CHUNK, WALL_T, DOOR_JAMB_INSET } from "./constants.js";
 
 const JUNCTION_EPS = 0.02;
-const CORNER_PROBE = 0.45;
+const WALL_PROBE = 0.22;
 
 function wallBlocksNav(wall, x, z) {
   const halfT = WALL_T / 2 + 0.05;
@@ -85,62 +84,35 @@ export function findPerpendicularCorners(segments) {
   return [...corners.values()];
 }
 
+function junctionAtEnd(seg, end) {
+  if (seg.axis === "z") {
+    return { x: end === "start" ? seg.s0 : seg.s1, z: seg.pos };
+  }
+  return { x: seg.pos, z: end === "start" ? seg.s0 : seg.s1 };
+}
+
+function walkableQuadrantsAt(x, z, innerWalls) {
+  const p = WALL_PROBE;
+  const quads = [];
+  if (isWalkableLocal(x - p, z - p, innerWalls)) quads.push("sw");
+  if (isWalkableLocal(x + p, z - p, innerWalls)) quads.push("se");
+  if (isWalkableLocal(x + p, z + p, innerWalls)) quads.push("ne");
+  if (isWalkableLocal(x - p, z + p, innerWalls)) quads.push("nw");
+  return quads;
+}
+
 /**
- * Seal when the corner pocket is narrower than player passage, or when only
- * one/two sides are open (typical L) so mesh gaps should be closed solid.
+ * At a perpendicular junction, the wall that approaches from the side yields
+ * (shortens by half thickness) so the other wall defines the outer corner.
  */
-export function cornerNeedsSeal(x, z, innerWalls) {
-  const minW = MIN_PASSAGE_SPAN;
-  const d = CORNER_PROBE;
-  const probes = [
-    { px: x - d, pz: z - d },
-    { px: x + d, pz: z - d },
-    { px: x - d, pz: z + d },
-    { px: x + d, pz: z + d },
-  ];
+export function shouldYieldAtEnd(seg, end, innerWalls) {
+  const { x, z } = junctionAtEnd(seg, end);
+  const quads = new Set(walkableQuadrantsAt(x, z, innerWalls));
 
-  const open = probes.filter((p) => isWalkableLocal(p.px, p.pz, innerWalls));
-  const isNarrow = (p) => {
-    const wx = passageWidthAlong(p.px, p.pz, innerWalls, "x");
-    const wz = passageWidthAlong(p.px, p.pz, innerWalls, "z");
-    return wx < minW || wz < minW;
-  };
-
-  if (open.length >= 3) return open.some(isNarrow);
-  if (open.length === 0) return true;
-  if (open.length <= 2) return true;
-  return open.some(isNarrow);
-}
-
-export function findSealedCorners(segments, innerWalls) {
-  const sealed = new Set();
-  for (const corner of findPerpendicularCorners(segments)) {
-    if (cornerNeedsSeal(corner.x, corner.z, innerWalls)) {
-      sealed.add(cornerKey(corner.x, corner.z));
-    }
-  }
-  return sealed;
-}
-
-export function cornerSealColliderBoxes(room) {
-  const segments = expandWallSegments(room);
-  const sealed = findSealedCorners(segments, room.innerWalls);
-  const ox = room.cx * CHUNK;
-  const oz = room.cz * CHUNK;
-  const half = WALL_T / 2;
-  const boxes = [];
-
-  for (const corner of findPerpendicularCorners(segments)) {
-    if (!sealed.has(cornerKey(corner.x, corner.z))) continue;
-    boxes.push({
-      minX: ox + corner.x - half,
-      maxX: ox + corner.x + half,
-      minZ: oz + corner.z - half,
-      maxZ: oz + corner.z + half,
-      minY: 0,
-      maxY: room.height,
-    });
+  if (seg.axis === "z") {
+    return quads.has("sw") || quads.has("nw");
   }
 
-  return boxes;
+  if (end === "start") return quads.has("se") || quads.has("nw");
+  return quads.has("sw") || quads.has("ne");
 }
