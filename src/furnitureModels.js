@@ -193,6 +193,6 @@ export function pickChairTemplate(models, rng) {
 /** Prefer pile/stack variants from the pack */
 export function pickPileChairTemplate(models, rng) {
   const piles = models.pileChairs?.length ? models.pileChairs : [];
-  if (piles.length && rng.chance(0.72)) return rng.pick(piles);
+  if (piles.length && rng.chance(0.9)) return rng.pick(piles);
   return pickChairTemplate(models, rng);
 }
