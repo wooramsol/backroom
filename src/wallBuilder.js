@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CHUNK } from "./room.js";
-import { WALL_T, WALL_JOINT_OVERLAP } from "./constants.js";
 import { WALL_TILE_W } from "./textures.js";
 import { cloneWallBox, bakeWallBoxUV } from "./geometryPool.js";
 
@@ -13,19 +12,16 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, r
   const tileH = tileHFromWallTex(wallTex);
   const mid = (a0 + a1) / 2 + (door?.offset || 0);
   const dw = door ? door.width / 2 : 0;
-  const cap = WALL_JOINT_OVERLAP * 0.5;
 
-  const push = (s0, s1, segH, segY, capStart = true, capEnd = true) => {
-    const es0 = capStart ? s0 - cap : s0;
-    const es1 = capEnd ? s1 + cap : s1;
-    const slen = es1 - es0;
+  const push = (s0, s1, segH, segY) => {
+    const slen = s1 - s0;
     if (slen < 0.1) return;
-    const smid = (es0 + es1) / 2;
+    const smid = (s0 + s1) / 2;
     const y = segY + segH / 2;
     const geo = cloneWallBox(axis, slen, segH);
     const baked = geo.index ? geo.toNonIndexed() : geo;
     if (baked !== geo) geo.dispose();
-    const worldU0 = axis === "z" ? roomWx + es0 : roomWz + es0;
+    const worldU0 = axis === "z" ? roomWx + s0 : roomWz + s0;
     bakeWallBoxUV(baked, axis, slen, segH, WALL_TILE_W, tileH, worldU0, segY);
     if (axis === "z") baked.translate(smid, y, pos);
     else baked.translate(pos, y, smid);
@@ -33,12 +29,12 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, r
   };
 
   if (door) {
-    push(a0, mid - dw, h, 0, true, false);
-    push(mid + dw, a1, h, 0, false, true);
+    push(a0, mid - dw, h, 0);
+    push(mid + dw, a1, h, 0);
     return;
   }
 
-  push(a0, a1, h, 0, true, true);
+  push(a0, a1, h, 0);
 }
 
 /** One merged BufferGeometry for all wallpaper walls in a chunk */
