@@ -5,10 +5,10 @@ const ASSET_BASE = import.meta.env.BASE_URL;
 const CHAIR_URL = `${ASSET_BASE}assets/Chair.glb`;
 const STOOL_URL = `${ASSET_BASE}assets/Stool.glb`;
 
-/** Dining chair height — scaled 1.5× from base (~82 cm → ~123 cm) */
-const CHAIR_TARGET_H = 0.82 * 1.5;
-/** Stool height — scaled 2× from base (~45 cm → ~90 cm) */
-const STOOL_TARGET_H = 0.45 * 2;
+/** Dining chair height (~82 cm) */
+const CHAIR_TARGET_H = 0.82;
+/** Stool height — 1.2× base (~45 cm → ~54 cm) */
+const STOOL_TARGET_H = 0.45 * 1.2;
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
