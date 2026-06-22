@@ -3,7 +3,7 @@ import {
   createCeilingGapMaterial,
   createCeilingSeamTexture,
   createCeilingTileMaterial,
-  createFloorSurfaceMaterial,
+  createSurfaceMaterial,
   createBakedWallMaterial,
 } from "./textures.js";
 
@@ -15,17 +15,14 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
 
   const ceilingTile = createCeilingTileMaterial(ceilingSeamTex);
-  const ceilingLightTile = ceilingTile.clone();
-  ceilingLightTile.color = new THREE.Color(0xfffdf2);
 
   return {
     wallTex: wallpaper,
     surfaceTex,
     floorTex,
     wall: createBakedWallMaterial(wallpaper),
-    floor: createFloorSurfaceMaterial(floorTex),
+    floor: createSurfaceMaterial(floorTex),
     ceilingTile,
-    ceilingLightTile,
     ceilingGroove: createCeilingGapMaterial(),
   };
 }
