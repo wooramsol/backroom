@@ -7,6 +7,8 @@ export const MAX_ROOM_W = CHUNK;
 export const MIN_ROOM_D = 5;
 export const MAX_ROOM_D = CHUNK;
 export const WALL_T = 0.16;
+/** Wall mesh overlap at joints — closes visible slits between segments */
+export const WALL_JOINT_OVERLAP = WALL_T * 1.05;
 export const DOOR_H = 2.2;
 /** Collision jambs sit this much inside the visible opening on each side */
 export const DOOR_JAMB_INSET = 0.05;
@@ -79,7 +81,7 @@ export const HEMI_INTENSITY = 0.68;
 /** Square ceiling grid cell spacing */
 export const PANEL_SIZE = 0.9;
 /** Thin physical groove between ceiling tiles only (metres) */
-export const CEILING_TILE_GAP_M = 0.008;
+export const CEILING_TILE_GAP_M = 0.004;
 /** Visible carpet tile face inside one grid cell */
 export const CEILING_TILE_FACE_M = PANEL_SIZE - CEILING_TILE_GAP_M;
 /** Recessed seam between ceiling tiles — warm beige, not black */
