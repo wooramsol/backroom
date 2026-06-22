@@ -25,7 +25,9 @@ export const CROUCH_EYE_H = 0.92;
 export const CROUCH_PLAYER_R = 0.3;
 /** Top of crouched body above feet for horizontal collision */
 export const CROUCH_BODY_H = 0.82;
-export const CROUCH_SPEED = 1.65;
+export const CROUCH_SPEED = 2.8;
+/** Eye/crouch transition — higher = faster stand/crouch */
+export const CROUCH_BLEND_SPEED = 22;
 /** ~41 cm radius — adult torso / shoulder width */
 export const PLAYER_R = 0.41;
 /** Body depth (front–back) for corner collision samples */

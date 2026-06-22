@@ -5,6 +5,7 @@ import {
   CROUCH_PLAYER_R,
   CROUCH_BODY_H,
   CROUCH_SPEED,
+  CROUCH_BLEND_SPEED,
   PLAYER_R,
   CHUNK,
   MOUSE_SENS,
@@ -14,8 +15,8 @@ import {
   ROOM_H,
 } from "./constants.js";
 
-const WALK = 3.2;
-const RUN = 5.8;
+const WALK = 5.8;
+const RUN = 9.0;
 const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
@@ -41,6 +42,7 @@ export class Player {
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
+    this.crouchBlend = 0;
     this.onLockLost = null;
     this.onLockAcquired = null;
 
@@ -89,11 +91,11 @@ export class Player {
   }
 
   _eyeHeight() {
-    return this.crouching ? CROUCH_EYE_H : EYE_H;
+    return THREE.MathUtils.lerp(EYE_H, CROUCH_EYE_H, this.crouchBlend);
   }
 
   _collisionRadius() {
-    return this.crouching ? CROUCH_PLAYER_R : PLAYER_R;
+    return THREE.MathUtils.lerp(PLAYER_R, CROUCH_PLAYER_R, this.crouchBlend);
   }
 
   _clearKeys() {
@@ -123,6 +125,7 @@ export class Player {
   }
 
   _unstuck() {
+    this.crouchBlend = 0;
     this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
     this.vy = 0;
     this.grounded = true;
@@ -139,10 +142,11 @@ export class Player {
 
   _bodyBand() {
     const feet = this._feetY();
-    if (this.crouching) {
-      return { lo: feet + 0.08, hi: feet + CROUCH_BODY_H };
-    }
-    return { lo: feet + 0.15, hi: this.position.y + PLAYER_R * 0.25 };
+    const standHi = this.position.y + PLAYER_R * 0.25;
+    const crouchHi = feet + CROUCH_BODY_H;
+    const hi = THREE.MathUtils.lerp(standHi, crouchHi, this.crouchBlend);
+    const lo = feet + THREE.MathUtils.lerp(0.15, 0.08, this.crouchBlend);
+    return { lo, hi };
   }
 
   _overlapsXZ(px, pz, c, r = this._collisionRadius()) {
@@ -153,7 +157,7 @@ export class Player {
   _findSupportY(px, pz, feetY, vy, dt) {
     let best = 0;
     const nextFeet = feetY + vy * dt;
-    const r = this._collisionRadius();
+    const r = PLAYER_R;
 
     for (const c of this.colliders) {
       if (!c.standable || c.standTopY === undefined) continue;
@@ -186,6 +190,10 @@ export class Player {
 
   _blocksHorizontal(c) {
     if (c.isCeiling) return false;
+    const feet = this._feetY();
+    if (c.standable && c.standTopY !== undefined && feet < c.standTopY - 0.05) {
+      return false;
+    }
     const { lo, hi } = this._bodyBand();
     if (hi < c.minY - 0.05 || lo > c.maxY + 0.05) return false;
     return true;
@@ -238,6 +246,9 @@ export class Player {
   }
 
   update(dt) {
+    const crouchTarget = this.crouching ? 1 : 0;
+    this.crouchBlend += (crouchTarget - this.crouchBlend) * Math.min(1, CROUCH_BLEND_SPEED * dt);
+
     this._applyLook(0);
     this._syncWalkFromCamera();
 
@@ -291,7 +302,7 @@ export class Player {
 
     this.resolvePenetration();
 
-    const bobAmt = this.crouching ? CROUCH_BOB_AMOUNT : BOB_AMOUNT;
+    const bobAmt = THREE.MathUtils.lerp(BOB_AMOUNT, CROUCH_BOB_AMOUNT, this.crouchBlend);
     const bobY = this.grounded ? Math.sin(this.bob) * bobAmt : 0;
     this._applyLook(bobY);
   }
