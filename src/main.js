@@ -5,6 +5,7 @@ import {
   loadCarpetFloor,
 } from "./textures.js";
 import { createGameMaterials } from "./gameMaterials.js";
+import { loadFurnitureModels } from "./furnitureModels.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
@@ -74,8 +75,9 @@ async function init() {
   const surfaceTex = await loadSurfaceOrFallback(loader);
   const floorTex = await loadCarpetFloor(loader);
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
+  const furnitureModels = await loadFurnitureModels();
 
-  const world = new World(scene, materials);
+  const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
   world.init(player.position);
   player.connect();

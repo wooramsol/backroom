@@ -213,6 +213,11 @@ function navBlocked(x, z, innerWalls) {
   return false;
 }
 
+/** Chunk-local walkability — for prop placement */
+export function isWalkableLocal(x, z, innerWalls) {
+  return !navBlocked(x, z, innerWalls);
+}
+
 function chunkDoors(cx, cz) {
   return {
     north: getSharedDoor(cx, cz, cx, cz - 1),
