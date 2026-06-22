@@ -9,8 +9,6 @@ import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
-import { PanelLightPool } from "./lightPool.js";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
   CHUNK,
   EYE_H,
@@ -69,7 +67,6 @@ scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
 scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
 
 const hum = new FluorescentHum();
-RectAreaLightUniformsLib.init();
 
 async function init() {
   const loader = new THREE.TextureLoader();
@@ -79,7 +76,6 @@ async function init() {
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
 
   const world = new World(scene, materials);
-  const lightPool = new PanelLightPool(scene);
   const player = new Player(camera, renderer.domElement);
   world.init(player.position);
   player.connect();
@@ -168,9 +164,6 @@ async function init() {
     world.tick(dt);
     if (!world.preloading) {
       world.update(player.position);
-      if (started) {
-        lightPool.update(world.getLightFixtures(), camera);
-      }
       if (world.consumeColliderRebuild()) {
         world.flushColliders();
         player.setColliders(world.getColliders());

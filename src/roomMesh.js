@@ -48,20 +48,13 @@ function addInstancedCeiling(group, geometry, material, transforms, renderOrder 
   group.add(mesh);
 }
 
-function isLitPanelCell(room, px, pz) {
-  const panel = room.panels?.[0];
-  if (!panel?.on) return false;
-  return Math.abs(panel.x - px) < 0.05 && Math.abs(panel.z - pz) < 0.05;
-}
-
-function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
-  const { gapY, tileY, lightY } = getCeilingLayers(h);
+function addCeilingTiles(group, h, materials, worldX, worldZ) {
+  const { gapY, tileY } = getCeilingLayers(h);
   const tileM = CEILING_TILE_M;
 
   const { tx0, tx1, tz0, tz1 } = chunkTileRange(worldX, worldZ, CHUNK, tileM);
   const backingTransforms = [];
   const tileParts = [];
-  room.lightFixture = null;
 
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let tz = tz0; tz <= tz1; tz++) {
@@ -70,23 +63,6 @@ function addCeilingTiles(group, h, materials, worldX, worldZ, room) {
       _pos.set(px, gapY, pz);
       _mat4.compose(_pos, _ceilRot, _scale);
       backingTransforms.push(_mat4.clone());
-
-      if (isLitPanelCell(room, px, pz)) {
-        const litGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
-        litGeo.rotateX(Math.PI / 2);
-        litGeo.translate(px, tileY, pz);
-        const litMesh = new THREE.Mesh(litGeo, materials.lightPanelOn);
-        litMesh.renderOrder = 3;
-        group.add(litMesh);
-        room.lightFixture = {
-          wx: worldX + px,
-          wy: lightY,
-          wz: worldZ + pz,
-          lightY,
-          panel: room.panels[0],
-        };
-        continue;
-      }
 
       const tileGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
       tileGeo.rotateX(Math.PI / 2);
@@ -126,7 +102,7 @@ export function buildRoomShell(state) {
   const h = room.height;
 
   addFloor(group, materials, state.worldX, state.worldZ);
-  addCeilingTiles(group, h, materials, state.worldX, state.worldZ, room);
+  addCeilingTiles(group, h, materials, state.worldX, state.worldZ);
   addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
   state.shellDone = true;
 }
