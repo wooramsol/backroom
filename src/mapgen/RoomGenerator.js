@@ -1,10 +1,13 @@
 import { MAP_GRID_SIZE, ROOM_CELLS_MIN, ROOM_CELLS_MAX } from "../constants.js";
 import { CELL_FLOOR, GridMap } from "./grid.js";
-import { pickRoomShape, roomCentroid } from "./roomShapes.js";
+import { pickRoomShape, roomCentroid, shapePassageOK } from "./roomShapes.js";
+import { minPassageCells } from "./passage.js";
 
 const MARGIN = 1;
+const MIN_ROOM_DIM = minPassageCells();
 
 function shapeFits(shape) {
+  if (shape.w < MIN_ROOM_DIM || shape.h < MIN_ROOM_DIM) return false;
   return (
     shape.w >= ROOM_CELLS_MIN &&
     shape.h >= ROOM_CELLS_MIN &&
@@ -57,6 +60,7 @@ export class RoomGenerator {
     for (let attempt = 0; attempt < 48; attempt++) {
       const shape = pickRoomShape(this.rng);
       if (!shapeFits(shape)) continue;
+      if (!shapePassageOK(shape)) continue;
       const origin = pickOrigin(this.rng, shape);
       if (!origin) continue;
       if (!canPlace(grid, origin.ox, origin.oz, shape.cells)) continue;

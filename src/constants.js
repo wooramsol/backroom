@@ -8,7 +8,7 @@ export const MAP_GRID_SIZE = CHUNK;
 /** Room footprint in grid cells */
 export const ROOM_CELLS_MIN = 3;
 export const ROOM_CELLS_MAX = 14;
-/** Corridor width in grid cells */
+/** Corridor width in grid cells — derived from player body clearance */
 export const CORRIDOR_CELLS_MIN = 2;
 export const CORRIDOR_CELLS_MAX = 5;
 /** Extra corridor loops beyond MST (fraction of eligible pairs) */
