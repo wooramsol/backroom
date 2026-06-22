@@ -1,11 +1,25 @@
 import * as THREE from "three";
-import { CARPET_COLOR } from "./constants.js";
+import { PANEL_SIZE, SURFACE_ROUGHNESS, SURFACE_METALNESS, CEILING_TILE_GAP_M, CEILING_GAP_COLOR } from "./constants.js";
+
+const ASSET_BASE = import.meta.env.BASE_URL;
 
 /** User wallpaper — one image = one repeat; horizontal width 76 cm */
-export const WALLPAPER_URL = "./assets/backroom_wallpaper.webp";
-export const WALL_TILE_W = 0.76;
-export const CARPET_TILE_M = 0.55;
-export const CEILING_TILE_M = 0.55;
+export const WALLPAPER_URL = `${ASSET_BASE}assets/wallpaper2.jpg`;
+/** User floor/ceiling surface */
+export const BOTTOM_URL = `${ASSET_BASE}assets/bottom2.jpg`;
+/** User floor carpet */
+export const CARPET_URL = `${ASSET_BASE}assets/carpet2.jpg`;
+/** One floor carpet repeat in world space (2 m × 2 m) */
+export const FLOOR_TILE_M = 2.0;
+/** @deprecated */ export const SURFACE_URL = BOTTOM_URL;
+/** @deprecated */ export const CEILING_URL = BOTTOM_URL;
+export const WALL_TILE_SCALE = 0.8;
+export const WALL_TILE_W = 0.76 * WALL_TILE_SCALE;
+/** One surface tile repeat = one ceiling troffer tile (matches PANEL_SIZE) */
+export const SURFACE_TILE_M = PANEL_SIZE;
+/** @deprecated */ export const CARPET_TILE_M = SURFACE_TILE_M;
+/** Ceiling tile — matches square PANEL_SIZE */
+export const CEILING_TILE_M = PANEL_SIZE;
 
 function canvasTex(draw, size = 256) {
   const c = document.createElement("canvas");
@@ -30,6 +44,23 @@ export function applyWallpaperTileSize(tex) {
   return tex;
 }
 
+/** Unlit surface — texture albedo; distance fog applies (default), no tone map */
+export function createUnlitSurfaceMaterial(map, { side = THREE.FrontSide } = {}) {
+  return new THREE.MeshBasicMaterial({
+    map,
+    side,
+    toneMapped: false,
+  });
+}
+
+/** Wallpaper — original asset albedo, no tint */
+export function createBakedWallMaterial(tex) {
+  const map = tex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(1, 1);
+  return createUnlitSurfaceMaterial(map);
+}
+
 const _wallMatCache = new Map();
 
 export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
@@ -42,10 +73,8 @@ export function createTiledMaterial(tex, widthM, heightM, opts = {}) {
   const tileW = tex.userData?.tileW ?? WALL_TILE_W;
   const tileH = tex.userData?.tileH ?? WALL_TILE_W;
   map.repeat.set(widthM / tileW, heightM / tileH);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshBasicMaterial({
     map,
-    roughness: 0.92,
-    metalness: 0,
     ...opts,
   });
   _wallMatCache.set(key, mat);
@@ -61,21 +90,232 @@ export function tiled(tex, tileM, w, h) {
 
 /** Tile aligned to world origin so adjacent room chunks share one continuous pattern */
 export function tiledAt(tex, tileM, w, h, worldX, worldZ) {
-  const t = tiled(tex, tileM, w, h);
+  const t = tex.clone();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(w / tileM, h / tileM);
   const frac = (n) => ((n % 1) + 1) % 1;
   t.offset.set(frac(worldX / tileM), frac(worldZ / tileM));
   return t;
 }
 
-/** Carpet — floor and ceiling share the same Standard material */
-export function createCarpetSurfaceMaterial(map) {
-  return new THREE.MeshStandardMaterial({
+/** Rectangular tile repeat — e.g. ceiling troffers 1.2m × 0.6m */
+export function tiledAtRect(tex, tileW, tileD, w, h, worldX, worldZ) {
+  const t = tex.clone();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(w / tileW, h / tileD);
+  const frac = (n) => ((n % 1) + 1) % 1;
+  t.offset.set(frac(worldX / tileW), frac(worldZ / tileD));
+  return t;
+}
+
+/** Bake world-aligned UVs on a horizontal (XZ) mesh for surface tiling */
+export function bakeSurfaceUV(geo, tileM, worldX, worldZ) {
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getZ(i);
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  }
+  /** Floor plane lies in XY before mesh rotation — Z is flat, use Y for world Z */
+  const xyPlane = zMax - zMin < 1e-4;
+
+  for (let i = 0; i < pos.count; i++) {
+    const u = (worldX + pos.getX(i)) / tileM;
+    const v = xyPlane
+      ? (worldZ - pos.getY(i)) / tileM
+      : (worldZ + pos.getZ(i)) / tileM;
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+}
+
+/** Floor/ceiling — matte, texture albedo only (no tint) */
+export function createSurfaceMaterial(map = null, { side = THREE.FrontSide } = {}) {
+  if (map) map.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({
     map,
-    color: CARPET_COLOR,
-    roughness: 0.94,
-    metalness: 0,
-    side: THREE.DoubleSide,
+    color: 0xffffff,
+    side,
   });
+}
+
+/** Shared door-trim material — carpet look, drawn in front of wall boxes */
+export function createDoorJambMaterial(carpetBase, floorTex) {
+  const map = floorTex.clone();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(2, 2);
+  const mat = carpetBase.clone();
+  mat.map = map;
+  mat.side = THREE.FrontSide;
+  mat.polygonOffset = true;
+  mat.polygonOffsetFactor = -1;
+  mat.polygonOffsetUnits = -1;
+  return mat;
+}
+
+/** Floor — Lambert so ceiling lights can wash the carpet below */
+export function createFloorSurfaceMaterial(map) {
+  if (map) map.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshLambertMaterial({
+    map,
+    color: 0xffffff,
+  });
+}
+
+/** Matte ceiling carpet — underside; DoubleSide avoids facing issues */
+export function createCeilingTileMaterial(map) {
+  return createUnlitSurfaceMaterial(map, { side: THREE.DoubleSide });
+}
+
+/** @deprecated */ export function createFloorCeilingMaterial(_wallpaperTex, _surfaceTex, map = null) {
+  return createSurfaceMaterial(map);
+}
+
+/** Carpet tile with shaded recess — no coloured seam bands */
+export function createEmbeddedCarpetTileTexture(sourceTex) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const insetPx = Math.max(5, Math.round(size * 0.024));
+  const bevelPx = Math.max(4, Math.round(size * 0.02));
+
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, insetPx, insetPx, size - insetPx * 2, size - insetPx * 2);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(insetPx, insetPx, size - insetPx * 2, size - insetPx * 2);
+  }
+
+  const shade = (x0, y0, x1, y1, x, y, w, h, peak = 0.2) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, `rgba(48,44,28,${peak})`);
+    g.addColorStop(1, "rgba(48,44,28,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  };
+
+  const inner = insetPx;
+  const face = size - insetPx * 2;
+  shade(inner, inner, inner + bevelPx, inner, inner, inner, bevelPx, face, 0.24);
+  shade(size - inner, inner, size - inner - bevelPx, inner, size - inner - bevelPx, inner, bevelPx, face, 0.24);
+  shade(inner, inner, inner, inner + bevelPx, inner, inner, face, bevelPx, 0.24);
+  shade(inner, size - inner, inner, size - inner - bevelPx, inner, size - inner - bevelPx, face, bevelPx, 0.24);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.userData.tileW = PANEL_SIZE;
+  tex.userData.tileH = PANEL_SIZE;
+  return tex;
+}
+
+/** @deprecated use createEmbeddedCarpetTileTexture */
+export function createCeilingTileBevelTexture(sourceTex) {
+  return createEmbeddedCarpetTileTexture(sourceTex);
+}
+
+/** Single ceiling tile face — bottom.jpg, one cell */
+export function createCeilingTileFaceTexture(sourceTex) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, 0, 0, size, size);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
+/** Tiled seam backing — warm grooves between tile pieces */
+export function createCeilingSeamTexture(sourceTex, tileM = CEILING_TILE_M) {
+  const img = sourceTex?.image;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const gapPx = Math.max(1, Math.round((size * CEILING_TILE_GAP_M) / tileM * 0.0625));
+  const gapHex = `#${CEILING_GAP_COLOR.toString(16).padStart(6, "0")}`;
+
+  ctx.fillStyle = gapHex;
+  ctx.fillRect(0, 0, size, size);
+
+  if (img?.width && img?.height) {
+    ctx.drawImage(img, gapPx, gapPx, size - gapPx * 2, size - gapPx * 2);
+  } else {
+    ctx.fillStyle = "#e7e191";
+    ctx.fillRect(gapPx, gapPx, size - gapPx * 2, size - gapPx * 2);
+  }
+
+  const edge = Math.max(1, Math.round(gapPx * 0.11));
+  const shade = (x0, y0, x1, y1, x, y, w, h) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, "rgba(70,66,42,0.14)");
+    g.addColorStop(1, "rgba(70,66,42,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  };
+  const inner = gapPx;
+  const face = size - gapPx * 2;
+  shade(inner, inner, inner + edge, inner, inner, inner, edge, face);
+  shade(size - inner, inner, size - inner - edge, inner, size - inner - edge, inner, edge, face);
+  shade(inner, inner, inner, inner + edge, inner, inner, face, edge);
+  shade(inner, size - inner, inner, size - inner - edge, inner, size - inner - edge, face, edge);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.userData.tileW = tileM;
+  tex.userData.tileH = tileM;
+  return tex;
+}
+
+/** Warm seam backing under carpet tiles — underside only */
+export function createCeilingGapMaterial() {
+  return new THREE.MeshBasicMaterial({
+    color: CEILING_GAP_COLOR,
+    depthWrite: false,
+    toneMapped: false,
+  });
+}
+
+/** @deprecated */ export function createCeilingPlenumMaterial() {
+  return createCeilingGapMaterial();
+}
+
+/** @deprecated */ export function createCeilingTiledTexture(sourceTex, tileM = CEILING_TILE_M) {
+  return createCeilingSeamTexture(sourceTex, tileM);
+}
+
+/** @deprecated */ export function createCeilingGridTexture(sourceTex, tileM = CEILING_TILE_M) {
+  return createCeilingSeamTexture(sourceTex, tileM);
+}
+
+/** @deprecated */ export function createCarpetSurfaceMaterial(map) {
+  return createSurfaceMaterial(map);
+}
+
+/** @deprecated */ export function createCeilingSurfaceMaterial(map) {
+  return createSurfaceMaterial(map);
 }
 
 /** Level 0 carpet — yellow-beige like wallpaper (#e5e4ad family) */
@@ -99,34 +339,226 @@ export function createCarpetTexture() {
   });
 }
 
-/** Ceiling — same grain style as carpet, subtle drop-tile grid */
-export function createCeilingTexture() {
+/** Omnidirectional office carpet — hash speckle, no weave direction */
+export function createIsotropicFloorTexture() {
   return canvasTex((ctx, size) => {
-    ctx.fillStyle = "#e5e4ad";
-    ctx.fillRect(0, 0, size, size);
-    for (let y = 0; y < size; y += 3) {
-      for (let x = 0; x < size; x += 3) {
-        const v = 198 + ((x * 17 + y * 31) % 24);
-        ctx.fillStyle = `rgb(${v + 8},${v + 4},${v - 18})`;
-        ctx.fillRect(x, y, 2, 2);
+    const img = ctx.createImageData(size, size);
+    const px = img.data;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (y * size + x) * 4;
+        const h1 = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        const h2 = Math.sin(x * 39.346 + y * 11.135) * 22578.1459;
+        const h3 = Math.sin(x * 73.156 + y * 52.235) * 12438.5453;
+        const n1 = h1 - Math.floor(h1);
+        const n2 = h2 - Math.floor(h2);
+        const n3 = h3 - Math.floor(h3);
+        const base = 214 + n1 * 22 + n2 * 8;
+        let r = base + 4;
+        let g = base - 2;
+        let b = base - 28;
+        if (n3 > 0.93) {
+          r *= 0.86;
+          g *= 0.88;
+          b *= 0.9;
+        } else if (n3 < 0.07) {
+          r = Math.min(255, r + 10);
+          g = Math.min(255, g + 8);
+          b = Math.min(255, b + 4);
+        }
+        px[i] = r;
+        px[i + 1] = g;
+        px[i + 2] = b;
+        px[i + 3] = 255;
       }
     }
-    const tile = 32;
-    ctx.strokeStyle = "rgba(150,140,90,0.18)";
-    ctx.lineWidth = 1;
-    for (let y = 0; y <= size; y += tile) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(size, y);
-      ctx.stroke();
+    ctx.putImageData(img, 0, 0);
+  }, 256);
+}
+
+/** Add very light acoustic-ceiling grain — tileable, deterministic */
+export function enrichSurfaceTexture(tex) {
+  const img = tex.image;
+  if (!img?.width || !img?.height) return tex;
+
+  const srcW = img.width;
+  const srcH = img.height;
+  const maxDim = 512;
+  const scale = Math.min(1, maxDim / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h);
+  const px = data.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const hash = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+      const n = (hash - Math.floor(hash) - 0.5) * 10;
+      px[i] = Math.min(255, Math.max(0, px[i] + n));
+      px[i + 1] = Math.min(255, Math.max(0, px[i + 1] + n * 0.95));
+      px[i + 2] = Math.min(255, Math.max(0, px[i + 2] + n * 0.85));
     }
-    for (let x = 0; x <= size; x += tile) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, size);
-      ctx.stroke();
+  }
+  ctx.putImageData(data, 0, 0);
+
+  const enriched = new THREE.CanvasTexture(canvas);
+  enriched.wrapS = enriched.wrapT = THREE.RepeatWrapping;
+  enriched.colorSpace = THREE.SRGBColorSpace;
+  enriched.minFilter = THREE.LinearFilter;
+  enriched.generateMipmaps = false;
+  enriched.userData.tileW = tex.userData?.tileW ?? SURFACE_TILE_M;
+  enriched.userData.tileH = tex.userData?.tileH ?? SURFACE_TILE_M;
+  return enriched;
+}
+
+/** @deprecated floor uses baked surface UVs */
+export function applyFloorTileSize(tex) {
+  tex.userData.tileW = FLOOR_TILE_M;
+  tex.userData.tileH = FLOOR_TILE_M;
+  return tex;
+}
+
+/** Store tile physical size for floor/ceiling asset */
+export function applySurfaceTileSize(tex) {
+  tex.userData.tileW = SURFACE_TILE_M;
+  tex.userData.tileH = SURFACE_TILE_M;
+  return tex;
+}
+
+/** @deprecated */ export function applyCeilingTileSize(tex) {
+  return applySurfaceTileSize(tex);
+}
+
+export async function loadCarpetFloor(loader) {
+  return loadFloorOrFallback(loader);
+}
+
+export async function loadIsotropicFloor() {
+  const tex = createIsotropicFloorTexture();
+  applySurfaceTileSize(tex);
+  return tex;
+}
+
+export function loadFloor(loader) {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      CARPET_URL,
+      (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        applyFloorTileSize(tex);
+        resolve(tex);
+      },
+      undefined,
+      reject,
+    );
+  });
+}
+
+export async function loadFloorOrFallback(loader) {
+  try {
+    return await loadFloor(loader);
+  } catch {
+    const tex = createCarpetTexture();
+    applyFloorTileSize(tex);
+    return tex;
+  }
+}
+
+export function loadSurface(loader) {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      BOTTOM_URL,
+      (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+        applySurfaceTileSize(tex);
+        resolve(enrichSurfaceTexture(tex));
+      },
+      undefined,
+      reject,
+    );
+  });
+}
+
+export async function loadSurfaceOrFallback(loader) {
+  try {
+    return await loadSurface(loader);
+  } catch {
+    const tex = createCarpetTexture();
+    applySurfaceTileSize(tex);
+    return tex;
+  }
+}
+
+/** @deprecated */ export function loadCeiling(loader) {
+  return loadSurface(loader);
+}
+
+/** @deprecated */ export async function loadCeilingOrFallback(loader) {
+  return loadSurfaceOrFallback(loader);
+}
+
+/** Fallback procedural troffer tile */
+export function createCeilingTileTexture() {
+  return canvasTex((ctx, size) => {
+    const inset = Math.round(size * 0.08);
+    const groove = Math.max(1, Math.round(size * 0.02));
+
+    ctx.fillStyle = "#b8b080";
+    ctx.fillRect(0, 0, size, size);
+
+    const g = ctx.createLinearGradient(0, inset, 0, size - inset);
+    g.addColorStop(0, "#d8d4a8");
+    g.addColorStop(0.45, "#ebe8c0");
+    g.addColorStop(1, "#ccc890");
+    ctx.fillStyle = g;
+    ctx.fillRect(inset, inset, size - inset * 2, size - inset * 2);
+
+    ctx.strokeStyle = "rgba(50,45,25,0.55)";
+    ctx.lineWidth = groove;
+    ctx.strokeRect(groove / 2, groove / 2, size - groove, size - groove);
+  });
+}
+
+/** Dark plenum between tiles — square grid */
+export function createCeilingBackingTexture() {
+  return canvasTex((ctx, size) => {
+    const tiles = 2;
+    const cell = size / tiles;
+    ctx.fillStyle = "#2e2c22";
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = "rgba(12,10,6,0.9)";
+    ctx.lineWidth = 3;
+    for (let y = 0; y < tiles; y++) {
+      for (let x = 0; x < tiles; x++) {
+        ctx.strokeRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+      }
     }
   });
+}
+
+export function createCeilingBackingMaterial(map) {
+  return new THREE.MeshBasicMaterial({
+    map,
+    color: 0x8a8470,
+    side: THREE.DoubleSide,
+  });
+}
+
+/** @deprecated use createCeilingTileTexture */
+export function createCeilingTexture() {
+  return createCeilingTileTexture();
 }
 
 export function loadWallpaper(loader) {

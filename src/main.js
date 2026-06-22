@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import {
-  createCarpetTexture,
   loadWallpaperOrFallback,
-  tiled,
-  createCarpetSurfaceMaterial,
-  CARPET_TILE_M,
+  loadSurfaceOrFallback,
+  loadCarpetFloor,
 } from "./textures.js";
+import { createGameMaterials } from "./gameMaterials.js";
+import { loadFurnitureModels } from "./furnitureModels.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
+import { tickChairGlitchVisuals } from "./chairStatic.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
@@ -22,12 +22,10 @@ import {
   HEMI_SKY_COLOR,
   HEMI_GROUND_COLOR,
   HEMI_INTENSITY,
-  LIGHT_PANEL_COLOR,
-  LIGHT_PANEL_OFF_COLOR,
-  LIGHT_PANEL_INTENSITY,
   TONE_MAPPING_EXPOSURE,
   CAMERA_FOV,
   CAMERA_NEAR,
+  CAMERA_FAR,
   ENABLE_FLUORESCENT_HUM,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
@@ -52,8 +50,7 @@ function syncCrosshair() {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-RectAreaLightUniformsLib.init();
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -65,7 +62,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(FOG_COLOR);
 scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
-const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, 50);
+const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
@@ -74,28 +71,23 @@ scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTE
 const hum = new FluorescentHum();
 
 async function init() {
+  const hint = document.querySelector("#overlay .hint");
+  const waitHint = "Loading… please wait";
+  const defaultHint =
+    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; C · Crouch &nbsp; Mouse · Look";
+
+  if (hint) hint.textContent = waitHint;
+  overlay.style.cursor = "wait";
+
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
-  const carpetTex = createCarpetTexture();
-  const floorMap = tiled(carpetTex, CARPET_TILE_M, CHUNK, CHUNK);
+  const surfaceTex = await loadSurfaceOrFallback(loader);
+  const floorTex = await loadCarpetFloor(loader);
+  const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
+  const furnitureModels = await loadFurnitureModels();
 
-  const _staticPanel = new THREE.Color(LIGHT_PANEL_COLOR).multiplyScalar(LIGHT_PANEL_INTENSITY);
-
-  const materials = {
-    wallTex: wallpaper,
-    carpetTex,
-    carpet: createCarpetSurfaceMaterial(floorMap),
-    lightPanelOn: new THREE.MeshBasicMaterial({
-      color: _staticPanel,
-    }),
-    lightPanelOff: new THREE.MeshBasicMaterial({
-      color: LIGHT_PANEL_OFF_COLOR,
-    }),
-  };
-
-  const world = new World(scene, materials);
+  const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
-  world.init(player.position);
   player.connect();
 
   function showResumePrompt() {
@@ -123,25 +115,18 @@ async function init() {
   renderer.domElement.addEventListener("click", tryResumeLock);
   resumePrompt?.addEventListener("click", tryResumeLock);
 
-  const { composer, bloom } = createBloomPipeline(renderer, scene, camera);
+  const pipeline = createBloomPipeline(renderer, scene, camera);
 
   let started = false;
   let ready = false;
-  const hint = document.querySelector("#overlay .hint");
-  const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look";
-
-  if (hint) hint.textContent = "Building nearby rooms… (one-time)";
-  overlay.style.cursor = "wait";
 
   world
     .preloadAround(camera, (done, total) => {
       if (hint && !ready) {
-        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Preparing the area within view distance`;
+        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Please wait`;
       }
     })
     .then(() => {
-      for (let i = 0; i < 5; i++) composer.render();
       player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
@@ -174,35 +159,39 @@ async function init() {
 
   const clock = new THREE.Clock();
   let lightT = 0;
-  const TARGET_FRAME_MS = 16.7;
 
   function animate() {
     requestAnimationFrame(animate);
-    const frameStart = performance.now();
     const dt = Math.min(clock.getDelta(), 0.05);
     lightT += dt;
 
     world.tick(dt);
+    tickChairGlitchVisuals(scene, lightT);
+
     if (!world.preloading) {
       world.update(player.position);
+      if (started && world.hasPendingLoads()) {
+        world.processLoadQueue(player.position);
+      }
       if (world.consumeColliderRebuild()) {
-        world.flushColliders();
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
     }
+
     if (started) {
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      world.updateLights(camera);
     }
 
-    composer.render();
+    if (ready) {
+      pipeline.render(lightT);
+    } else {
+      renderer.render(scene, camera);
+    }
 
-    if (!world.preloading) {
-      const elapsed = performance.now() - frameStart;
-      const loadBudget = Math.max(2, Math.min(6, TARGET_FRAME_MS - elapsed));
-      world.processLoadQueue(player.position, loadBudget);
+    if (!world.preloading && started) {
+      world.processLoadQueue(player.position);
     }
   }
 
@@ -213,7 +202,7 @@ async function init() {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, composer, bloom, w, h);
+    resizeBloomPipeline(renderer, pipeline, w, h);
     syncCrosshair();
   });
 }

@@ -125,34 +125,35 @@
         position: fixed;
         left: 0;
         top: 0;
-        width: 18px;
-        height: 18px;
+        width: 26px;
+        height: 26px;
         transform: translate(-50%, -50%);
         pointer-events: none;
-        z-index: 6;
+        z-index: 9;
         opacity: 0;
-        transition: opacity 0.35s ease;
+        transition: opacity 0.25s ease;
       }
       #crosshair.visible {
-        opacity: 1;
+        opacity: 0.92;
       }
       #crosshair .ch-h,
       #crosshair .ch-v {
         position: absolute;
-        background: rgba(201, 184, 122, 0.42);
+        background: rgba(255, 248, 232, 0.88);
+        box-shadow: 0 0 3px rgba(0, 0, 0, 0.55);
       }
       #crosshair .ch-h {
         left: 0;
         right: 0;
         top: 50%;
-        height: 1px;
+        height: 2.5px;
         transform: translateY(-50%);
       }
       #crosshair .ch-v {
         top: 0;
         bottom: 0;
         left: 50%;
-        width: 1px;
+        width: 2.5px;
         transform: translateX(-50%);
       }
       #vignette {
@@ -179,10 +180,7 @@
       <p class="sub">LEVEL 0 — THE LOBBY</p>
       <p class="credit">Created by Ramsol</p>
       <p class="build" id="build-label"></p>
-      <div class="hint">
-        Click to start<br />
-        WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; Mouse · Look
-      </div>
+      <div class="hint">Loading… please wait</div>
     </div>
     <div id="hud">LEVEL 0</div>
     <div id="build-badge"></div>
