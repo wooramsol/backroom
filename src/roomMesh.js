@@ -16,14 +16,12 @@ _chunkPlane.translate(CHUNK / 2, CHUNK / 2, 0);
 _chunkPlane.userData.shared = true;
 
 const _tileFaceGeo = new THREE.PlaneGeometry(CEILING_TILE_FACE_M, CEILING_TILE_FACE_M);
-_tileFaceGeo.rotateX(Math.PI / 2);
 _tileFaceGeo.userData.shared = true;
 
 const _cellBackingGeo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
-_cellBackingGeo.rotateX(Math.PI / 2);
 _cellBackingGeo.userData.shared = true;
 
-const _identityQuat = new THREE.Quaternion();
+const _ceilRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 const _pos = new THREE.Vector3();
 const _scale = new THREE.Vector3(1, 1, 1);
 const _mat4 = new THREE.Matrix4();
@@ -31,6 +29,8 @@ const _mat4 = new THREE.Matrix4();
 function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
   const { geometry } = buildMergedWallGeometry(room, materials.wallTex, h, roomWx, roomWz);
   if (geometry) {
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
     const wall = new THREE.Mesh(geometry, materials.wall);
     wall.frustumCulled = false;
     group.add(wall);
@@ -70,19 +70,37 @@ function addCeiling(group, h, materials, worldX, worldZ) {
     const px = tiles[i * 2];
     const pz = tiles[i * 2 + 1];
     _pos.set(px, gapY, pz);
-    _mat4.compose(_pos, _identityQuat, _scale);
+    _mat4.compose(_pos, _ceilRot, _scale);
     backingMesh.setMatrixAt(i, _mat4);
 
     _pos.set(px, tileY, pz);
-    _mat4.compose(_pos, _identityQuat, _scale);
+    _mat4.compose(_pos, _ceilRot, _scale);
     tileMesh.setMatrixAt(i, _mat4);
   }
 
   backingMesh.instanceMatrix.needsUpdate = true;
   tileMesh.instanceMatrix.needsUpdate = true;
+  backingMesh.computeBoundingSphere();
+  tileMesh.computeBoundingSphere();
 
   group.add(backingMesh);
   group.add(tileMesh);
+}
+
+function finalizeChunkBounds(group) {
+  group.traverse((obj) => {
+    obj.frustumCulled = false;
+    if (obj.isInstancedMesh) {
+      obj.computeBoundingSphere();
+      return;
+    }
+    if (!obj.isMesh) return;
+    const geo = obj.geometry;
+    if (geo && !geo.userData?.shared) {
+      geo.computeBoundingBox();
+      geo.computeBoundingSphere();
+    }
+  });
 }
 
 export function createRoomBuildState(room, materials, furnitureModels = null) {
@@ -120,6 +138,7 @@ export function buildPanelBatch(state, _maxTiles) {
 
 export function finalizeRoomBuild(state) {
   const { group, room } = state;
+  finalizeChunkBounds(group);
   group.frustumCulled = false;
   group.userData.room = room;
   return group;

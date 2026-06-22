@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { CHUNK } from "./room.js";
-import { WALL_T, WALL_JOINT_OVERLAP } from "./constants.js";
+import { WALL_T, WALL_JOINT_OVERLAP, DOOR_H } from "./constants.js";
 import { WALL_TILE_W } from "./textures.js";
 import { cloneWallBox, bakeWallBoxUV } from "./geometryPool.js";
 
@@ -35,6 +35,9 @@ function appendWallSegment(parts, wallTex, axis, pos, a0, a1, door, h, roomWx, r
   if (door) {
     push(a0, mid - dw, h, 0, true, false);
     push(mid + dw, a1, h, 0, false, true);
+    if (h > DOOR_H + 0.05) {
+      push(mid - dw, mid + dw, h - DOOR_H, DOOR_H, false, false);
+    }
     return;
   }
 

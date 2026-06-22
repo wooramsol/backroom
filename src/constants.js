@@ -67,9 +67,11 @@ export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — ring must cover FOG_FAR */
 export const GRID_RADIUS = 2;
 /** Full square synced on the title screen before play */
-export const PRELOAD_RADIUS = 2;
+export const PRELOAD_RADIUS = 3;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
+/** Keep chunks this far before despawning — avoids black holes while streaming */
+export const DESPAWN_RADIUS = PREFETCH_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
 export const EDGE_PREFETCH = 0.55;
 export const AMBIENT_COLOR = 0xfffaf6;
