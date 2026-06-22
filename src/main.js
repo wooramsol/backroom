@@ -113,8 +113,8 @@ async function init() {
   };
   player.onLockAcquired = hideResumePrompt;
 
-  player.onMove = (distance, running, crouching) => {
-    if (started) audio.onMove(distance, running, crouching);
+  player.onMove = (distance, running, crouching, speed) => {
+    if (started) audio.onMove(distance, running, crouching, speed);
   };
 
   renderer.domElement.addEventListener("click", () => {
