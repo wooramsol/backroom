@@ -80,6 +80,7 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
+  world.init(player.position);
   player.connect();
 
   function showResumePrompt() {
@@ -134,7 +135,6 @@ async function init() {
     })
     .catch((err) => {
       console.error(err);
-      player.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
@@ -165,24 +165,27 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-
+    tickChairGlitchVisuals(scene, lightT);
+    if (!world.preloading) {
+      world.update(player.position);
+      if (world.consumeColliderRebuild()) {
+        player.setColliders(world.getColliders());
+        player.resolvePenetration();
+      }
+    }
     if (started) {
-      player.setColliders(world.getColliders());
       player.update(dt);
       if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
-
-    if (!world.preloading) {
-      world.update(player.position);
-      world.processLoadQueue(player.position);
-    }
-
-    tickChairGlitchVisuals(scene, lightT);
 
     if (ready) {
       pipeline.render(lightT);
     } else {
       renderer.render(scene, camera);
+    }
+
+    if (!world.preloading && started) {
+      world.processLoadQueue(player.position);
     }
   }
 

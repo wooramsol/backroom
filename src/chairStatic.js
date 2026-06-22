@@ -50,15 +50,12 @@ function makeGlitchMaterial(srcMat) {
   const baseMap = srcMat.map || null;
   if (baseMap) baseMap.colorSpace = THREE.SRGBColorSpace;
 
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshLambertMaterial({
     map: baseMap,
     color: srcMat.color?.clone?.() ?? new THREE.Color(0xbfb8a0),
     emissiveMap: tex,
     emissive: new THREE.Color(0xcccccc),
     emissiveIntensity: 0.65,
-    roughness: srcMat.roughness ?? 0.85,
-    metalness: srcMat.metalness ?? 0.05,
-    normalMap: srcMat.normalMap || null,
   });
   mat.userData.chunkOwned = true;
   mat.userData.chairGlitch = true;
