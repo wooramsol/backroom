@@ -72,9 +72,9 @@ const hum = new FluorescentHum();
 
 async function init() {
   const hint = document.querySelector("#overlay .hint");
-  const waitHint = "불러오는 중… 잠시만 기다려 주세요";
+  const waitHint = "Loading… please wait";
   const defaultHint =
-    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; C · Sit &nbsp; Mouse · Look";
+    "Click to start<br />WASD · Move &nbsp; Shift · Run &nbsp; Space · Jump &nbsp; C · Crouch &nbsp; Mouse · Look";
 
   if (hint) hint.textContent = waitHint;
   overlay.style.cursor = "wait";
@@ -123,7 +123,7 @@ async function init() {
   world
     .preloadAround(camera, (done, total) => {
       if (hint && !ready) {
-        hint.innerHTML = `주변 방 생성 중… ${done}/${total}<br/>잠시만 기다려 주세요`;
+        hint.innerHTML = `Building nearby rooms… ${done}/${total}<br/>Please wait`;
       }
     })
     .then(() => {
