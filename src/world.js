@@ -1,7 +1,8 @@
 import { CHUNK, generateRoom, appendRoomWalls, removeRoomWalls } from "./room.js";
 import {
-  GRID_RADIUS,
   PRELOAD_RADIUS,
+  PREFETCH_RADIUS,
+  DESPAWN_RADIUS,
   EDGE_PREFETCH,
 } from "./constants.js";
 import {
@@ -15,6 +16,7 @@ import { disposeChunkRoot } from "./sceneDispose.js";
 
 const DESPAWN_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
+const LOAD_QUEUE_BATCH = 3;
 
 export class World {
   constructor(scene, materials, furnitureModels = null) {
@@ -63,7 +65,7 @@ export class World {
     return need;
   }
 
-  computeNeed(cx, cz, playerPos, radius = GRID_RADIUS) {
+  computeNeed(cx, cz, playerPos, radius = PREFETCH_RADIUS) {
     const need = this.ringKeys(cx, cz, radius);
 
     const lx = playerPos.x - cx * CHUNK;
@@ -207,7 +209,10 @@ export class World {
     const pending = new Set(this.despawnPending);
 
     for (const k of this.chunks.keys()) {
-      if (!need.has(k) && !pending.has(k)) this.despawnPending.push(k);
+      if (need.has(k) || pending.has(k)) continue;
+      const [x, z] = k.split(",").map(Number);
+      const chebyshev = Math.max(Math.abs(x - cx), Math.abs(z - cz));
+      if (chebyshev > DESPAWN_RADIUS) this.despawnPending.push(k);
     }
 
     this.loadQueue = this.loadQueue.filter((job) => {
@@ -233,29 +238,31 @@ export class World {
   }
 
   processLoadQueue(_playerPos) {
-    if (!this.loadQueue.length) return;
+    let built = 0;
+    while (this.loadQueue.length && built < LOAD_QUEUE_BATCH) {
+      const job = this.loadQueue[0];
+      const k = this.key(job.cx, job.cz);
 
-    const job = this.loadQueue[0];
-    const k = this.key(job.cx, job.cz);
+      if (!job.room) {
+        job.room = generateRoom(job.cx, job.cz);
+        job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
+        this.addCollidersForRoom(job.room);
+        return;
+      }
 
-    if (!job.room) {
-      job.room = generateRoom(job.cx, job.cz);
-      job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
-      this.addCollidersForRoom(job.room);
-      return;
+      if (!job.build.shellDone) {
+        buildPanelBatch(job.build);
+      }
+
+      if (!job.build.group.parent) {
+        this.scene.add(job.build.group);
+      }
+
+      this.attachChunk(job.cx, job.cz, job.room, job.build);
+      this.loadQueue.shift();
+      this.pendingKeys.delete(k);
+      built++;
     }
-
-    if (!job.build.shellDone) {
-      buildPanelBatch(job.build);
-    }
-
-    if (!job.build.group.parent) {
-      this.scene.add(job.build.group);
-    }
-
-    this.attachChunk(job.cx, job.cz, job.room, job.build);
-    this.loadQueue.shift();
-    this.pendingKeys.delete(k);
   }
 
   tick(dt) {
