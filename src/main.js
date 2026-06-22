@@ -9,7 +9,7 @@ import { loadFurnitureModels } from "./furnitureModels.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { FluorescentHum } from "./audio.js";
-import { ChairStaticAudio, tickChairStaticVisuals } from "./chairStatic.js";
+import { tickChairGlitchVisuals } from "./chairStatic.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
 import {
   CHUNK,
@@ -69,7 +69,6 @@ scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
 scene.add(new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY));
 
 const hum = new FluorescentHum();
-const chairStatic = new ChairStaticAudio();
 
 async function init() {
   const loader = new THREE.TextureLoader();
@@ -154,7 +153,6 @@ async function init() {
       syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_FLUORESCENT_HUM) hum.start();
-      chairStatic.start();
     }
   });
 
@@ -167,16 +165,13 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-    tickChairStaticVisuals(scene, lightT);
-    chairStatic.setChairs(world.getChairs());
-    if (started) chairStatic.tick(player.position, lightT);
+    tickChairGlitchVisuals(scene, lightT);
     if (!world.preloading) {
       world.update(player.position);
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
-      chairStatic.setChairs(world.getChairs());
     }
     if (started) {
       player.update(dt);

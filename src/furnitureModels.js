@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const ASSET_BASE = import.meta.env.BASE_URL;
 const CHAIR_URL = `${ASSET_BASE}assets/Chair.glb`;
 const STOOL_URL = `${ASSET_BASE}assets/Stool.glb`;
+const CHAIR_PACK_URL = `${ASSET_BASE}assets/poppy_playtime_4_chairs_pack_1.glb`;
 
 /** Dining chair height (~82 cm) */
 const CHAIR_TARGET_H = 0.82;
@@ -33,47 +34,96 @@ function normalizeMaterials(root) {
   });
 }
 
-function prepareTemplate(gltfScene, targetHeight) {
-  const root = new THREE.Group();
-  const model = gltfScene.clone(true);
-  normalizeMaterials(model);
-  root.add(model);
-
-  _box.setFromObject(model);
-  _box.getSize(_size);
-  const scale = targetHeight / Math.max(_size.y, 1e-6);
-  model.scale.setScalar(scale);
-
-  model.updateMatrixWorld(true);
-  _box.setFromObject(model);
-  _box.getCenter(_center);
-  model.position.set(-_center.x, -_box.min.y, -_center.z);
-
-  model.updateMatrixWorld(true);
-  _box.setFromObject(model);
+function finalizeTemplate(root, meta = {}) {
+  _box.setFromObject(root);
   _box.getSize(_size);
 
   root.userData.furnitureTemplate = true;
+  root.userData.furnitureId = meta.id || "unknown";
+  root.userData.chairGlitch = meta.chairGlitch === true;
   root.userData.footprint = Math.max(_size.x, _size.z);
   root.userData.height = _size.y;
   root.userData.depth = Math.min(_size.x, _size.z);
   return root;
 }
 
-async function loadTemplate(loader, url, targetHeight) {
+function scaleAndGround(root, targetHeight) {
+  _box.setFromObject(root);
+  _box.getSize(_size);
+  const scale = targetHeight / Math.max(_size.y, 1e-6);
+  root.scale.multiplyScalar(scale);
+
+  root.updateMatrixWorld(true);
+  _box.setFromObject(root);
+  _box.getCenter(_center);
+  root.position.x -= _center.x;
+  root.position.z -= _center.z;
+  root.position.y -= _box.min.y;
+
+  root.updateMatrixWorld(true);
+  return root;
+}
+
+function prepareTemplate(gltfScene, targetHeight, meta = {}) {
+  const root = new THREE.Group();
+  const model = gltfScene.clone(true);
+  normalizeMaterials(model);
+  root.add(model);
+  scaleAndGround(root, targetHeight);
+  return finalizeTemplate(root, meta);
+}
+
+function preparePackChairNode(node, targetHeight, meta = {}) {
+  const root = new THREE.Group();
+  const model = node.clone(true);
+  normalizeMaterials(model);
+  root.add(model);
+  scaleAndGround(root, targetHeight);
+  return finalizeTemplate(root, meta);
+}
+
+function extractPackChairNodes(scene) {
+  let rootNode = null;
+  scene.traverse((obj) => {
+    if (obj.name === "RootNode") rootNode = obj;
+  });
+  const parent = rootNode || scene;
+  const chairs = [];
+  for (const child of parent.children) {
+    if (!child.name) continue;
+    const id = child.name.replace(/\.mo$/i, "");
+    chairs.push({ id, node: child });
+  }
+  return chairs;
+}
+
+async function loadTemplate(loader, url, targetHeight, meta) {
   const gltf = await loader.loadAsync(url);
-  return prepareTemplate(gltf.scene, targetHeight);
+  return prepareTemplate(gltf.scene, targetHeight, meta);
+}
+
+async function loadPackChairs(loader) {
+  const gltf = await loader.loadAsync(CHAIR_PACK_URL);
+  const nodes = extractPackChairNodes(gltf.scene);
+  return nodes.map(({ id, node }) =>
+    preparePackChairNode(node, CHAIR_TARGET_H, { id: `pack:${id}`, chairGlitch: false }),
+  );
 }
 
 /** Load chair/stool GLBs once; returns null if assets are missing */
 export async function loadFurnitureModels() {
   const loader = new GLTFLoader();
   try {
-    const [chair, stool] = await Promise.all([
-      loadTemplate(loader, CHAIR_URL, CHAIR_TARGET_H),
-      loadTemplate(loader, STOOL_URL, STOOL_TARGET_H),
+    const [chairGlb, stool, packChairs] = await Promise.all([
+      loadTemplate(loader, CHAIR_URL, CHAIR_TARGET_H, { id: "chairGlb", chairGlitch: true }),
+      loadTemplate(loader, STOOL_URL, STOOL_TARGET_H, { id: "stool", chairGlitch: false }),
+      loadPackChairs(loader).catch((err) => {
+        console.warn("Chair pack unavailable", err);
+        return [];
+      }),
     ]);
-    return { chair, stool };
+    const allChairs = [chairGlb, ...packChairs];
+    return { chairGlb, stool, packChairs, allChairs };
   } catch (err) {
     console.warn("Furniture models unavailable — skipping props", err);
     return null;
@@ -93,5 +143,14 @@ export function cloneFurnitureTemplate(template) {
   pivot.userData.footprint = template.userData.footprint;
   pivot.userData.height = template.userData.height;
   pivot.userData.depth = template.userData.depth;
+  pivot.userData.furnitureId = template.userData.furnitureId;
+  pivot.userData.chairGlitch = template.userData.chairGlitch;
   return pivot;
+}
+
+/** Pick a random chair template from Chair.glb + pack variants */
+export function pickChairTemplate(models, rng) {
+  const pool = models.allChairs?.length ? models.allChairs : models.chairGlb ? [models.chairGlb] : [];
+  if (!pool.length) return null;
+  return rng.pick(pool);
 }

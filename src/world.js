@@ -25,7 +25,6 @@ export class World {
     this.wallMap = new Map();
     this.colliders = [];
     this.collidersDirty = false;
-    this.chairs = [];
     this.time = 0;
     this.loadQueue = [];
     this.pendingKeys = new Set();
@@ -113,13 +112,11 @@ export class World {
 
   addFurnitureForChunk(mesh, room) {
     const fc = mesh.userData.furnitureColliders || [];
-    const ch = mesh.userData.furnitureChairs || [];
     if (fc.length) {
       this.colliders.push(...fc);
       this.collidersDirty = true;
     }
-    if (ch.length) this.chairs.push(...ch);
-    return { furnitureColliders: fc, furnitureChairs: ch };
+    return { furnitureColliders: fc };
   }
 
   removeFurnitureForChunk(entry) {
@@ -131,17 +128,6 @@ export class World {
       }
       this.collidersDirty = true;
     }
-    const ch = entry.furnitureChairs;
-    if (ch?.length) {
-      for (const c of ch) {
-        const idx = this.chairs.indexOf(c);
-        if (idx !== -1) this.chairs.splice(idx, 1);
-      }
-    }
-  }
-
-  getChairs() {
-    return this.chairs;
   }
 
   consumeColliderRebuild() {
