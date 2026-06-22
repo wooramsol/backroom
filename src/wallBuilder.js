@@ -7,6 +7,7 @@ import { cloneWallBox, bakeWallBoxUV } from "./geometryPool.js";
 
 const JUNCTION_EPS = 0.02;
 const COLINEAR_CAP = WALL_JOINT_OVERLAP * 0.5;
+const CORNER_TRIM = WALL_T / 2;
 
 function tileHFromWallTex(wallTex) {
   return wallTex.userData?.tileH ?? WALL_TILE_W;
@@ -52,6 +53,33 @@ function hasColinearJoin(segments, seg, end) {
   });
 }
 
+function hasPerpendicularJoin(segments, seg, end) {
+  const zWalls = segments.filter((s) => s.axis === "z");
+  const xWalls = segments.filter((s) => s.axis === "x");
+
+  if (seg.axis === "z") {
+    const x = end === "start" ? seg.s0 : seg.s1;
+    const z = seg.pos;
+    return xWalls.some((xw) => Math.abs(xw.pos - x) < JUNCTION_EPS && spansMeet(z, xw.s0, xw.s1));
+  }
+
+  const z = end === "start" ? seg.s0 : seg.s1;
+  const x = seg.pos;
+  return zWalls.some((zw) => Math.abs(zw.pos - z) < JUNCTION_EPS && spansMeet(x, zw.s0, zw.s1));
+}
+
+function adjustStart(segments, seg) {
+  if (hasPerpendicularJoin(segments, seg, "start")) return CORNER_TRIM;
+  if (hasColinearJoin(segments, seg, "start")) return -COLINEAR_CAP;
+  return 0;
+}
+
+function adjustEnd(segments, seg) {
+  if (hasPerpendicularJoin(segments, seg, "end")) return -CORNER_TRIM;
+  if (hasColinearJoin(segments, seg, "end")) return COLINEAR_CAP;
+  return 0;
+}
+
 function findPerpendicularCorners(segments) {
   const corners = new Map();
   const zWalls = segments.filter((s) => s.axis === "z");
@@ -68,7 +96,7 @@ function findPerpendicularCorners(segments) {
   return [...corners.values()];
 }
 
-function appendCornerPost(parts, wallTex, tileH, x, z, h, roomWx, roomWz) {
+function appendCornerPost(parts, tileH, x, z, h, roomWx, roomWz) {
   const geo = new THREE.BoxGeometry(WALL_T, h, WALL_T);
   const baked = geo.index ? geo.toNonIndexed() : geo;
   if (baked !== geo) geo.dispose();
@@ -77,26 +105,22 @@ function appendCornerPost(parts, wallTex, tileH, x, z, h, roomWx, roomWz) {
   parts.push(baked);
 }
 
-function appendWallSegment(parts, wallTex, segments, seg, h, roomWx, roomWz) {
-  const tileH = tileHFromWallTex(wallTex);
+function appendWallSegment(parts, segments, seg, h, roomWx, roomWz, tileH) {
   const { axis, pos, s0, s1 } = seg;
-  const capStart = hasColinearJoin(segments, seg, "start") ? COLINEAR_CAP : 0;
-  const capEnd = hasColinearJoin(segments, seg, "end") ? COLINEAR_CAP : 0;
-  const es0 = s0 - capStart;
-  const es1 = s1 + capEnd;
+  const es0 = s0 + adjustStart(segments, seg);
+  const es1 = s1 + adjustEnd(segments, seg);
   const slen = es1 - es0;
   if (slen < 0.1) return;
 
   const smid = (es0 + es1) / 2;
-  const y = h / 2;
   const geo = cloneWallBox(axis, slen, h);
   const baked = geo.index ? geo.toNonIndexed() : geo;
   if (baked !== geo) geo.dispose();
 
   const worldU0 = axis === "z" ? roomWx + es0 : roomWz + es0;
   bakeWallBoxUV(baked, axis, slen, h, WALL_TILE_W, tileH, worldU0, 0);
-  if (axis === "z") baked.translate(smid, y, pos);
-  else baked.translate(pos, y, smid);
+  if (axis === "z") baked.translate(smid, h / 2, pos);
+  else baked.translate(pos, h / 2, smid);
   parts.push(baked);
 }
 
@@ -104,13 +128,14 @@ function appendWallSegment(parts, wallTex, segments, seg, h, roomWx, roomWz) {
 export function buildMergedWallGeometry(room, wallTex, h, roomWx, roomWz) {
   const parts = [];
   const segments = expandWallSegments(room);
+  const tileH = tileHFromWallTex(wallTex);
 
   for (const seg of segments) {
-    appendWallSegment(parts, wallTex, segments, seg, h, roomWx, roomWz);
+    appendWallSegment(parts, segments, seg, h, roomWx, roomWz, tileH);
   }
 
   for (const corner of findPerpendicularCorners(segments)) {
-    appendCornerPost(parts, wallTex, tileHFromWallTex(wallTex), corner.x, corner.z, h, roomWx, roomWz);
+    appendCornerPost(parts, tileH, corner.x, corner.z, h, roomWx, roomWz);
   }
 
   if (!parts.length) return { geometry: null };
