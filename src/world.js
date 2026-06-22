@@ -22,7 +22,7 @@ import { disposeChunkRoot } from "./sceneDispose.js";
 
 const DESPAWN_PER_FRAME = 2;
 const PRELOAD_BATCH = 2;
-const LOAD_QUEUE_BATCH = 3;
+const LOAD_QUEUE_BATCH = 2;
 
 export class World {
   constructor(scene, materials, furnitureModels = null) {
@@ -112,6 +112,10 @@ export class World {
       if (fc?.length) list.push(...fc);
     }
     this.colliders = list;
+    this.collidersDirty = false;
+  }
+
+  _markCollidersDirty() {
     this.collidersDirty = true;
   }
 
@@ -126,27 +130,27 @@ export class World {
     }
   }
 
-  addFurnitureForChunk(mesh, room) {
+  addFurnitureForChunk(mesh) {
     const fc = mesh.userData.furnitureColliders || [];
-    this.rebuildColliderList();
+    this._markCollidersDirty();
     return { furnitureColliders: fc };
   }
 
   removeFurnitureForChunk(_entry) {
-    this.rebuildColliderList();
+    this._markCollidersDirty();
   }
 
   consumeColliderRebuild() {
-    const v = this.collidersDirty;
-    this.collidersDirty = false;
-    return v;
+    if (!this.collidersDirty) return false;
+    this.rebuildColliderList();
+    return true;
   }
 
   attachChunk(cx, cz, room, build) {
     const k = this.key(cx, cz);
     finalizeRoomBuild(build);
     const mesh = build.group;
-    const furniture = this.addFurnitureForChunk(mesh, room);
+    const furniture = this.addFurnitureForChunk(mesh);
     this.chunks.set(k, { mesh, room, ...furniture });
   }
 
@@ -154,7 +158,7 @@ export class World {
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
-    const furniture = this.addFurnitureForChunk(mesh, room);
+    const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
   }
@@ -223,7 +227,7 @@ export class World {
       if (need.has(k)) return true;
       if (job.room && !this.chunks.has(k)) {
         removeRoomWalls(this.wallMap, job.room);
-        this.rebuildColliderList();
+        this._markCollidersDirty();
       }
       if (job.build?.group) {
         if (job.build.group.parent) this.scene.remove(job.build.group);
@@ -255,7 +259,7 @@ export class World {
         job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
         if (!this.chunks.has(k)) {
           appendRoomWalls(this.wallMap, job.room);
-          this.rebuildColliderList();
+          this._markCollidersDirty();
         }
         continue;
       }
@@ -292,7 +296,7 @@ export class World {
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
-    const furniture = this.addFurnitureForChunk(mesh, room);
+    const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room, ...furniture });
     this.pendingKeys.delete(k);
