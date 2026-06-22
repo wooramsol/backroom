@@ -140,13 +140,13 @@ export class Player {
     return supportY + this._eyeHeight();
   }
 
-  _bodyBand() {
-    const feet = this._feetY();
-    const standHi = this.position.y + PLAYER_R * 0.25;
-    const crouchHi = feet + CROUCH_BODY_H;
-    const hi = THREE.MathUtils.lerp(standHi, crouchHi, this.crouchBlend);
-    const lo = feet + THREE.MathUtils.lerp(0.15, 0.08, this.crouchBlend);
-    return { lo, hi };
+  /** Eye-level probe for wall/furniture sides — matches pre-crouch behavior when standing */
+  _horizontalProbeY() {
+    return THREE.MathUtils.lerp(
+      this.position.y,
+      this._feetY() + CROUCH_BODY_H * 0.42,
+      this.crouchBlend,
+    );
   }
 
   _overlapsXZ(px, pz, c, r = this._collisionRadius()) {
@@ -165,7 +165,8 @@ export class Player {
 
       const top = c.standTopY;
       const onTop = Math.abs(feetY - top) < LAND_EPS;
-      const landing = vy <= 0 && nextFeet <= top + LAND_EPS && feetY >= top - 0.55;
+      const landing =
+        vy <= 0 && nextFeet <= top + LAND_EPS && feetY >= top - 0.65;
       if (onTop || landing) best = Math.max(best, top);
     }
 
@@ -188,21 +189,17 @@ export class Player {
     _right.crossVectors(_fwd, _up).normalize();
   }
 
-  _blocksHorizontal(c) {
+  _blocksHorizontal(c, y) {
     if (c.isCeiling) return false;
-    const feet = this._feetY();
-    if (c.standable && c.standTopY !== undefined && feet < c.standTopY - 0.05) {
-      return false;
-    }
-    const { lo, hi } = this._bodyBand();
-    if (hi < c.minY - 0.05 || lo > c.maxY + 0.05) return false;
+    if (y < c.minY - 0.2 || y > c.maxY + 0.2) return false;
     return true;
   }
 
   _insideWall(px, pz) {
+    const y = this._horizontalProbeY();
     const r = this._collisionRadius();
     for (const c of this.colliders) {
-      if (!this._blocksHorizontal(c)) continue;
+      if (!this._blocksHorizontal(c, y)) continue;
       if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
         continue;
       }
@@ -212,12 +209,13 @@ export class Player {
   }
 
   _pushOut(px, pz) {
+    const y = this._horizontalProbeY();
     const r = this._collisionRadius();
 
     for (let n = 0; n < 14; n++) {
       let hit = false;
       for (const c of this.colliders) {
-        if (!this._blocksHorizontal(c)) continue;
+        if (!this._blocksHorizontal(c, y)) continue;
         if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
           continue;
         }
