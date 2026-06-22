@@ -166,14 +166,16 @@ async function init() {
 
     world.tick(dt);
     tickChairGlitchVisuals(scene, lightT);
+
     if (!world.preloading) {
       world.update(player.position);
       world.processLoadQueue(player.position);
-      if (started) {
-        player.setColliders(world.syncColliders());
-        player.update(dt);
-        if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
-      }
+    }
+
+    if (started) {
+      player.setColliders(world.syncColliders());
+      player.update(dt);
+      if (ENABLE_FLUORESCENT_HUM) hum.tick(lightT);
     }
 
     if (ready) {

@@ -103,11 +103,8 @@ export class World {
     this.loadQueue.splice(lo, 0, job);
   }
 
-  /** Re-register walls for every loaded chunk, then rebuild collider list */
+  /** Build collider list from wall map + furniture (cheap — no wall re-registration) */
   syncColliders() {
-    for (const { room } of this.chunks.values()) {
-      appendRoomWalls(this.wallMap, room);
-    }
     const list = collidersFromMap(this.wallMap);
     for (const entry of this.chunks.values()) {
       const fc = entry.furnitureColliders;
@@ -117,8 +114,13 @@ export class World {
     return list;
   }
 
-  addCollidersForRoom(room) {
+  /** Idempotent — call when a chunk is spawned or attached */
+  registerRoomWalls(room) {
     appendRoomWalls(this.wallMap, room);
+  }
+
+  addCollidersForRoom(room) {
+    this.registerRoomWalls(room);
     return this.syncColliders();
   }
 
@@ -137,7 +139,7 @@ export class World {
   attachChunk(cx, cz, room, build) {
     finalizeRoomBuild(build);
     const mesh = build.group;
-    appendRoomWalls(this.wallMap, room);
+    this.registerRoomWalls(room);
     const furniture = this.addFurnitureForChunk(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
   }
@@ -145,7 +147,7 @@ export class World {
   spawnComplete(cx, cz) {
     const room = generateRoom(cx, cz);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
-    appendRoomWalls(this.wallMap, room);
+    this.registerRoomWalls(room);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
@@ -264,13 +266,16 @@ export class World {
 
   tick(dt) {
     this.time += dt;
+    let dirty = false;
     if (this.disposeQueue.length) {
       disposeChunkRoot(this.disposeQueue.shift());
-      this.syncColliders();
+      dirty = true;
     }
     for (let i = 0; i < DESPAWN_PER_FRAME && this.despawnPending.length; i++) {
       this.despawn(this.despawnPending.shift());
+      dirty = true;
     }
+    if (dirty) this.syncColliders();
   }
 
   getColliders() {
@@ -281,7 +286,7 @@ export class World {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
-    appendRoomWalls(this.wallMap, room);
+    this.registerRoomWalls(room);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room, ...furniture });
@@ -316,22 +321,25 @@ export class World {
     this.loadQueue.length = 0;
     this.pendingKeys.clear();
 
-    const total = toBuild.length;
-    let done = 0;
-    for (let i = 0; i < toBuild.length; i += PRELOAD_BATCH) {
-      const end = Math.min(i + PRELOAD_BATCH, toBuild.length);
-      for (let j = i; j < end; j++) {
-        const { cx: x, cz: z } = toBuild[j];
-        this._spawnChunkSafe(x, z);
-        done++;
+    try {
+      const total = toBuild.length;
+      let done = 0;
+      for (let i = 0; i < toBuild.length; i += PRELOAD_BATCH) {
+        const end = Math.min(i + PRELOAD_BATCH, toBuild.length);
+        for (let j = i; j < end; j++) {
+          const { cx: x, cz: z } = toBuild[j];
+          this._spawnChunkSafe(x, z);
+          done++;
+        }
+        onProgress?.(done, total || 1);
+        await new Promise((r) => requestAnimationFrame(r));
       }
-      onProgress?.(done, total || 1);
-      await new Promise((r) => requestAnimationFrame(r));
-    }
 
-    this.syncColliders();
-    this.preloading = false;
-    onProgress?.(total || 1, total || 1);
+      this.syncColliders();
+      onProgress?.(total || 1, total || 1);
+    } finally {
+      this.preloading = false;
+    }
   }
 
   hasPendingLoads() {
