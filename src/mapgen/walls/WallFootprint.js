@@ -170,6 +170,65 @@ export function footprintBoundaryEdges(cells) {
   return edges;
 }
 
+/** Merge colinear boundary segments on the same line — fewer faces, no corner change. */
+export function mergeBoundaryEdges(edges) {
+  const buckets = new Map();
+
+  for (const e of edges) {
+    const key = `${e.axis}|${e.sign}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(e);
+  }
+
+  const merged = [];
+
+  for (const [, group] of buckets) {
+    if (group[0].axis === "x") {
+      const byX = new Map();
+      for (const e of group) {
+        const xk = e.x0.toFixed(5);
+        if (!byX.has(xk)) byX.set(xk, []);
+        byX.get(xk).push(e);
+      }
+      for (const [, xs] of byX) {
+        xs.sort((a, b) => a.z0 - b.z0);
+        let cur = { ...xs[0] };
+        for (let i = 1; i < xs.length; i++) {
+          const e = xs[i];
+          if (Math.abs(e.z0 - cur.z1) < EPS) cur.z1 = e.z1;
+          else {
+            merged.push(cur);
+            cur = { ...e };
+          }
+        }
+        merged.push(cur);
+      }
+    } else {
+      const byZ = new Map();
+      for (const e of group) {
+        const zk = e.z0.toFixed(5);
+        if (!byZ.has(zk)) byZ.set(zk, []);
+        byZ.get(zk).push(e);
+      }
+      for (const [, zs] of byZ) {
+        zs.sort((a, b) => a.x0 - b.x0);
+        let cur = { ...zs[0] };
+        for (let i = 1; i < zs.length; i++) {
+          const e = zs[i];
+          if (Math.abs(e.x0 - cur.x1) < EPS) cur.x1 = e.x1;
+          else {
+            merged.push(cur);
+            cur = { ...e };
+          }
+        }
+        merged.push(cur);
+      }
+    }
+  }
+
+  return merged;
+}
+
 export function segmentsToFootprint(segments) {
   return unionFootprint(segments.map(segmentToRect));
 }

@@ -1,32 +1,28 @@
 import * as THREE from "three";
-import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { WALL_T } from "../../constants.js";
 import { collectRoomWallSegments } from "./wallSegments.js";
-import { segmentsToFootprint, footprintBoundaryEdges } from "./WallFootprint.js";
+import {
+  segmentsToFootprint,
+  footprintBoundaryEdges,
+  mergeBoundaryEdges,
+} from "./WallFootprint.js";
 import { validateWallMesh, repairFootprint } from "./WallQuality.js";
+import { bakeWorldWallUVBuffer } from "./WorldWallUV.js";
 
 const SNAP = 1e-4;
 
-function vtxKey(x, y, z) {
+function vtxKey(x, y, z, nx, nz) {
   const rx = Math.round(x / SNAP) * SNAP;
   const ry = Math.round(y / SNAP) * SNAP;
   const rz = Math.round(z / SNAP) * SNAP;
-  return `${rx},${ry},${rz}`;
-}
-
-function worldUV(wx, wy, wz, nx, nz, tileW, tileH) {
-  const ax = Math.abs(nx);
-  const az = Math.abs(nz);
-  let u;
-  if (ax >= az) u = wz / tileW;
-  else u = wx / tileW;
-  const v = wy / tileH;
-  return [u, v];
+  const sx = nx < -0.5 ? -1 : nx > 0.5 ? 1 : 0;
+  const sz = nz < -0.5 ? -1 : nz > 0.5 ? 1 : 0;
+  return `${rx},${ry},${rz},${sx},${sz}`;
 }
 
 /**
- * Builds one continuous architectural wall mesh from outline segments.
- * Footprint union removes corner overlap; boundary extrusion shares vertices.
+ * Step 1 wall pipeline — footprint union shell, no BoxGeometry.
+ * Corners keep separate vertices per face normal so UV wraps cleanly.
  */
 export function buildContinuousWallGeometry(
   segments,
@@ -37,36 +33,29 @@ export function buildContinuousWallGeometry(
   tileH,
   options = {},
 ) {
-  if (!segments.length) return null;
+  if (!segments.length || height < SNAP) return null;
 
   let cells = segmentsToFootprint(segments);
   if (!cells.length) return null;
 
   let issues = options.room ? validateWallMesh(options.room, segments, cells) : [];
-  const protrusions = issues.filter((i) => i.kind === "protrusion");
-  if (protrusions.length) {
+  if (issues.some((i) => i.kind === "protrusion")) {
     cells = repairFootprint(cells);
     issues = options.room ? validateWallMesh(options.room, segments, cells) : [];
   }
 
-  const edges = footprintBoundaryEdges(cells);
+  const edges = mergeBoundaryEdges(footprintBoundaryEdges(cells));
   if (!edges.length) return null;
 
   const positions = [];
-  const uvs = [];
   const indices = [];
   const map = new Map();
 
   const addV = (x, y, z, nx, nz) => {
-    const wx = roomWx + x;
-    const wy = y;
-    const wz = roomWz + z;
-    const [u, v] = worldUV(wx, wy, wz, nx, nz, tileW, tileH);
-    const k = vtxKey(x, y, z);
+    const k = vtxKey(x, y, z, nx, nz);
     if (map.has(k)) return map.get(k);
     const i = positions.length / 3;
     positions.push(x, y, z);
-    uvs.push(u, v);
     map.set(k, i);
     return i;
   };
@@ -102,16 +91,15 @@ export function buildContinuousWallGeometry(
 
   if (!indices.length) return null;
 
-  let geo = new THREE.BufferGeometry();
+  const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geo.setIndex(indices);
-  geo = mergeVertices(geo, SNAP);
   geo.computeVertexNormals();
-  geo = removeDegenerateFaces(geo);
+  bakeWorldWallUVBuffer(geo, roomWx, roomWz, tileW, tileH);
+  removeDegenerateFaces(geo);
 
-  if (options.validate !== false && options.room) {
-    if (issues.length && options.onIssues) options.onIssues(issues);
+  if (options.validate !== false && options.room && issues.length && options.onIssues) {
+    options.onIssues(issues);
   }
 
   return geo;
@@ -158,8 +146,7 @@ function removeDegenerateFaces(geo) {
     keep.push(ia, ib, ic);
   }
 
-  if (keep.length === idx.count) return geo;
-  geo.setIndex(keep);
+  if (keep.length !== idx.count) geo.setIndex(keep);
   return geo;
 }
 
@@ -172,4 +159,15 @@ export function buildRoomWallGeometry(room, wallTex, h, roomWx, roomWz) {
 
 export function tileHFromWallTex(wallTex) {
   return wallTex?.userData?.tileH ?? 0.76;
+}
+
+/** QA helper — thin footprint axis must stay at WALL_T (no protrusion). */
+export function wallThicknessOK(cells) {
+  for (const c of cells) {
+    const w = c.x1 - c.x0;
+    const d = c.z1 - c.z0;
+    const thin = Math.min(w, d);
+    if (thin > WALL_T + 0.03) return false;
+  }
+  return true;
 }
