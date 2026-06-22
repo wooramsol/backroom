@@ -323,12 +323,22 @@ function spansOverlap(a0, a1, b0, b1) {
   return a0 < b1 && a1 > b0;
 }
 
-/** Parallel inner walls must leave a clear gap wider than walkable minimum */
+function boundaryWalls() {
+  return [
+    { axis: "z", pos: 0, span0: 0, span1: CHUNK },
+    { axis: "z", pos: CHUNK, span0: 0, span1: CHUNK },
+    { axis: "x", pos: 0, span0: 0, span1: CHUNK },
+    { axis: "x", pos: CHUNK, span0: 0, span1: CHUNK },
+  ];
+}
+
+/** Parallel walls (inner + chunk edges) must leave a passable gap or none at all */
 export function parallelPassagesWideEnough(innerWalls) {
-  for (let i = 0; i < innerWalls.length; i++) {
-    for (let j = i + 1; j < innerWalls.length; j++) {
-      const a = innerWalls[i];
-      const b = innerWalls[j];
+  const walls = [...innerWalls, ...boundaryWalls()];
+  for (let i = 0; i < walls.length; i++) {
+    for (let j = i + 1; j < walls.length; j++) {
+      const a = walls[i];
+      const b = walls[j];
       if (a.axis !== b.axis) continue;
       if (!spansOverlap(a.span0, a.span1, b.span0, b.span1)) continue;
       const gap = Math.abs(a.pos - b.pos) - WALL_T;
