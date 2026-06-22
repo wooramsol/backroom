@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import {
   EYE_H,
+  SIT_EYE_ABOVE_SEAT,
+  SIT_RANGE,
   PLAYER_R,
   CHUNK,
   MOUSE_SENS,
@@ -36,6 +38,8 @@ export class Player {
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
+    this.sitting = false;
+    this.sitSeatY = 0;
     this.onLockLost = null;
     this.onLockAcquired = null;
 
@@ -44,10 +48,21 @@ export class Player {
     this._onKeyDown = (e) => {
       if (e.code === "Space") {
         e.preventDefault();
+        if (this.sitting) {
+          this._standUp();
+          return;
+        }
         if (this.locked && this.grounded) {
           this.vy = JUMP_V;
           this.grounded = false;
         }
+      }
+      if (e.code === "KeyC") {
+        if (!this.locked) return;
+        e.preventDefault();
+        if (this.sitting) this._standUp();
+        else this._trySit();
+        return;
       }
       this.keys[e.code] = true;
       if (e.code === "KeyR") this._unstuck();
@@ -106,10 +121,68 @@ export class Player {
   }
 
   _unstuck() {
+    this.sitting = false;
     this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
+  }
+
+  _seatCenter(c) {
+    return {
+      x: (c.minX + c.maxX) * 0.5,
+      z: (c.minZ + c.maxZ) * 0.5,
+    };
+  }
+
+  _findSitTarget() {
+    let best = null;
+    let bestDist = Infinity;
+    const px = this.position.x;
+    const pz = this.position.z;
+
+    for (const c of this.colliders) {
+      if (!c.standable || !c.isFurniture) continue;
+      const { x: cx, z: cz } = this._seatCenter(c);
+      const dist = Math.hypot(px - cx, pz - cz);
+      if (dist > SIT_RANGE) continue;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = c;
+      }
+    }
+
+    return best;
+  }
+
+  _trySit() {
+    if (!this.grounded || this.sitting) return;
+    const seat = this._findSitTarget();
+    if (!seat) return;
+
+    const { x, z } = this._seatCenter(seat);
+    this.position.x = x;
+    this.position.z = z;
+    this.sitSeatY = seat.standTopY;
+    this.position.y = this.sitSeatY + SIT_EYE_ABOVE_SEAT;
+    this.sitting = true;
+    this.grounded = true;
+    this.groundY = this.sitSeatY;
+    this.vy = 0;
+    this.bob = 0;
+  }
+
+  _standUp() {
+    if (!this.sitting) return;
+    this.sitting = false;
+    this.position.y = this._eyeOnSupport(this.sitSeatY);
+    this.groundY = this.sitSeatY;
+    this.grounded = true;
+    this.vy = 0;
+  }
+
+  isSitting() {
+    return this.sitting;
   }
 
   _feetY() {
@@ -213,6 +286,12 @@ export class Player {
   }
 
   update(dt) {
+    if (this.sitting) {
+      this.position.y = this.sitSeatY + SIT_EYE_ABOVE_SEAT;
+      this._applyLook(0);
+      return;
+    }
+
     this._applyLook(0);
     this._syncWalkFromCamera();
 

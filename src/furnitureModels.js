@@ -157,7 +157,8 @@ export async function loadFurnitureModels() {
     ]);
     const allChairs = [chairGlb, ...packChairs];
     const pileChairs = packChairs.filter((t) => t.userData.isPile);
-    return { chairGlb, stool, packChairs, pileChairs, allChairs };
+    const allProps = [chairGlb, stool, ...packChairs];
+    return { chairGlb, stool, packChairs, pileChairs, allChairs, allProps };
   } catch (err) {
     console.warn("Furniture models unavailable — skipping props", err);
     return null;
@@ -183,16 +184,21 @@ export function cloneFurnitureTemplate(template) {
   return pivot;
 }
 
-/** Pick a random chair template from Chair.glb + pack variants */
-export function pickChairTemplate(models, rng) {
-  const pool = models.allChairs?.length ? models.allChairs : models.chairGlb ? [models.chairGlb] : [];
+/** Pick a random furniture template from every loaded GLB */
+export function pickFurnitureTemplate(models, rng) {
+  const pool = models.allProps?.length
+    ? models.allProps
+    : [models.chairGlb, models.stool, ...(models.packChairs || [])].filter(Boolean);
   if (!pool.length) return null;
   return rng.pick(pool);
 }
 
-/** Prefer pile/stack variants from the pack */
+/** @deprecated use pickFurnitureTemplate */
+export function pickChairTemplate(models, rng) {
+  return pickFurnitureTemplate(models, rng);
+}
+
+/** @deprecated use pickFurnitureTemplate */
 export function pickPileChairTemplate(models, rng) {
-  const piles = models.pileChairs?.length ? models.pileChairs : [];
-  if (piles.length && rng.chance(0.9)) return rng.pick(piles);
-  return pickChairTemplate(models, rng);
+  return pickFurnitureTemplate(models, rng);
 }
