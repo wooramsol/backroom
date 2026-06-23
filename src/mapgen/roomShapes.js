@@ -216,13 +216,13 @@ export function shapeCross(rng, usedSizes = new Set()) {
 
 const ROOM_BUILDERS = [
   [shapeRectangle, 22],
-  [shapeL, 18],
+  [shapeL, 16],
   [shapeLounge, 14],
   [shapeLongRectangle, 10],
   [shapeSquare, 8],
-  [shapeNarrow, 7],
+  [shapeNarrow, 14],
   [shapeVeryLong, 6],
-  [shapeU, 5],
+  [shapeU, 12],
   [shapeZ, 5],
   [shapeT, 5],
   [shapeCross, 5],
@@ -246,7 +246,7 @@ function pickFromBuilders(rng, builders, usedSizes, maxAttempts = 20) {
 
 const COMPACT_BUILDERS = [
   [(rng, used) => shapeSquare(rng, used, 6), 25],
-  [(rng, used) => shapeNarrow(rng, used), 20],
+  [(rng, used) => shapeNarrow(rng, used), 25],
   [(rng, used) => shapeRectangle(rng, used, 8, 7), 20],
   [(rng, used) => shapeL(rng, used), 15],
   [(rng, used) => shapeT(rng, used), 10],

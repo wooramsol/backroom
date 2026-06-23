@@ -6,6 +6,7 @@ import { CorridorGenerator } from "./CorridorGenerator.js";
 import { ConnectivityValidator } from "./ConnectivityValidator.js";
 import { mergeFloorIslands } from "./floorConnect.js";
 import { corridorBudgetOK, roomGenStats, roomSpaceOK } from "./backroomsMetrics.js";
+import { analyzeSpatialLayout } from "./RoomSpatialQA.js";
 import { innerWallsFromGrid, wallsFromGrid } from "./wallOutline.js";
 import { shapeFallback } from "./roomShapes.js";
 
@@ -79,6 +80,8 @@ export class MapGenerator {
         corridorBudget: corridorBudgetOK(grid),
         ...roomGenStats(rooms),
         openings: roomOpeningCounts(rooms, connector.openPairs),
+        openPairs: connector.openPairs,
+        spatial: analyzeSpatialLayout(grid, rooms, connector.openPairs),
       },
     };
   }

@@ -220,6 +220,10 @@ export function generateRoom(cx, cz) {
     innerWalls: shape.innerWalls,
     wallSegments: shape.wallSegments,
     rooms: shape.rooms,
+    spatial: shape.metrics?.spatial ?? null,
+    openPairs: shape.metrics?.openPairs
+      ? [...shape.metrics.openPairs]
+      : [],
     height: ROOM_H,
     doors: {
       north: getSharedDoor(cx, cz, cx, cz - 1),
