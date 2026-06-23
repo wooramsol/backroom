@@ -144,13 +144,25 @@ export class ZoneMapGenerator {
       const unique = new Set(rooms.map((r) => r.sizeKey)).size;
       const dupes = unique < rooms.length;
       const meetsMin = rooms.length >= this.profile.minRooms;
+      const sp = result.metrics.spatial;
+      let spatialBonus = 0;
+      if (sp) {
+        spatialBonus += sp.uniqueSizes * 3;
+        spatialBonus += sp.orthoShapeCount * 2;
+        if (sp.narrowPresent && sp.widePresent) spatialBonus += 12;
+        if (sp.loungePresent) spatialBonus += 4;
+        spatialBonus -= sp.sameSizeConsecutive * 8;
+        spatialBonus -= Math.max(0, sp.longestCorridorCells - 6) * 3;
+        if (sp.roomToRoomDirectRatio >= 0.5) spatialBonus += 5;
+      }
       const score =
         (result.validation.ok ? 100 : 0) +
         (result.metrics.roomSpace ? 10 : 0) +
         (result.metrics.corridorBudget ? 10 : 0) +
         rooms.length * 5 +
         (dupes ? 0 : 8) +
-        (meetsMin ? 12 : 0);
+        (meetsMin ? 12 : 0) +
+        spatialBonus;
       if (!best || score > best.score) best = { result, score };
       if (
         result.validation.ok &&

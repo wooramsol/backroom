@@ -38,6 +38,10 @@ function mstPairs(adjacencies, rooms) {
 
 function pickDoorRun(seams, width, rng) {
   if (seams.length <= width) return seams;
+  const centered = Math.max(0, Math.floor((seams.length - width) / 2));
+  if (rng.chance(0.62)) {
+    return seams.slice(centered, centered + width);
+  }
   const start = rng.int(0, seams.length - width);
   return seams.slice(start, start + width);
 }

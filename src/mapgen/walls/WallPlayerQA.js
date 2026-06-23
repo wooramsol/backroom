@@ -43,6 +43,7 @@ const FAIL = {
   Z_FIGHT: "z_fighting",
   FLIPPED_NORMAL: "flipped_normal",
   STAIR_CORNER: "stair_corner_player_view",
+  PLANE_WALL: "plane_wall_view",
 };
 
 function fakeTex() {
@@ -582,6 +583,25 @@ function checkAbnormalCornerFaces(geo, room, views) {
   return issues;
 }
 
+/** Reject meshes with too few thickness faces — walls would read as zero-depth planes. */
+function checkPlaneWallViews(room, geo, cells, segs) {
+  const issues = [];
+  if (!geo) return issues;
+
+  const thicknessFaces = countThicknessFaces(geo);
+  const caps = findEndCapFaces(geo);
+  const minCaps = Math.max(4, Math.min(8, Math.floor(segs.filter((s) => !s.door).length * 0.22)));
+
+  if (thicknessFaces < 4) {
+    issues.push({ kind: FAIL.PLANE_WALL, reason: "low_thickness_faces", count: thicknessFaces });
+  }
+  if (caps.length < minCaps) {
+    issues.push({ kind: FAIL.PLANE_WALL, reason: "low_end_caps", count: caps.length, minCaps });
+  }
+
+  return issues;
+}
+
 function outlineStairIssues(room, segs) {
   const issues = [];
   const outlines = footprintExtrudeOutlines(segs);
@@ -636,6 +656,7 @@ export function inspectRoomPlayerWalls(room, cx, cz) {
   issues.push(...checkUVBreaks(geo, wx, wz, tex.userData.tileW));
   issues.push(...checkStairCorners(geo, room, corners));
   issues.push(...checkAbnormalCornerFaces(geo, room, corners));
+  issues.push(...checkPlaneWallViews(room, geo, cells, segs));
   issues.push(...outlineStairIssues(room, segs));
 
   const thicknessFaces = geo ? countThicknessFaces(geo) : 0;
@@ -655,6 +676,7 @@ export function inspectRoomPlayerWalls(room, cx, cz) {
       FAIL.Z_FIGHT,
       FAIL.FLIPPED_NORMAL,
       FAIL.STAIR_CORNER,
+      FAIL.PLANE_WALL,
       "protrusion",
       "short_segment",
     ].includes(i.kind ?? i.qaKind),

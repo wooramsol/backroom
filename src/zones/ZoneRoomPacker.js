@@ -4,8 +4,9 @@
 import { MAP_GRID_SIZE } from "../constants.js";
 import { BackroomsRoomPacker } from "../mapgen/BackroomsRoomPacker.js";
 import { CELL_FLOOR } from "../mapgen/grid.js";
-import { shapeNarrow } from "../mapgen/roomShapes.js";
+import { shapeNarrow, shapeLounge, pickSeedLoungeShape } from "../mapgen/roomShapes.js";
 import { pickZoneRoomShape, pickZoneSeedShape } from "./zoneShapes.js";
+import { pickCompactRoomShape } from "../mapgen/roomShapes.js";
 import { getZoneProfile } from "./ZoneTypes.js";
 
 const MARGIN = 1;
@@ -29,15 +30,44 @@ export class ZoneRoomPacker extends BackroomsRoomPacker {
     this.profile = profile ?? getZoneProfile("open");
   }
 
+  hasSmallRoom() {
+    return this.rooms.some((r) => (r.cells?.length ?? 0) <= 22);
+  }
+
+  hasLounge() {
+    return this.rooms.some((r) => r.kind === "lounge");
+  }
+
   pickNextShape(ratio = 0) {
     if (this.rooms.length === 0) {
       return pickZoneSeedShape(this.rng, this.usedSizes, this.profile.seedMode);
+    }
+    if (this.rooms.length >= 2 && !this.hasLounge() && this.profile.pickMode !== "narrow") {
+      const lounge = pickSeedLoungeShape(this.rng, this.usedSizes) ?? shapeLounge(this.rng, this.usedSizes);
+      if (lounge) return lounge;
     }
     if (this.rooms.length >= 2 && !this.hasSmallRoom() && this.profile.pickMode !== "open") {
       const narrow = shapeNarrow(this.rng, this.usedSizes);
       if (narrow) return narrow;
     }
-    return pickZoneRoomShape(this.rng, this.usedSizes, this.profile.pickMode, ratio);
+
+    let shape = pickZoneRoomShape(this.rng, this.usedSizes, this.profile.pickMode, ratio);
+
+    if (shape && this.rooms.length >= 1 && ratio < 0.72 && this.profile.pickMode !== "open") {
+      const last = this.rooms[this.rooms.length - 1];
+      const lastArea = last.cells?.length ?? 0;
+      const nextArea = shape.cells?.length ?? shape.w * shape.h;
+      const similar = Math.abs(lastArea - nextArea) < 10;
+      if (similar) {
+        const contrast =
+          lastArea >= 28
+            ? shapeNarrow(this.rng, this.usedSizes) ?? pickCompactRoomShape(this.rng, this.usedSizes)
+            : pickZoneRoomShape(this.rng, this.usedSizes, "lounge", ratio);
+        if (contrast && contrast.cells?.length !== nextArea) shape = contrast;
+      }
+    }
+
+    return shape;
   }
 
   generate(grid) {

@@ -1,5 +1,6 @@
 /**
  * Step 3 — zone-specific shape pickers (calls frozen roomShapes, no edits there).
+ * Step 4 — tuned weights for architectural variety and size contrast.
  */
 import {
   shapeSquare,
@@ -17,7 +18,7 @@ import {
   pickCompactRoomShape,
 } from "../mapgen/roomShapes.js";
 
-function pickWeighted(rng, builders, usedSizes, tries = 24) {
+function pickWeighted(rng, builders, usedSizes, tries = 28) {
   for (let i = 0; i < tries; i++) {
     const fn = rng.pickWeighted(builders);
     const shape = fn(rng, usedSizes);
@@ -27,47 +28,54 @@ function pickWeighted(rng, builders, usedSizes, tries = 24) {
 }
 
 const SMALL_BUILDERS = [
-  [(rng, u) => shapeSquare(rng, u, 5), 35],
-  [(rng, u) => shapeRectangle(rng, u, 7, 6), 30],
-  [(rng, u) => shapeNarrow(rng, u), 20],
-  [(rng, u) => shapeSquare(rng, u, 4), 15],
+  [(rng, u) => shapeSquare(rng, u, 5), 22],
+  [(rng, u) => shapeRectangle(rng, u, 7, 6), 18],
+  [(rng, u) => shapeNarrow(rng, u), 18],
+  [shapeL, 14],
+  [shapeT, 12],
+  [(rng, u) => shapeSquare(rng, u, 4), 16],
 ];
 
 const LOUNGE_BUILDERS = [
-  [shapeLounge, 55],
-  [(rng, u) => shapeRectangle(rng, u, 12, 10), 25],
-  [shapeCross, 20],
+  [shapeLounge, 50],
+  [(rng, u) => shapeRectangle(rng, u, 12, 10), 18],
+  [shapeCross, 17],
+  [shapeU, 15],
 ];
 
 const LONG_BUILDERS = [
-  [shapeVeryLong, 40],
-  [shapeLongRectangle, 40],
-  [(rng, u) => shapeRectangle(rng, u, 12, 5), 20],
+  [shapeVeryLong, 38],
+  [shapeLongRectangle, 34],
+  [(rng, u) => shapeRectangle(rng, u, 12, 5), 14],
+  [shapeZ, 14],
 ];
 
 const MAZE_BUILDERS = [
-  [shapeL, 22],
+  [shapeL, 20],
   [shapeU, 18],
   [shapeZ, 16],
   [shapeT, 16],
-  [shapeCross, 14],
-  [(rng, u) => shapeSquare(rng, u, 6), 14],
+  [shapeCross, 15],
+  [(rng, u) => shapeSquare(rng, u, 6), 15],
 ];
 
 const OPEN_BUILDERS = [
-  [shapeLounge, 70],
-  [(rng, u) => shapeRectangle(rng, u, 11, 9), 30],
+  [shapeLounge, 62],
+  [(rng, u) => shapeRectangle(rng, u, 11, 9), 22],
+  [shapeCross, 16],
 ];
 
 const NARROW_BUILDERS = [
-  [shapeNarrow, 50],
-  [(rng, u) => shapeVeryLong(rng, u), 25],
-  [(rng, u) => shapeSquare(rng, u, 4), 25],
+  [shapeNarrow, 46],
+  [(rng, u) => shapeVeryLong(rng, u), 28],
+  [(rng, u) => shapeSquare(rng, u, 4), 14],
+  [shapeL, 12],
 ];
 
 export function pickZoneSeedShape(rng, usedSizes, seedMode) {
   switch (seedMode) {
     case "compact":
+      if (rng.chance(0.32)) return pickSeedLoungeShape(rng, usedSizes);
       return pickWeighted(rng, SMALL_BUILDERS, usedSizes) ?? pickCompactRoomShape(rng, usedSizes);
     case "lounge":
       return pickSeedLoungeShape(rng, usedSizes);
@@ -81,7 +89,7 @@ export function pickZoneSeedShape(rng, usedSizes, seedMode) {
 }
 
 export function pickZoneRoomShape(rng, usedSizes, pickMode, fillRatio = 0) {
-  if (fillRatio >= 0.58 && pickMode !== "open") {
+  if (fillRatio >= 0.52 && pickMode !== "open" && pickMode !== "lounge") {
     const compact = pickCompactRoomShape(rng, usedSizes);
     if (compact) return compact;
   }

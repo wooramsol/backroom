@@ -153,18 +153,27 @@ export function orientWallFacesOutward(geo, cells) {
   const pos = geo.attributes.position;
   const norm = geo.attributes.normal;
   const probe = 0.05;
+  const thinProbe = 0.055;
 
   for (let i = 0; i < pos.count; i += 3) {
-    const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
-    const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
-    const cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+    const xs = [pos.getX(i), pos.getX(i + 1), pos.getX(i + 2)];
+    const ys = [pos.getY(i), pos.getY(i + 1), pos.getY(i + 2)];
+    const zs = [pos.getZ(i), pos.getZ(i + 1), pos.getZ(i + 2)];
+    const cx = (xs[0] + xs[1] + xs[2]) / 3;
+    const cy = (ys[0] + ys[1] + ys[2]) / 3;
+    const cz = (zs[0] + zs[1] + zs[2]) / 3;
     const nx = norm.getX(i);
     const ny = norm.getY(i);
     const nz = norm.getZ(i);
     if (Math.abs(ny) > 0.85) continue;
 
-    const inPlus = pointInFootprint(cx + probe * nx, cz + probe * nz, cells);
-    const inMinus = pointInFootprint(cx - probe * nx, cz - probe * nz, cells);
+    const dx = Math.max(...xs) - Math.min(...xs);
+    const dz = Math.max(...zs) - Math.min(...zs);
+    const thinSpan = Math.min(dx, dz);
+    const useProbe = thinSpan < 0.12 ? thinProbe : probe;
+
+    const inPlus = pointInFootprint(cx + useProbe * nx, cz + useProbe * nz, cells);
+    const inMinus = pointInFootprint(cx - useProbe * nx, cz - useProbe * nz, cells);
     if (!inPlus || inMinus) continue;
 
     const x1 = pos.getX(i + 1);
