@@ -40,7 +40,7 @@ function addMergedWalls(group, room, materials, h, roomWx, roomWz) {
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     const wall = new THREE.Mesh(geometry, materials.wall);
-    wall.frustumCulled = false;
+    wall.frustumCulled = true;
     group.add(wall);
   }
 }
@@ -50,7 +50,7 @@ function addFloor(group, materials, worldX, worldZ) {
   bakeSurfaceUV(floorGeo, FLOOR_TILE_M, worldX, worldZ);
   const floor = new THREE.Mesh(floorGeo, materials.floor);
   floor.rotation.x = -Math.PI / 2;
-  floor.frustumCulled = false;
+  floor.frustumCulled = true;
   group.add(floor);
 }
 
@@ -70,8 +70,8 @@ function addCeiling(group, h, materials, worldX, worldZ) {
 
   const backingMesh = new THREE.InstancedMesh(_cellBackingGeo, materials.ceilingGroove, count);
   const tileMesh = new THREE.InstancedMesh(_tileFaceGeo, materials.ceilingTile, count);
-  backingMesh.frustumCulled = false;
-  tileMesh.frustumCulled = false;
+  backingMesh.frustumCulled = true;
+  tileMesh.frustumCulled = true;
   tileMesh.renderOrder = 2;
 
   for (let i = 0; i < count; i++) {
@@ -97,7 +97,6 @@ function addCeiling(group, h, materials, worldX, worldZ) {
 
 function finalizeChunkBounds(group) {
   group.traverse((obj) => {
-    obj.frustumCulled = false;
     if (obj.isInstancedMesh) return;
     if (!obj.isMesh) return;
     const geo = obj.geometry;
@@ -108,7 +107,7 @@ function finalizeChunkBounds(group) {
   });
 }
 
-export function createRoomBuildState(room, materials, furnitureModels = null) {
+export function createRoomBuildState(room, materials, furnitureModels = null, options = {}) {
   const group = new THREE.Group();
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   return {
@@ -116,6 +115,7 @@ export function createRoomBuildState(room, materials, furnitureModels = null) {
     group,
     materials,
     furnitureModels,
+    skipFurniture: options.skipFurniture === true,
     shellDone: false,
     buildStage: 0,
     worldX: room.cx * CHUNK,
@@ -150,7 +150,9 @@ export function buildPanelBatch(state) {
       state.buildStage = 3;
       return false;
     default:
-      if (state.furnitureModels) addChunkFurniture(group, room, state.furnitureModels);
+      if (state.furnitureModels && !state.skipFurniture) {
+        addChunkFurniture(group, room, state.furnitureModels);
+      }
       state.shellDone = true;
       return true;
   }

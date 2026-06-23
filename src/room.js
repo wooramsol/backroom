@@ -1,5 +1,6 @@
 import { createRng } from "./rng.js";
-import { buildZoneMap } from "./zones/index.js";
+import { getMacroZoneAt } from "./zones/index.js";
+import { ZoneMapGenerator } from "./zones/ZoneMapGenerator.js";
 import { hasSpawnClearance } from "./spawnPosition.js";
 import {
   CHUNK,
@@ -198,12 +199,29 @@ function mapPassesValidation(shape, doors, cx, cz) {
   return true;
 }
 
-/** Single zone-map attempt — safe to call once per animation frame while streaming. */
-export function tryPickValidShape(cx, cz, attempt) {
+/**
+ * One procedural pass — single buildOnce (+ 1ms fallback if invalid).
+ * Avoids ZoneMapGenerator.generate()'s multi-second retry loop on the main thread.
+ */
+export function buildZoneMapOnce(cx, cz, attempt) {
   const doors = chunkDoors(cx, cz);
   const rng = createRng(cx, cz, attempt + 7);
-  const shape = buildZoneMap(cx, cz, doors, rng);
-  return mapPassesValidation(shape, doors, cx, cz) ? shape : null;
+  const macroZone = getMacroZoneAt(cx, cz);
+  const gen = new ZoneMapGenerator(rng, macroZone.type, macroZone);
+  const result = gen.buildOnce(doors);
+  if (result.validation?.ok) return result;
+  return gen.generateFallback(doors);
+}
+
+export function isShapePlayable(shape, cx, cz) {
+  const doors = chunkDoors(cx, cz);
+  return mapPassesValidation(shape, doors, cx, cz);
+}
+
+/** Single zone-map attempt — safe to call once per animation frame while streaming. */
+export function tryPickValidShape(cx, cz, attempt) {
+  const shape = buildZoneMapOnce(cx, cz, attempt);
+  return isShapePlayable(shape, cx, cz) ? shape : null;
 }
 
 export function createRoomFromShape(cx, cz, shape) {
@@ -231,12 +249,11 @@ export function createRoomFromShape(cx, cz, shape) {
 }
 
 function pickValidShape(cx, cz) {
-  const doors = chunkDoors(cx, cz);
   for (let attempt = 0; attempt < SHAPE_ATTEMPTS_MAX; attempt++) {
     const shape = tryPickValidShape(cx, cz, attempt);
     if (shape) return shape;
   }
-  return buildZoneMap(cx, cz, doors, createRng(cx, cz, 999));
+  return buildZoneMapOnce(cx, cz, 999);
 }
 
 const _roomCache = new Map();

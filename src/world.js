@@ -1,7 +1,8 @@
 import {
   CHUNK,
   generateRoom,
-  tryPickValidShape,
+  buildZoneMapOnce,
+  isShapePlayable,
   createRoomFromShape,
   appendRoomWalls,
   removeRoomWalls,
@@ -14,7 +15,6 @@ import {
   PREFETCH_RADIUS,
   DESPAWN_RADIUS,
   EDGE_PREFETCH,
-  SHAPE_ATTEMPTS_MAX,
 } from "./constants.js";
 import {
   createRoomBuildState,
@@ -183,7 +183,9 @@ export class World {
 
   consumeColliderRebuild() {
     if (!this.collidersDirty) return false;
-    this.rebuildColliderList();
+    this.collidersDirty = false;
+    this._nearColliderKey = "";
+    this._nearColliderCache = [];
     return true;
   }
 
@@ -319,7 +321,7 @@ export class World {
     if (this.countLandingChunks(cx, cz) < total || this.loadQueue.length > 0) return false;
 
     this.init(playerPos);
-    this.rebuildColliderList();
+    this._markCollidersDirty();
     this.preloading = false;
     this.landingReady = true;
     return true;
@@ -336,18 +338,17 @@ export class World {
     if (!job.room) {
       if (job.shapeAttempt == null) job.shapeAttempt = 0;
 
-      const shape = tryPickValidShape(job.cx, job.cz, job.shapeAttempt);
+      const shape = buildZoneMapOnce(job.cx, job.cz, job.shapeAttempt);
       job.shapeAttempt += 1;
 
-      if (shape) {
-        job.room = createRoomFromShape(job.cx, job.cz, shape);
-      } else if (job.shapeAttempt >= SHAPE_ATTEMPTS_MAX) {
-        job.room = generateRoom(job.cx, job.cz);
-      } else {
+      if (this.preloading && !isShapePlayable(shape, job.cx, job.cz) && job.shapeAttempt < 2) {
         return;
       }
 
-      job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
+      job.room = createRoomFromShape(job.cx, job.cz, shape);
+      job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels, {
+        skipFurniture: !this.preloading,
+      });
       if (!this.chunks.has(k)) {
         appendRoomWalls(this.wallMap, job.room);
         this._markCollidersDirty();

@@ -86,8 +86,8 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 8;
 export const FOG_FAR = 34;
 export const FOG_COLOR = 0x3a3830;
-/** Loaded cells around player — ring must cover FOG_FAR */
-export const GRID_RADIUS = 2;
+/** Loaded cells around player — 3×3 matches landing (early smooth builds) */
+export const GRID_RADIUS = 1;
 /** Chunks built before “Click to start” — 3×3 core (smooth like early builds) */
 export const LANDING_RADIUS = 1;
 /** @deprecated use LANDING_RADIUS */
@@ -97,9 +97,9 @@ export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Preload must cover edge-prefetch outer strip (PREFETCH_RADIUS + 1) */
 export const PRELOAD_RADIUS = PREFETCH_RADIUS + 1;
 /** Keep chunks this far before despawning — extra buffer avoids black holes while streaming */
-export const DESPAWN_RADIUS = PREFETCH_RADIUS + 2;
+export const DESPAWN_RADIUS = PREFETCH_RADIUS + 1;
 /** Start loading the next ring when this far into the current cell (0–1) */
-export const EDGE_PREFETCH = 0.55;
+export const EDGE_PREFETCH = 0.88;
 export const AMBIENT_COLOR = 0xfffaf6;
 export const AMBIENT_INTENSITY = 0.55;
 /** Hemisphere — even white fill */
