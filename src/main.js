@@ -26,6 +26,7 @@ import {
   CAMERA_NEAR,
   CAMERA_FAR,
   ENABLE_BACKGROUND_MUSIC,
+  ENABLE_FILM_POSTFX,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 import { findSpawnPosition } from "./spawnPosition.js";
@@ -93,6 +94,7 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
+  player.setColliderWorld(world);
   player.connect();
 
   function showResumePrompt() {
@@ -152,7 +154,6 @@ async function init() {
   function markPlayable() {
     if (ready) return;
     ready = true;
-    player.setColliders(world.getColliders());
     placePlayerAtStart();
     renderer.domElement.style.visibility = "visible";
     syncCrosshair();
@@ -171,7 +172,7 @@ async function init() {
       },
       onBootstrapReady: markPlayable,
       onComplete: () => {
-        player.setColliders(world.getColliders());
+        player.resolvePenetration();
       },
     })
     .catch((err) => {
@@ -213,7 +214,6 @@ async function init() {
         world.processLoadQueue(player.position);
       }
       if (world.consumeColliderRebuild()) {
-        player.setColliders(world.getColliders());
         player.resolvePenetration();
       }
     }
@@ -227,10 +227,10 @@ async function init() {
     }
 
     if (ready) {
-      if (started && world.isStreaming()) {
-        renderer.render(scene, camera);
-      } else {
+      if (started && ENABLE_FILM_POSTFX && !world.isStreaming()) {
         pipeline.render(lightT);
+      } else {
+        renderer.render(scene, camera);
       }
     } else {
       renderer.render(scene, camera);

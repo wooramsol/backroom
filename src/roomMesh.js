@@ -160,7 +160,7 @@ export function finalizeRoomBuild(state) {
   const { group, room } = state;
   group.userData.room = room;
   finalizeChunkBounds(group);
-  group.frustumCulled = false;
+  group.frustumCulled = true;
   return group;
 }
 

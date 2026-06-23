@@ -372,6 +372,16 @@ function roomWallKeys(room) {
   return keys;
 }
 
+/** Wall + ceiling boxes owned by one room in the shared wall map */
+export function roomColliderBoxes(map, room) {
+  const list = [];
+  for (const key of roomWallKeys(room)) {
+    const boxes = map.get(key);
+    if (boxes?.length) list.push(...boxes);
+  }
+  return list;
+}
+
 /** Drop wall boxes this room registered — map only; rebuild colliders separately */
 export function removeRoomWalls(map, room) {
   let changed = false;
