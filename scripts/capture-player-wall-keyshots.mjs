@@ -12,7 +12,7 @@ const shots = [
   { name: "player-qa-inner-L-cx10-cz10.png", cx: 10, cz: 10, camX: 7.31, camY: 1.62, camZ: 3.14, lookX: 6, lookY: 1.42, lookZ: 2 },
   { name: "player-qa-inner-L-cx10-cz10-b.png", cx: 10, cz: 10, camX: 6.86, camY: 1.62, camZ: 3.31, lookX: 8, lookY: 1.42, lookZ: 2 },
   { name: "player-qa-chunk-corner-cx0-cz0.png", cx: 0, cz: 0, camX: 0.69, camY: 1.62, camZ: 0.94, lookX: 0, lookY: 1.42, lookZ: 0 },
-  { name: "player-qa-endcap-cx0-cz0.png", cx: 0, cz: 0, camX: 0.85, camY: 1.62, camZ: 7.87, lookX: 0, lookY: 1.42, lookZ: 7.79 },
+  { name: "player-qa-endcap-cx0-cz0.png", cx: 0, cz: 0, camX: 5.26, camY: 1.62, camZ: 0.8, lookX: 6.26, lookY: 1.35, lookZ: 0 },
   { name: "player-qa-inner-L-cx50-cz50.png", cx: 50, cz: 50, camX: 7.31, camY: 1.62, camZ: 3.14, lookX: 7, lookY: 1.42, lookZ: 2 },
 ];
 

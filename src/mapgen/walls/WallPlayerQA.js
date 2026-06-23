@@ -132,6 +132,182 @@ export function collectCornerViews(room) {
   return views;
 }
 
+function pointInSolid(x, z, cells) {
+  return cells.some(
+    (c) => x > c.x0 + 0.001 && x < c.x1 - 0.001 && z > c.z0 + 0.001 && z < c.z1 - 0.001,
+  );
+}
+
+/** End-cap faces — thin (≈WALL_T) vertical quads closing a wall run. */
+export function findEndCapFaces(geo) {
+  if (!geo) return [];
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  const faces = [];
+  const seen = new Set();
+
+  for (let i = 0; i < pos.count; i += 3) {
+    const xs = [pos.getX(i), pos.getX(i + 1), pos.getX(i + 2)];
+    const ys = [pos.getY(i), pos.getY(i + 1), pos.getY(i + 2)];
+    const zs = [pos.getZ(i), pos.getZ(i + 1), pos.getZ(i + 2)];
+    const dx = Math.max(...xs) - Math.min(...xs);
+    const dz = Math.max(...zs) - Math.min(...zs);
+    const dy = Math.max(...ys) - Math.min(...ys);
+    if (dy < ROOM_H - 0.2) continue;
+    const horiz = Math.max(dx, dz);
+    const thin = Math.min(dx, dz);
+    if (thin > WALL_T + 0.05 || horiz < WALL_T - 0.02 || horiz > WALL_T + 0.06) continue;
+
+    const cx = (xs[0] + xs[1] + xs[2]) / 3;
+    const cz = (zs[0] + zs[1] + zs[2]) / 3;
+    const nx = norm.getX(i);
+    const nz = norm.getZ(i);
+    const key = `${cx.toFixed(3)},${cz.toFixed(3)},${nx.toFixed(2)},${nz.toFixed(2)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    faces.push({ cx, cz, nx, nz, width: horiz });
+  }
+
+  return faces;
+}
+
+/** Signed lateral offset from a head-on view axis (unit normal in XZ). */
+export function endCapViewLateral(camX, camZ, lookX, lookZ, nx, nz) {
+  const dx = camX - lookX;
+  const dz = camZ - lookZ;
+  return Math.abs(dx * nz - dz * nx);
+}
+
+/** Along-axis distance from look point toward the camera (positive when on -normal side). */
+export function endCapViewAlong(camX, camZ, lookX, lookZ, nx, nz) {
+  const dx = camX - lookX;
+  const dz = camZ - lookZ;
+  return -(dx * nx + dz * nz);
+}
+
+/**
+ * Player camera ~distance metres from end-cap face, centred on cap.
+ * Camera must be in walkable space, outside wall solid.
+ */
+export function cameraPoseForEndCap(room, cap, cells, distance = 1.0) {
+  const { cx, cz, nx, nz } = cap;
+  const lookY = ROOM_H * 0.45;
+  const lookX = cx;
+  const lookZ = cz;
+  const baseX = cx - nx * distance;
+  const baseZ = cz - nz * distance;
+  const perpX = -nz;
+  const perpZ = nx;
+
+  const tryPose = (camX, camZ, lookAtZ = lookZ, lookAtX = lookX) => {
+    if (!walkableProbe(room, camX, camZ)) return null;
+    if (pointInSolid(camX, camZ, cells)) return null;
+    const along = endCapViewAlong(camX, camZ, lookAtX, lookAtZ, nx, nz);
+    if (along < distance * 0.75 || along > distance * 1.35) return null;
+    const lateral = endCapViewLateral(camX, camZ, lookAtX, lookAtZ, nx, nz);
+    return {
+      camX,
+      camY: EYE_H,
+      camZ,
+      lookX: lookAtX,
+      lookY,
+      lookZ: lookAtZ,
+      distance: along,
+      lateral,
+      cap,
+      shape: "end",
+    };
+  };
+
+  let best = null;
+  let bestScore = -Infinity;
+  const consider = (pose) => {
+    if (!pose) return;
+    const lat = pose.lateral;
+    if (lat < 0.4) return;
+    const score = -Math.abs(lat - 0.75);
+    if (score > bestScore) {
+      bestScore = score;
+      best = pose;
+    }
+  };
+
+  consider(tryPose(baseX, baseZ));
+
+  for (const off of [0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.2, 1.5, 2.0]) {
+    for (const sign of [1, -1]) {
+      consider(tryPose(baseX + perpX * off * sign, baseZ + perpZ * off * sign));
+    }
+  }
+
+  return best;
+}
+
+/** Best end-cap shot for a room (prefers interior caps over chunk shell). */
+export function findBestEndCapView(room, distance = 1.0) {
+  const segs = collectRoomWallSegments(room);
+  const cells = segmentsToFootprint(segs);
+  const geo = buildSolidWallGeometry(segs, ROOM_H, 0, 0, 0.76, 0.76, {
+    room,
+    validate: false,
+  });
+  if (!geo) return null;
+
+  const faces = findEndCapFaces(geo);
+  const ranked = faces
+    .map((cap) => ({ cap, pose: cameraPoseForEndCap(room, cap, cells, distance) }))
+    .filter((e) => e.pose)
+    .sort((a, b) => scoreEndCapShot(b) - scoreEndCapShot(a));
+
+  geo.dispose();
+  return ranked[0]?.pose ?? null;
+}
+
+function scoreEndCapShot({ cap, pose }) {
+  const lateral = pose.lateral ?? endCapViewLateral(
+    pose.camX, pose.camZ, pose.lookX, pose.lookZ, cap.nx, cap.nz,
+  );
+  const interior =
+    (cap.cx > 1.5 && cap.cx < CHUNK - 1.5 ? 2 : 0) +
+    (cap.cz > 1.5 && cap.cz < CHUNK - 1.5 ? 2 : 0);
+  const onShell =
+    cap.cx < 0.25 || cap.cx > CHUNK - 0.25 || cap.cz < 0.25 || cap.cz > CHUNK - 0.25;
+  const outOfChunk = cap.cx < 0 || cap.cx > CHUNK || cap.cz < 0 || cap.cz > CHUNK;
+  return (
+    interior * 10 -
+    lateral * 8 +
+    pose.distance * 2 -
+    (onShell ? 20 : 0) -
+    (outOfChunk ? 60 : 0)
+  );
+}
+
+/** Head-on end-cap camera ~distance from face; prefers interior caps, minimal lateral offset. */
+export function findHeadOnEndCapView(room, distance = 1.0) {
+  const segs = collectRoomWallSegments(room);
+  const cells = segmentsToFootprint(segs);
+  const geo = buildSolidWallGeometry(segs, ROOM_H, 0, 0, 0.76, 0.76, {
+    room,
+    validate: false,
+  });
+  if (!geo) return null;
+
+  let best = null;
+  let bestScore = -Infinity;
+  for (const cap of findEndCapFaces(geo)) {
+    const pose = cameraPoseForEndCap(room, cap, cells, distance);
+    if (!pose || pose.lateral < 0.4 || pose.lateral > 1.25) continue;
+    const score = scoreEndCapShot({ cap, pose });
+    if (score > bestScore) {
+      bestScore = score;
+      best = pose;
+    }
+  }
+
+  geo.dispose();
+  return best;
+}
+
 function cellAt(cells, x, z) {
   return cells.some(
     (c) => x >= c.x0 - EPS && x <= c.x1 + EPS && z >= c.z0 - EPS && z <= c.z1 + EPS,
