@@ -10,12 +10,15 @@ import { collectRoomWallSegments } from "../mapgen/walls/wallSegments.js";
 import { segmentsToFootprint, footprintExtrudeOutlines, outlineGenerationMode } from "../mapgen/walls/WallFootprint.js";
 import { validateWallMesh } from "../mapgen/walls/WallQuality.js";
 import {
-  WALLPAPER_URL,
-  applyWallpaperTileSize,
   createBakedWallMaterial,
   FLOOR_TILE_M,
   bakeSurfaceUV,
 } from "../textures.js";
+import {
+  configureGameLikeRenderer,
+  configureGameLikeScene,
+  loadGameWallpaper,
+} from "./gameLikeScene.js";
 
 const params = new URLSearchParams(location.search);
 const cx = Number(params.get("cx") ?? 0);
@@ -25,28 +28,19 @@ const view = params.get("view") ?? "corner";
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(1280, 720);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
+configureGameLikeRenderer(renderer);
 document.body.appendChild(renderer.domElement);
 renderer.domElement.id = "wall-preview-ready";
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x3a3428);
-scene.fog = new THREE.Fog(0x3a3428, 18, 42);
+configureGameLikeScene(scene);
 
 const camera = new THREE.PerspectiveCamera(58, 1280 / 720, 0.05, 80);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.target.set(CHUNK * 0.45, ROOM_H * 0.42, CHUNK * 0.52);
 
-const hemi = new THREE.HemisphereLight(0xfff0d0, 0x4a4030, 0.55);
-scene.add(hemi);
-const key = new THREE.DirectionalLight(0xfff4dc, 0.85);
-key.position.set(6, 10, 4);
-scene.add(key);
-
-const loader = new THREE.TextureLoader();
-const wallpaper = await loader.loadAsync(WALLPAPER_URL);
-applyWallpaperTileSize(wallpaper);
+const wallpaper = await loadGameWallpaper();
 const wallMat = createBakedWallMaterial(wallpaper);
 
 const room = generateRoom(cx, cz);

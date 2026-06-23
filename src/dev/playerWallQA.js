@@ -6,14 +6,13 @@ import * as THREE from "three";
 import { CAMERA_FOV, CAMERA_NEAR, CAMERA_FAR, CHUNK, EYE_H } from "../constants.js";
 import { generateRoom } from "../room.js";
 import { buildRoomMesh } from "../roomMesh.js";
-import { createGameMaterials } from "../gameMaterials.js";
 import { inspectRoomPlayerWalls } from "../mapgen/walls/WallPlayerQA.js";
+import { createGameMaterials } from "../gameMaterials.js";
 import {
-  WALLPAPER_URL,
-  BOTTOM_URL,
-  CARPET_URL,
-  applyWallpaperTileSize,
-} from "../textures.js";
+  configureGameLikeRenderer,
+  configureGameLikeScene,
+  loadGameTextures,
+} from "./gameLikeScene.js";
 
 const params = new URLSearchParams(location.search);
 const cx = Number(params.get("cx") ?? 0);
@@ -22,29 +21,16 @@ const cz = Number(params.get("cz") ?? 0);
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(1280, 720);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
+configureGameLikeRenderer(renderer);
 document.body.appendChild(renderer.domElement);
 renderer.domElement.id = "player-wall-qa-ready";
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x3a3428);
-scene.fog = new THREE.Fog(0x3a3428, 18, 42);
+configureGameLikeScene(scene);
 
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1280 / 720, CAMERA_NEAR, CAMERA_FAR);
 
-const hemi = new THREE.HemisphereLight(0xfff0d0, 0x4a4030, 0.55);
-scene.add(hemi);
-const key = new THREE.DirectionalLight(0xfff4dc, 0.85);
-key.position.set(6, 10, 4);
-scene.add(key);
-
-const loader = new THREE.TextureLoader();
-const [wallpaper, surfaceTex, floorTex] = await Promise.all([
-  loader.loadAsync(WALLPAPER_URL),
-  loader.loadAsync(BOTTOM_URL),
-  loader.loadAsync(CARPET_URL),
-]);
-applyWallpaperTileSize(wallpaper);
+const { wallpaper, surfaceTex, floorTex } = await loadGameTextures();
 const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
 
 const room = generateRoom(cx, cz);
