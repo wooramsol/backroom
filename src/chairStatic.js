@@ -122,7 +122,8 @@ function isChairGlbRoot(obj) {
 }
 
 export function tickChairGlitchVisuals(scene, time) {
-  if ((Math.floor(time * 60) & 1) === 0) refreshStaticTexture();
+  const frame = Math.floor(time * 60);
+  if ((frame & 7) === 0) refreshStaticTexture();
 
   const spike = Math.random() < 0.11 ? 2.2 : 1;
   const amp = spike * (1.0 + Math.sin(time * 61.0) * 0.3 + Math.random() * 0.55);
@@ -137,7 +138,9 @@ export function tickChairGlitchVisuals(scene, time) {
         u.uGlitchTime.value = time;
         u.uGlitchAmp.value = amp;
       }
-      mat.emissiveIntensity = 0.5 + Math.random() * 0.95;
+      if ((frame & 3) === 0) {
+        mat.emissiveIntensity = 0.5 + Math.random() * 0.95;
+      }
     }
   });
 }

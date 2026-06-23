@@ -7,6 +7,7 @@ import {
 } from "./room.js";
 import {
   BOOTSTRAP_RADIUS,
+  GRID_RADIUS,
   PREFETCH_RADIUS,
   DESPAWN_RADIUS,
   EDGE_PREFETCH,
@@ -21,7 +22,7 @@ import {
 import { disposeChunkRoot } from "./sceneDispose.js";
 
 const DESPAWN_PER_FRAME = 2;
-const LOAD_FRAME_BUDGET_MS = 10;
+const MAX_ENQUEUE_PER_UPDATE = 2;
 
 export class World {
   constructor(scene, materials, furnitureModels = null) {
@@ -70,7 +71,8 @@ export class World {
     return need;
   }
 
-  computeNeed(cx, cz, playerPos, radius = PREFETCH_RADIUS) {
+  computeNeed(cx, cz, playerPos, atEdge = this.nearPrefetchEdge(playerPos, cx, cz)) {
+    const radius = atEdge ? PREFETCH_RADIUS : GRID_RADIUS;
     const need = this.ringKeys(cx, cz, radius);
 
     const lx = playerPos.x - cx * CHUNK;
@@ -212,7 +214,7 @@ export class World {
     this.cellCz = cz;
     this.lastPrefetchEdge = atEdge;
 
-    const need = this.computeNeed(cx, cz, playerPos);
+    const need = this.computeNeed(cx, cz, playerPos, atEdge);
     const pending = new Set(this.despawnPending);
 
     for (const k of this.chunks.keys()) {
@@ -240,45 +242,50 @@ export class World {
       if (!need.has(k) && !this.chunks.has(k)) this.pendingKeys.delete(k);
     }
 
+    const backlog = this.loadQueue.length;
+    const enqueueCap = backlog > 6 ? 1 : backlog > 2 ? MAX_ENQUEUE_PER_UPDATE : MAX_ENQUEUE_PER_UPDATE + 1;
+    const missing = [];
     for (const k of need) {
-      if (!this.chunks.has(k)) {
-        const [x, z] = k.split(",").map(Number);
-        this.enqueue(x, z, playerPos);
-      }
+      if (this.chunks.has(k) || this.pendingKeys.has(k)) continue;
+      const [x, z] = k.split(",").map(Number);
+      missing.push({ x, z, dist: this.distToPlayer(x, z, playerPos) });
+    }
+    missing.sort((a, b) => a.dist - b.dist);
+    for (let i = 0; i < Math.min(enqueueCap, missing.length); i++) {
+      const { x, z } = missing[i];
+      this.enqueue(x, z, playerPos);
     }
   }
 
-  processLoadQueue(_playerPos, budgetMs = LOAD_FRAME_BUDGET_MS) {
+  /** Exactly one load step per frame — never blocks for a full chunk build. */
+  processLoadQueue() {
     if (!this.loadQueue.length) return;
-    const deadline = performance.now() + budgetMs;
 
-    while (this.loadQueue.length && performance.now() < deadline) {
-      const job = this.loadQueue[0];
-      const k = this.key(job.cx, job.cz);
+    const job = this.loadQueue[0];
+    const k = this.key(job.cx, job.cz);
 
-      if (!job.room) {
-        job.room = generateRoom(job.cx, job.cz);
-        job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
-        if (!this.chunks.has(k)) {
-          appendRoomWalls(this.wallMap, job.room);
-          this._markCollidersDirty();
-        }
-        break;
+    if (!job.room) {
+      job.room = generateRoom(job.cx, job.cz);
+      job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
+      if (!this.chunks.has(k)) {
+        appendRoomWalls(this.wallMap, job.room);
+        this._markCollidersDirty();
       }
-
-      if (!job.build.shellDone) {
-        buildPanelBatch(job.build);
-        break;
-      }
-
-      if (!job.build.group.parent) {
-        this.scene.add(job.build.group);
-      }
-
-      this.attachChunk(job.cx, job.cz, job.room, job.build);
-      this.loadQueue.shift();
-      this.pendingKeys.delete(k);
+      return;
     }
+
+    if (!job.build.shellDone) {
+      buildPanelBatch(job.build);
+      return;
+    }
+
+    if (!job.build.group.parent) {
+      this.scene.add(job.build.group);
+    }
+
+    this.attachChunk(job.cx, job.cz, job.room, job.build);
+    this.loadQueue.shift();
+    this.pendingKeys.delete(k);
   }
 
   tick(dt) {
@@ -360,5 +367,9 @@ export class World {
 
   hasPendingLoads() {
     return !this.preloading && this.loadQueue.length > 0;
+  }
+
+  isStreaming() {
+    return this.hasPendingLoads();
   }
 }

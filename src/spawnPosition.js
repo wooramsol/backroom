@@ -8,7 +8,7 @@ import {
 import { isWalkableLocal } from "./room.js";
 import { passageWidthAlong } from "./passage.js";
 
-const SAMPLE_STEP = 0.25;
+const SAMPLE_STEP = 0.5;
 
 function blocksPlayer(colliders, wx, wz, y) {
   const r = PLAYER_R;
