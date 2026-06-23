@@ -34,3 +34,17 @@ export function corridorBudgetOK(grid) {
 export function roomSpaceOK(grid) {
   return roomFloorRatio(grid) >= 0.8;
 }
+
+export function roomGenStats(rooms) {
+  const kinds = {};
+  const sizes = new Set();
+  for (const room of rooms) {
+    kinds[room.kind] = (kinds[room.kind] ?? 0) + 1;
+    if (room.sizeKey) sizes.add(room.sizeKey);
+  }
+  return {
+    roomCount: rooms.length,
+    uniqueSizes: sizes.size,
+    kinds,
+  };
+}

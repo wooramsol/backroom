@@ -103,7 +103,7 @@ export class CorridorGenerator {
     }
 
     if (!found) {
-      const extraDepth = Math.max(2, Math.ceil(MAP_GRID_SIZE / 4));
+      const extraDepth = Math.max(1, Math.ceil(MAP_GRID_SIZE / 6));
       for (let i = 1; i <= extraDepth; i++) {
         stampBlockFloor(
           grid,

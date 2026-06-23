@@ -70,11 +70,33 @@ function pickDoorRun(seams, width, rng) {
   return seams.slice(start, start + width);
 }
 
+function roomHasOpening(roomId, openPairs) {
+  for (const key of openPairs) {
+    const [a, b] = key.split(":").map(Number);
+    if (a === roomId || b === roomId) return true;
+  }
+  return false;
+}
+
+export function roomOpeningCounts(rooms, openPairs) {
+  const counts = new Map();
+  for (const room of rooms) {
+    let n = 0;
+    for (const key of openPairs) {
+      const [a, b] = key.split(":").map(Number);
+      if (a === room.id || b === room.id) n++;
+    }
+    counts.set(room.id, n);
+  }
+  return counts;
+}
+
 /** Opens doorways in shared walls — room-to-room, not long corridors */
 export class RoomConnector {
   constructor(rng) {
     this.rng = rng;
     this.openEdges = new Set();
+    this.openPairs = new Set();
     this.doorWidth = minPassageCells();
   }
 
@@ -83,8 +105,21 @@ export class RoomConnector {
   }
 
   openPair(pair) {
+    const key = `${pair.a}:${pair.b}`;
+    if (this.openPairs.has(key)) return;
     const run = pickDoorRun(pair.seams, this.doorWidth, this.rng);
     for (const seam of run) this.openSeam(seam);
+    this.openPairs.add(key);
+  }
+
+  ensureRoomEntrances(adj, rooms) {
+    for (const room of rooms) {
+      if (roomHasOpening(room.id, this.openPairs)) continue;
+      const pairs = adj
+        .filter((p) => p.a === room.id || p.b === room.id)
+        .sort((a, b) => b.seams.length - a.seams.length);
+      if (pairs[0]) this.openPair(pairs[0]);
+    }
   }
 
   connect(grid, rooms) {
@@ -97,12 +132,12 @@ export class RoomConnector {
       if (mstKeys.has(key)) this.openPair(pair);
     }
 
-    for (const pair of adj) {
-      const key = `${pair.a}:${pair.b}`;
-      if (mstKeys.has(key)) continue;
-      if (this.rng.chance(0.42)) this.openPair(pair);
+    const extra = adj.filter((p) => !mstKeys.has(`${p.a}:${p.b}`));
+    for (const pair of extra) {
+      if (this.rng.chance(0.36)) this.openPair(pair);
     }
 
+    this.ensureRoomEntrances(adj, rooms);
     return this.openEdges;
   }
 

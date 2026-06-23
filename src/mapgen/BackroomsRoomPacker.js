@@ -3,16 +3,22 @@ import { CELL_FLOOR, GridMap } from "./grid.js";
 import {
   pickLoungeShape,
   pickRoomShape,
+  pickCompactRoomShape,
+  pickSeedLoungeShape,
   roomCentroid,
+  roomSizeKey,
   shapePassageOK,
 } from "./roomShapes.js";
 import { minPassageCells } from "./passage.js";
 
 const MARGIN = 1;
 const MIN_DIM = minPassageCells();
-const TARGET_FILL = 0.9;
+const TARGET_FILL = 0.86;
+const MAX_PACK_ATTEMPTS = 200;
+const SEED_LOUNGE_MAX = 8;
 
 function shapeFits(shape) {
+  if (!shape) return false;
   if (shape.w < MIN_DIM || shape.h < MIN_DIM) return false;
   return (
     shape.w >= ROOM_CELLS_MIN &&
@@ -96,11 +102,16 @@ function attachOrigins(grid, shape) {
   return origins;
 }
 
-/** Packs rooms edge-to-edge — offices touch, no corridor-first layout */
+/** Packs rooms edge-to-edge — room-centric, no corridor-first layout */
 export class BackroomsRoomPacker {
   constructor(rng) {
     this.rng = rng;
     this.rooms = [];
+    this.usedSizes = new Set();
+  }
+
+  rememberSize(shape) {
+    this.usedSizes.add(roomSizeKey(shape));
   }
 
   placeRoom(shape, ox, oz, id) {
@@ -112,8 +123,10 @@ export class BackroomsRoomPacker {
       cells: shape.cells.map(([x, z]) => [ox + x, oz + z]),
       localCells: shape.cells,
       centroid: roomCentroid(shape.cells.map(([x, z]) => [ox + x, oz + z])),
+      sizeKey: roomSizeKey(shape),
     };
     this.rooms.push(room);
+    this.rememberSize(shape);
     return room;
   }
 
@@ -121,11 +134,17 @@ export class BackroomsRoomPacker {
     if (!shapeFits(shape)) return null;
 
     if (!requireTouch) {
-      const ox = Math.floor((MAP_GRID_SIZE - shape.w) / 2);
-      const oz = Math.floor((MAP_GRID_SIZE - shape.h) / 2);
+      const ox = MARGIN;
+      const oz = MARGIN;
       if (canPlace(grid, ox, oz, shape.cells, false)) {
         grid.stampCells(shape.cells, ox, oz, CELL_FLOOR, id);
         return this.placeRoom(shape, ox, oz, id);
+      }
+      const cx = Math.floor((MAP_GRID_SIZE - shape.w) / 2);
+      const cz = Math.floor((MAP_GRID_SIZE - shape.h) / 2);
+      if (canPlace(grid, cx, cz, shape.cells, false)) {
+        grid.stampCells(shape.cells, cx, cz, CELL_FLOOR, id);
+        return this.placeRoom(shape, cx, cz, id);
       }
       return null;
     }
@@ -137,36 +156,51 @@ export class BackroomsRoomPacker {
     return this.placeRoom(shape, ox, oz, id);
   }
 
-  pickNextShape() {
-    if (this.rooms.length === 0) return pickLoungeShape(this.rng);
-    return this.rng.chance(0.22) ? pickLoungeShape(this.rng) : pickRoomShape(this.rng);
+  pickNextShape(fillRatio = 0) {
+    if (this.rooms.length === 0) {
+      return pickSeedLoungeShape(this.rng, this.usedSizes);
+    }
+    if (fillRatio >= 0.55) {
+      return pickCompactRoomShape(this.rng, this.usedSizes) ?? pickRoomShape(this.rng, this.usedSizes);
+    }
+    if (this.rng.chance(0.1)) {
+      return pickLoungeShape(this.rng, this.usedSizes);
+    }
+    return pickRoomShape(this.rng, this.usedSizes);
   }
 
   generate(grid) {
     this.rooms = [];
+    this.usedSizes = new Set();
     let id = 0;
 
-    const seed = this.tryPlace(grid, pickLoungeShape(this.rng), id++, false);
+    const seed = this.tryPlace(grid, pickSeedLoungeShape(this.rng, this.usedSizes), id++, false);
     if (!seed) {
-      this.tryPlace(grid, pickRoomShape(this.rng), id++, false);
+      this.tryPlace(grid, pickCompactRoomShape(this.rng, this.usedSizes), id++, false);
     }
 
     let fails = 0;
-    while (fillRatio(grid) < TARGET_FILL && fails < 120) {
-      const shape = this.pickNextShape();
-      const room = this.tryPlace(grid, shape, id, true);
-      if (room) {
-        id++;
-        fails = 0;
-      } else {
-        fails++;
+    while (fillRatio(grid) < TARGET_FILL && fails < MAX_PACK_ATTEMPTS) {
+      const ratio = fillRatio(grid);
+      let placed = false;
+      for (let t = 0; t < 10; t++) {
+        const shape = this.pickNextShape(ratio);
+        if (!shape) continue;
+        const room = this.tryPlace(grid, shape, id, true);
+        if (room) {
+          id++;
+          fails = 0;
+          placed = true;
+          break;
+        }
       }
+      if (!placed) fails++;
     }
 
     if (!this.rooms.length) {
-      const shape = pickLoungeShape(this.rng);
-      const ox = Math.floor((MAP_GRID_SIZE - shape.w) / 2);
-      const oz = Math.floor((MAP_GRID_SIZE - shape.h) / 2);
+      const shape = pickSeedLoungeShape(this.rng, new Set());
+      const ox = MARGIN;
+      const oz = MARGIN;
       grid.stampCells(shape.cells, ox, oz, CELL_FLOOR, 0);
       this.placeRoom(shape, ox, oz, 0);
     }

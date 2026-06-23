@@ -1,11 +1,11 @@
 import { MAP_CELL_M, MAP_GRID_SIZE } from "../constants.js";
 import { CELL_FLOOR, GridMap } from "./grid.js";
 import { BackroomsRoomPacker } from "./BackroomsRoomPacker.js";
-import { RoomConnector } from "./RoomConnector.js";
+import { RoomConnector, roomOpeningCounts } from "./RoomConnector.js";
 import { CorridorGenerator } from "./CorridorGenerator.js";
 import { ConnectivityValidator } from "./ConnectivityValidator.js";
 import { mergeFloorIslands } from "./floorConnect.js";
-import { corridorBudgetOK, roomSpaceOK } from "./backroomsMetrics.js";
+import { corridorBudgetOK, roomGenStats, roomSpaceOK } from "./backroomsMetrics.js";
 import { innerWallsFromGrid, wallsFromGrid } from "./wallOutline.js";
 import { shapeFallback } from "./roomShapes.js";
 
@@ -77,6 +77,8 @@ export class MapGenerator {
       metrics: {
         roomSpace: roomSpaceOK(grid),
         corridorBudget: corridorBudgetOK(grid),
+        ...roomGenStats(rooms),
+        openings: roomOpeningCounts(rooms, connector.openPairs),
       },
     };
   }
@@ -127,12 +129,30 @@ export class MapGenerator {
   }
 
   generate(doors) {
-    for (let attempt = 0; attempt < 12; attempt++) {
+    let best = null;
+    for (let attempt = 0; attempt < 16; attempt++) {
       const result = this.buildOnce(doors);
-      if (result.validation.ok && result.metrics.roomSpace && result.metrics.corridorBudget) {
+      const rooms = result.rooms ?? [];
+      const unique = new Set(rooms.map((r) => r.sizeKey)).size;
+      const dupes = unique < rooms.length;
+      const score =
+        (result.validation.ok ? 100 : 0) +
+        (result.metrics.roomSpace ? 10 : 0) +
+        (result.metrics.corridorBudget ? 10 : 0) +
+        rooms.length * 5 +
+        (dupes ? 0 : 8);
+      if (!best || score > best.score) best = { result, score };
+      if (
+        result.validation.ok &&
+        result.metrics.roomSpace &&
+        result.metrics.corridorBudget &&
+        rooms.length >= 2 &&
+        !dupes
+      ) {
         return result;
       }
     }
+    if (best?.result.validation?.ok) return best.result;
     return this.generateFallback(doors);
   }
 }
