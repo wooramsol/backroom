@@ -1,5 +1,6 @@
 import { createRng } from "./rng.js";
 import { buildZoneMap } from "./zones/index.js";
+import { hasSpawnClearance } from "./spawnPosition.js";
 import {
   CHUNK,
   WALL_T,
@@ -185,13 +186,15 @@ function allWalkableConnected(innerWalls) {
   return reached.size >= walkable;
 }
 
-function mapPassesValidation(shape, doors) {
-  return (
+function mapPassesValidation(shape, doors, cx, cz) {
+  const base =
     shape.validation?.ok &&
     doorsWideEnough(shape.innerWalls, doors) &&
     allExitsConnected(shape.innerWalls, doors) &&
-    allWalkableConnected(shape.innerWalls)
-  );
+    allWalkableConnected(shape.innerWalls);
+  if (!base) return false;
+  if (cx === 0 && cz === 0 && !hasSpawnClearance(shape.innerWalls)) return false;
+  return true;
 }
 
 function pickValidShape(cx, cz) {
@@ -199,7 +202,7 @@ function pickValidShape(cx, cz) {
   for (let attempt = 0; attempt < 48; attempt++) {
     const rng = createRng(cx, cz, attempt + 7);
     const shape = buildZoneMap(cx, cz, doors, rng);
-    if (mapPassesValidation(shape, doors)) return shape;
+    if (mapPassesValidation(shape, doors, cx, cz)) return shape;
   }
   return buildZoneMap(cx, cz, doors, createRng(cx, cz, 999));
 }

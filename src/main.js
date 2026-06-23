@@ -30,6 +30,7 @@ import {
   PRELOAD_RADIUS,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
+import { findSpawnPosition } from "./spawnPosition.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -139,10 +140,22 @@ async function init() {
   let started = false;
   let ready = false;
 
+  function placePlayerAtStart() {
+    const entry = world.chunks.get("0,0");
+    if (!entry?.room) return;
+    const furn = entry.mesh?.userData?.furnitureColliders ?? [];
+    const spawn = findSpawnPosition(entry.room, furn);
+    if (!spawn) return;
+    player.setPosition(spawn.x, EYE_H, spawn.z);
+    camera.position.set(spawn.x, EYE_H, spawn.z);
+    player.resolvePenetration();
+  }
+
   function markPlayable() {
     if (ready) return;
     ready = true;
     player.setColliders(world.getColliders());
+    placePlayerAtStart();
     renderer.domElement.style.visibility = "visible";
     syncCrosshair();
     overlay.style.cursor = "pointer";
