@@ -26,8 +26,11 @@ import {
   CAMERA_NEAR,
   CAMERA_FAR,
   ENABLE_BACKGROUND_MUSIC,
+  BOOTSTRAP_RADIUS,
+  PRELOAD_RADIUS,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
+import { findSpawnPosition } from "./spawnPosition.js";
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -79,14 +82,16 @@ async function init() {
   overlay.style.cursor = "wait";
 
   const loader = new THREE.TextureLoader();
-  const wallpaper = await loadWallpaperOrFallback(loader);
-  const surfaceTex = await loadSurfaceOrFallback(loader);
+  const [wallpaper, surfaceTex, furnitureModels] = await Promise.all([
+    loadWallpaperOrFallback(loader),
+    loadSurfaceOrFallback(loader),
+    loadFurnitureModels(),
+  ]);
   const floorTex = surfaceTex.clone();
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
   floorTex.userData = { ...surfaceTex.userData };
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
-  const furnitureModels = await loadFurnitureModels();
-  if (ENABLE_BACKGROUND_MUSIC) await audio.preload();
+  if (ENABLE_BACKGROUND_MUSIC) void audio.preload();
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
@@ -135,26 +140,50 @@ async function init() {
   let started = false;
   let ready = false;
 
+  function placePlayerAtStart() {
+    const entry = world.chunks.get("0,0");
+    if (!entry?.room) return;
+    const furn = entry.mesh?.userData?.furnitureColliders ?? [];
+    const spawn = findSpawnPosition(entry.room, furn);
+    if (!spawn) return;
+    player.setPosition(spawn.x, EYE_H, spawn.z);
+    camera.position.set(spawn.x, EYE_H, spawn.z);
+    player.resolvePenetration();
+  }
+
+  function markPlayable() {
+    if (ready) return;
+    ready = true;
+    player.setColliders(world.getColliders());
+    placePlayerAtStart();
+    renderer.domElement.style.visibility = "visible";
+    syncCrosshair();
+    overlay.style.cursor = "pointer";
+    if (hintStatus) {
+      hintStatus.innerHTML = `Click to start<br /><span style="opacity:0.55;font-size:0.85em">Nearby rooms are ready — more load in the background</span>`;
+    }
+  }
+
   world
-    .preloadAround(camera, (done, total) => {
-      if (hintStatus && !ready) {
-        hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br />Please wait`;
-      }
-    })
-    .then(() => {
-      player.setColliders(world.getColliders());
-      ready = true;
-      renderer.domElement.style.visibility = "visible";
-      syncCrosshair();
-      overlay.style.cursor = "pointer";
-      if (hintStatus) hintStatus.textContent = clickHint;
+    .preloadAround(camera, {
+      onProgress: (done, total) => {
+        if (hintStatus && !ready) {
+          const phase =
+            done <= (BOOTSTRAP_RADIUS * 2 + 1) ** 2
+              ? "Starting area"
+              : "Background";
+          hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br /><span style="opacity:0.55;font-size:0.85em">${phase}</span>`;
+        }
+      },
+      onBootstrapReady: markPlayable,
+      onComplete: () => {
+        player.setColliders(world.getColliders());
+      },
     })
     .catch((err) => {
       console.error(err);
-      ready = true;
-      renderer.domElement.style.visibility = "visible";
-      overlay.style.cursor = "pointer";
-      if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
+      markPlayable();
+      if (hintStatus) hintStatus.textContent = "Load error — click to retry view.";
     });
 
   overlay.addEventListener("click", () => {
@@ -185,7 +214,7 @@ async function init() {
 
     if (!world.preloading) {
       world.update(player.position);
-      if (started && world.hasPendingLoads()) {
+      if (world.hasPendingLoads()) {
         world.processLoadQueue(player.position);
       }
       if (world.consumeColliderRebuild()) {
@@ -202,10 +231,6 @@ async function init() {
       pipeline.render(lightT);
     } else {
       renderer.render(scene, camera);
-    }
-
-    if (!world.preloading && started) {
-      world.processLoadQueue(player.position);
     }
   }
 

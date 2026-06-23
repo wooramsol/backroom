@@ -128,6 +128,11 @@ export class Player {
     this.colliders = colliders;
   }
 
+  setPosition(x, y, z) {
+    this.position.set(x, y, z);
+    this._applyLook();
+  }
+
   _unstuck() {
     this.crouchBlend = 0;
     this.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
