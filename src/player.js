@@ -38,6 +38,9 @@ export class Player {
     this.keys = {};
     this.locked = false;
     this.colliders = [];
+    this.nearbyColliders = [];
+    this.colliderQueryX = NaN;
+    this.colliderQueryZ = NaN;
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
@@ -126,11 +129,39 @@ export class Player {
 
   setColliders(colliders) {
     this.colliders = colliders;
+    this.colliderQueryX = NaN;
+    this.colliderQueryZ = NaN;
   }
 
   setPosition(x, y, z) {
     this.position.set(x, y, z);
     this._applyLook();
+  }
+
+  _queryColliders() {
+    const px = this.position.x;
+    const pz = this.position.z;
+    if (
+      px === this.colliderQueryX &&
+      pz === this.colliderQueryZ &&
+      this.nearbyColliders.length
+    ) {
+      return this.nearbyColliders;
+    }
+
+    const pad = CHUNK * 1.25;
+    const list = [];
+    for (const c of this.colliders) {
+      if (px + pad < c.minX || px - pad > c.maxX || pz + pad < c.minZ || pz - pad > c.maxZ) {
+        continue;
+      }
+      list.push(c);
+    }
+
+    this.nearbyColliders = list;
+    this.colliderQueryX = px;
+    this.colliderQueryZ = pz;
+    return list;
   }
 
   _unstuck() {
@@ -168,7 +199,7 @@ export class Player {
     const nextFeet = feetY + vy * dt;
     const r = PLAYER_R;
 
-    for (const c of this.colliders) {
+    for (const c of this._queryColliders()) {
       if (!c.standable || c.standTopY === undefined) continue;
       if (!this._overlapsXZ(px, pz, c, r)) continue;
 
@@ -207,7 +238,7 @@ export class Player {
   _insideWall(px, pz) {
     const y = this._horizontalProbeY();
     const r = this._collisionRadius();
-    for (const c of this.colliders) {
+    for (const c of this._queryColliders()) {
       if (!this._blocksHorizontal(c, y)) continue;
       if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
         continue;
@@ -223,7 +254,7 @@ export class Player {
 
     for (let n = 0; n < 14; n++) {
       let hit = false;
-      for (const c of this.colliders) {
+      for (const c of this._queryColliders()) {
         if (!this._blocksHorizontal(c, y)) continue;
         if (px + r <= c.minX || px - r >= c.maxX || pz + r <= c.minZ || pz - r >= c.maxZ) {
           continue;

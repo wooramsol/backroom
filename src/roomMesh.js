@@ -117,28 +117,43 @@ export function createRoomBuildState(room, materials, furnitureModels = null) {
     materials,
     furnitureModels,
     shellDone: false,
+    buildStage: 0,
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
   };
 }
 
 export function buildRoomShell(state) {
-  if (state.shellDone) return;
+  while (!state.shellDone) {
+    if (buildPanelBatch(state)) break;
+  }
+}
+
+/** One mesh stage per call — spreads GPU work across animation frames. */
+export function buildPanelBatch(state) {
+  if (state.shellDone) return true;
+
   const { room, group, materials } = state;
   const h = room.height;
 
-  addFloor(group, materials, state.worldX, state.worldZ);
-  addCeiling(group, h, materials, state.worldX, state.worldZ);
-  addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
-  if (state.furnitureModels) addChunkFurniture(group, room, state.furnitureModels);
-  state.shellDone = true;
-}
-
-/** @deprecated kept for world load queue API */
-export function buildPanelBatch(state, _maxTiles) {
-  if (state.shellDone) return true;
-  buildRoomShell(state);
-  return true;
+  switch (state.buildStage) {
+    case 0:
+      addFloor(group, materials, state.worldX, state.worldZ);
+      state.buildStage = 1;
+      return false;
+    case 1:
+      addCeiling(group, h, materials, state.worldX, state.worldZ);
+      state.buildStage = 2;
+      return false;
+    case 2:
+      addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
+      state.buildStage = 3;
+      return false;
+    default:
+      if (state.furnitureModels) addChunkFurniture(group, room, state.furnitureModels);
+      state.shellDone = true;
+      return true;
+  }
 }
 
 export function finalizeRoomBuild(state) {

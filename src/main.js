@@ -204,12 +204,11 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-    tickChairGlitchVisuals(scene, lightT);
 
-    if (!world.preloading) {
+    if (!world.preloading && started) {
       world.update(player.position);
-      if (started && world.hasPendingLoads()) {
-        world.processLoadQueue(player.position);
+      if (world.hasPendingLoads()) {
+        world.processLoadQueue();
       }
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
@@ -217,12 +216,20 @@ async function init() {
       }
     }
 
+    if (started && !world.isStreaming()) {
+      tickChairGlitchVisuals(scene, lightT);
+    }
+
     if (started) {
       player.update(dt);
     }
 
     if (ready) {
-      pipeline.render(lightT);
+      if (started && world.isStreaming()) {
+        renderer.render(scene, camera);
+      } else {
+        pipeline.render(lightT);
+      }
     } else {
       renderer.render(scene, camera);
     }
