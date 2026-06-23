@@ -10,6 +10,7 @@ import {
   MIN_CLEAR_DOOR_WIDTH,
   MAX_DOOR_WIDTH,
   ROOM_H,
+  SHAPE_ATTEMPTS_MAX,
 } from "./constants.js";
 
 export { CHUNK };
@@ -197,12 +198,43 @@ function mapPassesValidation(shape, doors, cx, cz) {
   return true;
 }
 
+/** Single zone-map attempt — safe to call once per animation frame while streaming. */
+export function tryPickValidShape(cx, cz, attempt) {
+  const doors = chunkDoors(cx, cz);
+  const rng = createRng(cx, cz, attempt + 7);
+  const shape = buildZoneMap(cx, cz, doors, rng);
+  return mapPassesValidation(shape, doors, cx, cz) ? shape : null;
+}
+
+export function createRoomFromShape(cx, cz, shape) {
+  return {
+    cx,
+    cz,
+    kind: shape.kind,
+    zones: shape.zones,
+    innerWalls: shape.innerWalls,
+    wallSegments: shape.wallSegments,
+    rooms: shape.rooms,
+    spatial: shape.metrics?.spatial ?? null,
+    openPairs: shape.metrics?.openPairs ? [...shape.metrics.openPairs] : [],
+    macroZone: shape.macroZone ?? null,
+    zoneType: shape.zoneType ?? null,
+    zoneProfile: shape.zoneProfile ?? null,
+    height: ROOM_H,
+    doors: {
+      north: getSharedDoor(cx, cz, cx, cz - 1),
+      south: getSharedDoor(cx, cz, cx, cz + 1),
+      east: getSharedDoor(cx, cz, cx + 1, cz),
+      west: getSharedDoor(cx, cz, cx - 1, cz),
+    },
+  };
+}
+
 function pickValidShape(cx, cz) {
   const doors = chunkDoors(cx, cz);
-  for (let attempt = 0; attempt < 48; attempt++) {
-    const rng = createRng(cx, cz, attempt + 7);
-    const shape = buildZoneMap(cx, cz, doors, rng);
-    if (mapPassesValidation(shape, doors, cx, cz)) return shape;
+  for (let attempt = 0; attempt < SHAPE_ATTEMPTS_MAX; attempt++) {
+    const shape = tryPickValidShape(cx, cz, attempt);
+    if (shape) return shape;
   }
   return buildZoneMap(cx, cz, doors, createRng(cx, cz, 999));
 }
@@ -216,29 +248,7 @@ export function generateRoom(cx, cz) {
 
   const shape = pickValidShape(cx, cz);
 
-  const room = {
-    cx,
-    cz,
-    kind: shape.kind,
-    zones: shape.zones,
-    innerWalls: shape.innerWalls,
-    wallSegments: shape.wallSegments,
-    rooms: shape.rooms,
-    spatial: shape.metrics?.spatial ?? null,
-    openPairs: shape.metrics?.openPairs
-      ? [...shape.metrics.openPairs]
-      : [],
-    macroZone: shape.macroZone ?? null,
-    zoneType: shape.zoneType ?? null,
-    zoneProfile: shape.zoneProfile ?? null,
-    height: ROOM_H,
-    doors: {
-      north: getSharedDoor(cx, cz, cx, cz - 1),
-      south: getSharedDoor(cx, cz, cx, cz + 1),
-      east: getSharedDoor(cx, cz, cx + 1, cz),
-      west: getSharedDoor(cx, cz, cx - 1, cz),
-    },
-  };
+  const room = createRoomFromShape(cx, cz, shape);
 
   _roomCache.set(key, room);
   return room;

@@ -587,12 +587,16 @@ export function footprintSolidOutline(cells) {
 
 /**
  * Per connected island: one outer loop (+ holes) ready for extrusion.
- * Outline follows wall center-line footprint rectangles, not grid-cell stairs.
+ * Uses merged cell union — 100% orthogonal boundary (Design Guide §7.4 G1).
  */
 export function footprintExtrudeOutlines(segments) {
   const merged = mergeCollinearWallSegments(segments);
   const rects = merged.map(segmentToRect);
-  return connectedRectGroups(rects).map((group) => footprintSolidOutlineFromRects(group));
+  return connectedRectGroups(rects).map((group) => {
+    const healed = healWallRectJunctions(group);
+    const cells = unionFootprint(healed);
+    return footprintSolidOutline(cells);
+  });
 }
 
 function signedArea(loop) {

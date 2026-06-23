@@ -1,6 +1,8 @@
 import {
   CHUNK,
   generateRoom,
+  tryPickValidShape,
+  createRoomFromShape,
   appendRoomWalls,
   removeRoomWalls,
   collidersFromMap,
@@ -12,6 +14,7 @@ import {
   PREFETCH_RADIUS,
   DESPAWN_RADIUS,
   EDGE_PREFETCH,
+  SHAPE_ATTEMPTS_MAX,
 } from "./constants.js";
 import {
   createRoomBuildState,
@@ -331,7 +334,19 @@ export class World {
     const k = this.key(job.cx, job.cz);
 
     if (!job.room) {
-      job.room = generateRoom(job.cx, job.cz);
+      if (job.shapeAttempt == null) job.shapeAttempt = 0;
+
+      const shape = tryPickValidShape(job.cx, job.cz, job.shapeAttempt);
+      job.shapeAttempt += 1;
+
+      if (shape) {
+        job.room = createRoomFromShape(job.cx, job.cz, shape);
+      } else if (job.shapeAttempt >= SHAPE_ATTEMPTS_MAX) {
+        job.room = generateRoom(job.cx, job.cz);
+      } else {
+        return;
+      }
+
       job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
       if (!this.chunks.has(k)) {
         appendRoomWalls(this.wallMap, job.room);

@@ -88,7 +88,7 @@ export class ZoneMapGenerator {
         ...roomGenStats(rooms),
         openings: roomOpeningCounts(rooms, connector.openPairs),
         openPairs: connector.openPairs,
-        spatial: analyzeSpatialLayout(grid, rooms, connector.openPairs),
+        spatial: null,
       },
     };
   }
@@ -137,33 +137,15 @@ export class ZoneMapGenerator {
   }
 
   generate(doors) {
+    const MAX_ATTEMPTS = 5;
     let best = null;
-    for (let attempt = 0; attempt < 16; attempt++) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const result = this.buildOnce(doors);
       const rooms = result.rooms ?? [];
       const unique = new Set(rooms.map((r) => r.sizeKey)).size;
       const dupes = unique < rooms.length;
       const meetsMin = rooms.length >= this.profile.minRooms;
-      const sp = result.metrics.spatial;
-      let spatialBonus = 0;
-      if (sp) {
-        spatialBonus += sp.uniqueSizes * 3;
-        spatialBonus += sp.orthoShapeCount * 2;
-        if (sp.narrowPresent && sp.widePresent) spatialBonus += 12;
-        if (sp.loungePresent) spatialBonus += 4;
-        spatialBonus -= sp.sameSizeConsecutive * 8;
-        spatialBonus -= Math.max(0, sp.longestCorridorCells - 6) * 3;
-        if (sp.roomToRoomDirectRatio >= 0.5) spatialBonus += 5;
-      }
-      const score =
-        (result.validation.ok ? 100 : 0) +
-        (result.metrics.roomSpace ? 10 : 0) +
-        (result.metrics.corridorBudget ? 10 : 0) +
-        rooms.length * 5 +
-        (dupes ? 0 : 8) +
-        (meetsMin ? 12 : 0) +
-        spatialBonus;
-      if (!best || score > best.score) best = { result, score };
+
       if (
         result.validation.ok &&
         result.metrics.roomSpace &&
@@ -171,10 +153,33 @@ export class ZoneMapGenerator {
         rooms.length >= Math.max(1, this.profile.minRooms - 1) &&
         !dupes
       ) {
+        result.metrics.spatial = analyzeSpatialLayout(
+          result.grid,
+          rooms,
+          result.metrics.openPairs,
+        );
         return result;
       }
+
+      const score =
+        (result.validation.ok ? 100 : 0) +
+        (result.metrics.roomSpace ? 10 : 0) +
+        (result.metrics.corridorBudget ? 10 : 0) +
+        rooms.length * 5 +
+        (dupes ? 0 : 8) +
+        (meetsMin ? 12 : 0);
+      if (!best || score > best.score) best = { result, score };
     }
-    if (best?.result.validation?.ok) return best.result;
+    if (best?.result.validation?.ok) {
+      if (!best.result.metrics.spatial) {
+        best.result.metrics.spatial = analyzeSpatialLayout(
+          best.result.grid,
+          best.result.rooms,
+          best.result.metrics.openPairs,
+        );
+      }
+      return best.result;
+    }
     return this.generateFallback(doors);
   }
 }

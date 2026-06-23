@@ -131,8 +131,10 @@ export const WALL_COLOR = 0xffffff;
 export const ENABLE_BACKGROUND_MUSIC = true;
 /** Full-screen VCR/FXAA post chain — costly on low-end GPUs */
 export const ENABLE_FILM_POSTFX = false;
-/** Chair TV-glitch shader (custom onBeforeCompile) */
-export const ENABLE_CHAIR_GLITCH = true;
+/** Chair TV-glitch shader (custom onBeforeCompile) — costly vertex/fragment work */
+export const ENABLE_CHAIR_GLITCH = false;
+/** Zone-map validation tries per chunk — lower = faster streaming */
+export const SHAPE_ATTEMPTS_MAX = 8;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;
