@@ -158,7 +158,7 @@ async function init() {
     syncCrosshair();
     overlay.style.cursor = "pointer";
     if (hintStatus) {
-      hintStatus.innerHTML = `Click to start<br /><span style="opacity:0.55;font-size:0.85em">Nearby rooms are ready — more load as you explore</span>`;
+      hintStatus.innerHTML = `Click to start<br /><span style="opacity:0.55;font-size:0.85em">Play area is ready — distant rooms load at boundaries</span>`;
     }
   }
 
@@ -166,7 +166,7 @@ async function init() {
     .preloadAround(camera, {
       onProgress: (done, total) => {
         if (hintStatus && !ready) {
-          hintStatus.innerHTML = `Building starting area… ${done}/${total}`;
+          hintStatus.innerHTML = `Building play area… ${done}/${total}<br /><span style="opacity:0.55;font-size:0.85em">Please wait — smooth movement needs a full landing zone</span>`;
         }
       },
       onBootstrapReady: markPlayable,
@@ -205,10 +205,12 @@ async function init() {
 
     world.tick(dt);
 
-    if (!world.preloading && started) {
+    if (world.preloading) {
+      world.tickLandingPreload(camera.position);
+    } else if (started) {
       world.update(player.position);
-      if (world.hasPendingLoads()) {
-        world.processLoadQueue();
+      if (world.shouldStream(player.position)) {
+        world.processLoadQueue(player.position);
       }
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
