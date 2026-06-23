@@ -1,9 +1,13 @@
 import * as THREE from "three";
+import { ENABLE_CHAIR_GLITCH } from "./constants.js";
 
-const STATIC_SIZE = 128;
+const STATIC_SIZE = 64;
+const _glitchMats = new Set();
+
 let _canvas;
 let _ctx;
 let _staticTex;
+let _staticFrame = 0;
 
 function staticTexture() {
   if (_staticTex) return _staticTex;
@@ -12,10 +16,12 @@ function staticTexture() {
   _ctx = _canvas.getContext("2d");
   _staticTex = new THREE.CanvasTexture(_canvas);
   _staticTex.colorSpace = THREE.SRGBColorSpace;
+  refreshStaticTexture();
   return _staticTex;
 }
 
 function refreshStaticTexture() {
+  if (!_ctx) return;
   const tex = staticTexture();
   const imageData = _ctx.createImageData(STATIC_SIZE, STATIC_SIZE);
   const d = imageData.data;
@@ -97,11 +103,13 @@ function makeGlitchMaterial(srcMat) {
     injectFragmentGlitch(shader);
   };
 
+  _glitchMats.add(mat);
   return mat;
 }
 
 /** TV glitch + mesh warp — Chair.glb only */
 export function applyChairGlitchVisual(pivot) {
+  if (!ENABLE_CHAIR_GLITCH) return;
   pivot.userData.chairGlitch = true;
   pivot.traverse((obj) => {
     if (!obj.isMesh || !obj.material) return;
@@ -111,36 +119,19 @@ export function applyChairGlitchVisual(pivot) {
   });
 }
 
-function isChairGlbRoot(obj) {
-  let node = obj;
-  while (node) {
-    if (node.userData?.furnitureId === "chairGlb") return true;
-    if (node.userData?.furnitureId) return false;
-    node = node.parent;
-  }
-  return false;
-}
+export function tickChairGlitchVisuals(_scene, time) {
+  if (!ENABLE_CHAIR_GLITCH || !_glitchMats.size) return;
 
-export function tickChairGlitchVisuals(scene, time) {
-  const frame = Math.floor(time * 60);
-  if ((frame & 7) === 0) refreshStaticTexture();
+  _staticFrame++;
+  if ((_staticFrame & 15) === 0) refreshStaticTexture();
 
-  const spike = Math.random() < 0.11 ? 2.2 : 1;
-  const amp = spike * (1.0 + Math.sin(time * 61.0) * 0.3 + Math.random() * 0.55);
+  const amp = 1.0 + Math.sin(time * 61.0) * 0.3;
 
-  scene.traverse((obj) => {
-    if (!obj.isMesh?.material || !isChairGlbRoot(obj)) return;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    for (const mat of mats) {
-      if (!mat.userData?.chairGlitch) continue;
-      const u = mat.userData.glitchUniforms;
-      if (u) {
-        u.uGlitchTime.value = time;
-        u.uGlitchAmp.value = amp;
-      }
-      if ((frame & 3) === 0) {
-        mat.emissiveIntensity = 0.5 + Math.random() * 0.95;
-      }
+  for (const mat of _glitchMats) {
+    const u = mat.userData.glitchUniforms;
+    if (u) {
+      u.uGlitchTime.value = time;
+      u.uGlitchAmp.value = amp;
     }
-  });
+  }
 }

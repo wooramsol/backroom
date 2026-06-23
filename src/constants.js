@@ -88,8 +88,8 @@ export const FOG_FAR = 34;
 export const FOG_COLOR = 0x3a3830;
 /** Loaded cells around player — ring must cover FOG_FAR */
 export const GRID_RADIUS = 2;
-/** Chunks built before “Click to start” — full 5×5 play grid (covers fog) */
-export const LANDING_RADIUS = GRID_RADIUS;
+/** Chunks built before “Click to start” — 3×3 core (smooth like early builds) */
+export const LANDING_RADIUS = 1;
 /** @deprecated use LANDING_RADIUS */
 export const BOOTSTRAP_RADIUS = LANDING_RADIUS;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
@@ -129,6 +129,10 @@ export const CARPET_COLOR = 0xf0e8a8;
 export const WALL_COLOR = 0xffffff;
 /** Looping MP3 background music */
 export const ENABLE_BACKGROUND_MUSIC = true;
+/** Full-screen VCR/FXAA post chain — costly on low-end GPUs */
+export const ENABLE_FILM_POSTFX = false;
+/** Chair TV-glitch shader (custom onBeforeCompile) */
+export const ENABLE_CHAIR_GLITCH = true;
 
 /** @deprecated use CHUNK */
 export const CELL = CHUNK;

@@ -38,9 +38,10 @@ export class Player {
     this.keys = {};
     this.locked = false;
     this.colliders = [];
+    this.colliderWorld = null;
+    this._colliderCellX = NaN;
+    this._colliderCellZ = NaN;
     this.nearbyColliders = [];
-    this.colliderQueryX = NaN;
-    this.colliderQueryZ = NaN;
     this.bob = 0;
     this.vy = 0;
     this.grounded = true;
@@ -129,8 +130,16 @@ export class Player {
 
   setColliders(colliders) {
     this.colliders = colliders;
-    this.colliderQueryX = NaN;
-    this.colliderQueryZ = NaN;
+    this._colliderCellX = NaN;
+    this._colliderCellZ = NaN;
+    this.nearbyColliders = [];
+  }
+
+  setColliderWorld(world) {
+    this.colliderWorld = world;
+    this._colliderCellX = NaN;
+    this._colliderCellZ = NaN;
+    this.nearbyColliders = [];
   }
 
   setPosition(x, y, z) {
@@ -139,29 +148,26 @@ export class Player {
   }
 
   _queryColliders() {
-    const px = this.position.x;
-    const pz = this.position.z;
-    if (
-      px === this.colliderQueryX &&
-      pz === this.colliderQueryZ &&
-      this.nearbyColliders.length
-    ) {
+    if (this.colliderWorld) {
+      const ccx = Math.floor(this.position.x / CHUNK);
+      const ccz = Math.floor(this.position.z / CHUNK);
+      if (
+        ccx === this._colliderCellX &&
+        ccz === this._colliderCellZ &&
+        this.nearbyColliders.length
+      ) {
+        return this.nearbyColliders;
+      }
+      this._colliderCellX = ccx;
+      this._colliderCellZ = ccz;
+      this.nearbyColliders = this.colliderWorld.getNearbyColliders(
+        this.position.x,
+        this.position.z,
+      );
       return this.nearbyColliders;
     }
 
-    const pad = CHUNK * 1.25;
-    const list = [];
-    for (const c of this.colliders) {
-      if (px + pad < c.minX || px - pad > c.maxX || pz + pad < c.minZ || pz - pad > c.maxZ) {
-        continue;
-      }
-      list.push(c);
-    }
-
-    this.nearbyColliders = list;
-    this.colliderQueryX = px;
-    this.colliderQueryZ = pz;
-    return list;
+    return this.colliders;
   }
 
   _unstuck() {

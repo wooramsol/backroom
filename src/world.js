@@ -4,6 +4,7 @@ import {
   appendRoomWalls,
   removeRoomWalls,
   collidersFromMap,
+  roomColliderBoxes,
 } from "./room.js";
 import {
   LANDING_RADIUS,
@@ -43,6 +44,8 @@ export class World {
     this.lastPrefetchEdge = false;
     this.preloading = false;
     this.landingReady = false;
+    this._nearColliderKey = "";
+    this._nearColliderCache = [];
   }
 
   key(cx, cz) {
@@ -126,6 +129,32 @@ export class World {
 
   _markCollidersDirty() {
     this.collidersDirty = true;
+    this._nearColliderKey = "";
+    this._nearColliderCache = [];
+  }
+
+  /** Only colliders in the immediate chunk ring — avoids scanning 900+ boxes per frame */
+  getNearbyColliders(px, pz, ring = 1) {
+    const ccx = Math.floor(px / CHUNK);
+    const ccz = Math.floor(pz / CHUNK);
+    const cacheKey = `${ccx},${ccz},${ring}`;
+    if (!this.collidersDirty && cacheKey === this._nearColliderKey) {
+      return this._nearColliderCache;
+    }
+
+    const list = [];
+    for (let dz = -ring; dz <= ring; dz++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        const entry = this.chunks.get(this.key(ccx + dx, ccz + dz));
+        if (!entry) continue;
+        if (entry.wallColliders?.length) list.push(...entry.wallColliders);
+        if (entry.furnitureColliders?.length) list.push(...entry.furnitureColliders);
+      }
+    }
+
+    this._nearColliderKey = cacheKey;
+    this._nearColliderCache = list;
+    return list;
   }
 
   addCollidersForRoom(room) {
@@ -160,16 +189,19 @@ export class World {
     finalizeRoomBuild(build);
     const mesh = build.group;
     const furniture = this.addFurnitureForChunk(mesh);
-    this.chunks.set(k, { mesh, room, ...furniture });
+    const wallColliders = roomColliderBoxes(this.wallMap, room);
+    this.chunks.set(k, { mesh, room, wallColliders, ...furniture });
   }
 
   spawnComplete(cx, cz) {
     const room = generateRoom(cx, cz);
-    this.addCollidersForRoom(room);
+    appendRoomWalls(this.wallMap, room);
+    const wallColliders = roomColliderBoxes(this.wallMap, room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
-    this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
+    this.chunks.set(this.key(cx, cz), { mesh, room, wallColliders, ...furniture });
+    this._markCollidersDirty();
   }
 
   despawn(k) {
@@ -338,11 +370,13 @@ export class World {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
     appendRoomWalls(this.wallMap, room);
+    const wallColliders = roomColliderBoxes(this.wallMap, room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
-    this.chunks.set(k, { mesh, room, ...furniture });
+    this.chunks.set(k, { mesh, room, wallColliders, ...furniture });
     this.pendingKeys.delete(k);
+    this._markCollidersDirty();
   }
 
   _spawnChunkSafe(cx, cz) {
