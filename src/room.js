@@ -1,5 +1,5 @@
 import { createRng } from "./rng.js";
-import { buildGridMap } from "./mapgen/MapGenerator.js";
+import { buildZoneMap } from "./zones/index.js";
 import {
   CHUNK,
   WALL_T,
@@ -12,6 +12,7 @@ import {
 } from "./constants.js";
 
 export { CHUNK };
+export { getMacroZoneAt } from "./zones/index.js";
 export const CELL = CHUNK;
 export const HW = CHUNK / 2;
 
@@ -197,10 +198,10 @@ function pickValidShape(cx, cz) {
   const doors = chunkDoors(cx, cz);
   for (let attempt = 0; attempt < 48; attempt++) {
     const rng = createRng(cx, cz, attempt + 7);
-    const shape = buildGridMap(doors, rng);
+    const shape = buildZoneMap(cx, cz, doors, rng);
     if (mapPassesValidation(shape, doors)) return shape;
   }
-  return buildGridMap(doors, createRng(cx, cz, 999));
+  return buildZoneMap(cx, cz, doors, createRng(cx, cz, 999));
 }
 
 const _roomCache = new Map();
@@ -224,6 +225,9 @@ export function generateRoom(cx, cz) {
     openPairs: shape.metrics?.openPairs
       ? [...shape.metrics.openPairs]
       : [],
+    macroZone: shape.macroZone ?? null,
+    zoneType: shape.zoneType ?? null,
+    zoneProfile: shape.zoneProfile ?? null,
     height: ROOM_H,
     doors: {
       north: getSharedDoor(cx, cz, cx, cz - 1),
