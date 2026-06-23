@@ -6,7 +6,6 @@ import {
   collidersFromMap,
 } from "./room.js";
 import {
-  PRELOAD_RADIUS,
   BOOTSTRAP_RADIUS,
   PREFETCH_RADIUS,
   DESPAWN_RADIUS,
@@ -22,8 +21,7 @@ import {
 import { disposeChunkRoot } from "./sceneDispose.js";
 
 const DESPAWN_PER_FRAME = 2;
-const PRELOAD_BATCH = 2;
-const LOAD_QUEUE_BATCH = 2;
+const LOAD_FRAME_BUDGET_MS = 10;
 
 export class World {
   constructor(scene, materials, furnitureModels = null) {
@@ -123,12 +121,12 @@ export class World {
 
   addCollidersForRoom(room) {
     appendRoomWalls(this.wallMap, room);
-    this.rebuildColliderList();
+    this._markCollidersDirty();
   }
 
   removeCollidersForRoom(room) {
     if (removeRoomWalls(this.wallMap, room)) {
-      this.rebuildColliderList();
+      this._markCollidersDirty();
     }
   }
 
@@ -250,9 +248,11 @@ export class World {
     }
   }
 
-  processLoadQueue(_playerPos) {
-    let built = 0;
-    while (this.loadQueue.length && built < LOAD_QUEUE_BATCH) {
+  processLoadQueue(_playerPos, budgetMs = LOAD_FRAME_BUDGET_MS) {
+    if (!this.loadQueue.length) return;
+    const deadline = performance.now() + budgetMs;
+
+    while (this.loadQueue.length && performance.now() < deadline) {
       const job = this.loadQueue[0];
       const k = this.key(job.cx, job.cz);
 
@@ -263,11 +263,12 @@ export class World {
           appendRoomWalls(this.wallMap, job.room);
           this._markCollidersDirty();
         }
-        continue;
+        break;
       }
 
       if (!job.build.shellDone) {
         buildPanelBatch(job.build);
+        break;
       }
 
       if (!job.build.group.parent) {
@@ -277,7 +278,6 @@ export class World {
       this.attachChunk(job.cx, job.cz, job.room, job.build);
       this.loadQueue.shift();
       this.pendingKeys.delete(k);
-      built++;
     }
   }
 
@@ -337,53 +337,25 @@ export class World {
     this.pendingKeys.clear();
 
     const bootstrap = collectRing(BOOTSTRAP_RADIUS);
-    const outer = collectRing(PRELOAD_RADIUS).filter(
-      (c) => Math.max(Math.abs(c.cx - cx), Math.abs(c.cz - cz)) > BOOTSTRAP_RADIUS,
-    );
-    const totalAll = bootstrap.length + outer.length;
 
     try {
       let done = 0;
       for (const { cx: x, cz: z } of bootstrap) {
         this._spawnChunkSafe(x, z);
         done++;
-        onProgress?.(done, totalAll || 1);
+        onProgress?.(done, bootstrap.length || 1);
       }
 
       this.init(playerPos);
       this.rebuildColliderList();
       onBootstrapReady?.();
+      onComplete?.();
     } catch (err) {
       this.preloading = false;
       throw err;
     }
 
     this.preloading = false;
-
-    if (!outer.length) {
-      onComplete?.();
-      return;
-    }
-
-  void (async () => {
-      try {
-        let done = bootstrap.length;
-        for (let i = 0; i < outer.length; i += PRELOAD_BATCH) {
-          const end = Math.min(i + PRELOAD_BATCH, outer.length);
-          for (let j = i; j < end; j++) {
-            const { cx: x, cz: z } = outer[j];
-            this._spawnChunkSafe(x, z);
-            done++;
-          }
-          onProgress?.(done, totalAll || 1);
-          await new Promise((r) => requestAnimationFrame(r));
-        }
-        this.rebuildColliderList();
-        onComplete?.();
-      } catch (err) {
-        console.error("Background chunk preload failed", err);
-      }
-    })();
   }
 
   hasPendingLoads() {
