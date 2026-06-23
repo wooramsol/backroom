@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { isWalkableLocal } from "../../room.js";
 
 const EPS = 1e-5;
 const SNAP = 1e-4;
@@ -148,33 +149,55 @@ function pointInFootprint(x, z, cells) {
 }
 
 /** Flip triangle winding when the face normal points into the wall solid. */
-export function orientWallFacesOutward(geo, cells) {
-  if (!cells?.length) return geo;
+export function orientWallFacesOutward(geo, cells, room = null) {
+  if (!geo) return geo;
   const pos = geo.attributes.position;
   const norm = geo.attributes.normal;
-  const probe = 0.05;
-  const thinProbe = 0.055;
+  const innerWalls = room?.innerWalls ?? [];
+  const walkable = room ? (x, z) => isWalkableLocal(x, z, innerWalls) : null;
+  const probe = 0.42;
 
   for (let i = 0; i < pos.count; i += 3) {
     const xs = [pos.getX(i), pos.getX(i + 1), pos.getX(i + 2)];
     const ys = [pos.getY(i), pos.getY(i + 1), pos.getY(i + 2)];
     const zs = [pos.getZ(i), pos.getZ(i + 1), pos.getZ(i + 2)];
     const cx = (xs[0] + xs[1] + xs[2]) / 3;
-    const cy = (ys[0] + ys[1] + ys[2]) / 3;
     const cz = (zs[0] + zs[1] + zs[2]) / 3;
     const nx = norm.getX(i);
     const ny = norm.getY(i);
     const nz = norm.getZ(i);
     if (Math.abs(ny) > 0.85) continue;
 
-    const dx = Math.max(...xs) - Math.min(...xs);
-    const dz = Math.max(...zs) - Math.min(...zs);
-    const thinSpan = Math.min(dx, dz);
-    const useProbe = thinSpan < 0.12 ? thinProbe : probe;
+    let flip = false;
 
-    const inPlus = pointInFootprint(cx + useProbe * nx, cz + useProbe * nz, cells);
-    const inMinus = pointInFootprint(cx - useProbe * nx, cz - useProbe * nz, cells);
-    if (!inPlus || inMinus) continue;
+    if (walkable) {
+      const wPlus = walkable(cx + probe * nx, cz + probe * nz);
+      const wMinus = walkable(cx - probe * nx, cz - probe * nz);
+      if (wPlus && !wMinus) {
+        flip = false;
+      } else if (wMinus && !wPlus) {
+        flip = true;
+      } else if (wPlus && wMinus) {
+        continue;
+      } else if (cells?.length) {
+        const inPlus = pointInFootprint(cx + 0.05 * nx, cz + 0.05 * nz, cells);
+        const inMinus = pointInFootprint(cx - 0.05 * nx, cz - 0.05 * nz, cells);
+        if (inPlus && !inMinus) flip = true;
+        else if (inMinus && !inPlus) flip = false;
+        else continue;
+      } else {
+        continue;
+      }
+    } else if (cells?.length) {
+      const inPlus = pointInFootprint(cx + 0.05 * nx, cz + 0.05 * nz, cells);
+      const inMinus = pointInFootprint(cx - 0.05 * nx, cz - 0.05 * nz, cells);
+      if (inPlus && inMinus) continue;
+      if (inPlus && !inMinus) flip = true;
+    } else {
+      continue;
+    }
+
+    if (!flip) continue;
 
     const x1 = pos.getX(i + 1);
     const y1 = pos.getY(i + 1);
@@ -194,12 +217,12 @@ export function orientWallFacesOutward(geo, cells) {
   return geo;
 }
 
-export function finalizeWallMeshGeometry(geo, cells = null) {
+export function finalizeWallMeshGeometry(geo, cells = null, room = null) {
   let out = geo.index ? geo.toNonIndexed() : geo;
   if (out !== geo) geo.dispose();
 
   quantizeWallPositions(out);
   out = applyAxisFaceNormals(out);
-  if (cells) orientWallFacesOutward(out, cells);
+  if (cells || room) orientWallFacesOutward(out, cells, room);
   return out;
 }

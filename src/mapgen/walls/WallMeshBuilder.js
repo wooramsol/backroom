@@ -86,7 +86,7 @@ export function buildSolidWallGeometry(
   }
 
   geo = removeDegenerateFaces(geo);
-  geo = finalizeWallMeshGeometry(geo, cells);
+  geo = finalizeWallMeshGeometry(geo, cells, options.room);
   bakeWorldWallUVBuffer(geo, roomWx, roomWz, tileW, tileH);
 
   if (options.validate !== false && options.room && issues.length && options.onIssues) {

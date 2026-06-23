@@ -2,7 +2,6 @@ import * as THREE from "three";
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  loadCarpetFloor,
 } from "./textures.js";
 import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
@@ -82,7 +81,9 @@ async function init() {
   const loader = new THREE.TextureLoader();
   const wallpaper = await loadWallpaperOrFallback(loader);
   const surfaceTex = await loadSurfaceOrFallback(loader);
-  const floorTex = await loadCarpetFloor(loader);
+  const floorTex = surfaceTex.clone();
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+  floorTex.userData = { ...surfaceTex.userData };
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
   const furnitureModels = await loadFurnitureModels();
   if (ENABLE_BACKGROUND_MUSIC) await audio.preload();

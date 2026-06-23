@@ -583,8 +583,84 @@ function checkAbnormalCornerFaces(geo, room, views) {
   return issues;
 }
 
+/** Player views that must show 0.16m wall thickness (doors, end caps). */
+export function collectThicknessPlayerViews(room) {
+  const segs = collectRoomWallSegments(room);
+  const views = [];
+
+  for (const j of analyzeConnectors(room, segs)) {
+    if (j.connector === CONNECTOR.DOOR || j.connector === CONNECTOR.WIDE) {
+      const pose = cameraPoseForJunction(j, room);
+      if (pose) views.push({ ...pose, tag: j.connector });
+    }
+  }
+
+  const headOn = findHeadOnEndCapView(room, 0.85);
+  if (headOn) views.push({ ...headOn, tag: "head_on_cap" });
+
+  return views;
+}
+
+/** At player poses, wall silhouette depth along view axis must show WALL_T thickness. */
+function checkPlayerThicknessViews(room, geo, views) {
+  const issues = [];
+  if (!geo?.attributes?.position || !views.length) return issues;
+
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  const eyeY = EYE_H;
+
+  for (const view of views) {
+    const { camX, camZ, lookX, lookZ } = view;
+    const dx = lookX - camX;
+    const dz = lookZ - camZ;
+    const len = Math.hypot(dx, dz) || 1;
+    const rdx = dx / len;
+    const rdz = dz / len;
+    const pdx = -rdz;
+    const pdz = rdx;
+
+    let minPerp = Infinity;
+    let maxPerp = -Infinity;
+    let visibleFaces = 0;
+
+    for (let i = 0; i < pos.count; i += 3) {
+      const fcx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
+      const fcy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
+      const fcz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+      if (Math.abs(fcy - eyeY) > 0.55) continue;
+
+      const toFace = (fcx - camX) * rdx + (fcz - camZ) * rdz;
+      if (toFace < 0.12 || toFace > 4) continue;
+
+      const fnx = norm.getX(i);
+      const fnz = norm.getZ(i);
+      if (fnx * rdx + fnz * rdz > -0.05) continue;
+
+      const perp = (fcx - lookX) * pdx + (fcz - lookZ) * pdz;
+      minPerp = Math.min(minPerp, perp);
+      maxPerp = Math.max(maxPerp, perp);
+      visibleFaces++;
+    }
+
+    if (visibleFaces < 2) continue;
+    const depth = maxPerp - minPerp;
+    if (depth < WALL_T * 0.62) {
+      issues.push({
+        kind: FAIL.PLANE_WALL,
+        reason: "thin_player_view",
+        tag: view.tag,
+        depth,
+        at: [lookX, lookZ],
+      });
+    }
+  }
+
+  return issues;
+}
+
 /** Reject meshes with too few thickness faces — walls would read as zero-depth planes. */
-function checkPlaneWallViews(room, geo, cells, segs) {
+function checkPlaneWallViews(room, geo, cells, segs, thicknessViews) {
   const issues = [];
   if (!geo) return issues;
 
@@ -598,6 +674,8 @@ function checkPlaneWallViews(room, geo, cells, segs) {
   if (caps.length < minCaps) {
     issues.push({ kind: FAIL.PLANE_WALL, reason: "low_end_caps", count: caps.length, minCaps });
   }
+
+  issues.push(...checkPlayerThicknessViews(room, geo, thicknessViews));
 
   return issues;
 }
@@ -642,6 +720,7 @@ export function inspectRoomPlayerWalls(room, cx, cz) {
   });
 
   const corners = collectCornerViews(room);
+  const thicknessViews = collectThicknessPlayerViews(room);
   const issues = [...baseIssues.map((i) => ({ ...i, qaKind: i.qaKind ?? i.kind }))];
 
   if (!wallThicknessOK(cells)) {
@@ -656,7 +735,7 @@ export function inspectRoomPlayerWalls(room, cx, cz) {
   issues.push(...checkUVBreaks(geo, wx, wz, tex.userData.tileW));
   issues.push(...checkStairCorners(geo, room, corners));
   issues.push(...checkAbnormalCornerFaces(geo, room, corners));
-  issues.push(...checkPlaneWallViews(room, geo, cells, segs));
+  issues.push(...checkPlaneWallViews(room, geo, cells, segs, thicknessViews));
   issues.push(...outlineStairIssues(room, segs));
 
   const thicknessFaces = geo ? countThicknessFaces(geo) : 0;
@@ -686,6 +765,7 @@ export function inspectRoomPlayerWalls(room, cx, cz) {
     pass: critical.length === 0,
     issues: critical,
     corners,
+    thicknessViews,
     stats: {
       segments: segs.length,
       cells: cells.length,
