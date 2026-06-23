@@ -86,6 +86,8 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 8;
 export const FOG_FAR = 34;
 export const FOG_COLOR = 0x3a3830;
+/** Chunks built before “Click to start” — center 3×3 only */
+export const BOOTSTRAP_RADIUS = 1;
 /** Loaded cells around player — ring must cover FOG_FAR */
 export const GRID_RADIUS = 2;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */

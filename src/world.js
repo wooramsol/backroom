@@ -7,6 +7,7 @@ import {
 } from "./room.js";
 import {
   PRELOAD_RADIUS,
+  BOOTSTRAP_RADIUS,
   PREFETCH_RADIUS,
   DESPAWN_RADIUS,
   EDGE_PREFETCH,
@@ -189,7 +190,7 @@ export class World {
     this.cellCx = cx;
     this.cellCz = cz;
     this.lastPrefetchEdge = this.nearPrefetchEdge(playerPos, cx, cz);
-    this.spawnComplete(cx, cz);
+    if (!this.chunks.has(this.key(cx, cz))) this.spawnComplete(cx, cz);
   }
 
   update(playerPos) {
@@ -312,44 +313,77 @@ export class World {
     }
   }
 
-  async preloadAround(camera, onProgress) {
+  async preloadAround(camera, { onProgress, onBootstrapReady, onComplete } = {}) {
     const playerPos = camera.position;
     const cx = Math.floor(playerPos.x / CHUNK);
     const cz = Math.floor(playerPos.z / CHUNK);
-    const toBuild = [];
-    for (let z = cz - PRELOAD_RADIUS; z <= cz + PRELOAD_RADIUS; z++) {
-      for (let x = cx - PRELOAD_RADIUS; x <= cx + PRELOAD_RADIUS; x++) {
-        if (!this.chunks.has(this.key(x, z))) toBuild.push({ cx: x, cz: z });
+
+    const collectRing = (radius) => {
+      const list = [];
+      for (let z = cz - radius; z <= cz + radius; z++) {
+        for (let x = cx - radius; x <= cx + radius; x++) {
+          if (!this.chunks.has(this.key(x, z))) list.push({ cx: x, cz: z });
+        }
       }
-    }
-    toBuild.sort(
-      (a, b) =>
-        this.distToPlayer(a.cx, a.cz, playerPos) - this.distToPlayer(b.cx, b.cz, playerPos),
-    );
+      list.sort(
+        (a, b) =>
+          this.distToPlayer(a.cx, a.cz, playerPos) - this.distToPlayer(b.cx, b.cz, playerPos),
+      );
+      return list;
+    };
 
     this.preloading = true;
     this.loadQueue.length = 0;
     this.pendingKeys.clear();
 
+    const bootstrap = collectRing(BOOTSTRAP_RADIUS);
+    const outer = collectRing(PRELOAD_RADIUS).filter(
+      (c) => Math.max(Math.abs(c.cx - cx), Math.abs(c.cz - cz)) > BOOTSTRAP_RADIUS,
+    );
+    const totalAll = bootstrap.length + outer.length;
+
     try {
-      const total = toBuild.length;
       let done = 0;
-      for (let i = 0; i < toBuild.length; i += PRELOAD_BATCH) {
-        const end = Math.min(i + PRELOAD_BATCH, toBuild.length);
-        for (let j = i; j < end; j++) {
-          const { cx: x, cz: z } = toBuild[j];
-          this._spawnChunkSafe(x, z);
-          done++;
-        }
-        onProgress?.(done, total || 1);
-        await new Promise((r) => requestAnimationFrame(r));
+      for (const { cx: x, cz: z } of bootstrap) {
+        this._spawnChunkSafe(x, z);
+        done++;
+        onProgress?.(done, totalAll || 1);
       }
 
+      this.init(playerPos);
       this.rebuildColliderList();
-      onProgress?.(total || 1, total || 1);
-    } finally {
+      onBootstrapReady?.();
+    } catch (err) {
       this.preloading = false;
+      throw err;
     }
+
+    this.preloading = false;
+
+    if (!outer.length) {
+      onComplete?.();
+      return;
+    }
+
+  void (async () => {
+      try {
+        let done = bootstrap.length;
+        for (let i = 0; i < outer.length; i += PRELOAD_BATCH) {
+          const end = Math.min(i + PRELOAD_BATCH, outer.length);
+          for (let j = i; j < end; j++) {
+            const { cx: x, cz: z } = outer[j];
+            this._spawnChunkSafe(x, z);
+            done++;
+          }
+          onProgress?.(done, totalAll || 1);
+          await new Promise((r) => requestAnimationFrame(r));
+        }
+        this.rebuildColliderList();
+        onComplete?.();
+      } catch (err) {
+        console.error("Background chunk preload failed", err);
+      }
+    })();
   }
 
   hasPendingLoads() {
