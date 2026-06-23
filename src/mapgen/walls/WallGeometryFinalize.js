@@ -141,11 +141,56 @@ export function quantizeWallPositions(geo, step = SNAP) {
   pos.needsUpdate = true;
 }
 
-export function finalizeWallMeshGeometry(geo) {
+function pointInFootprint(x, z, cells) {
+  return cells.some(
+    (c) => x >= c.x0 - EPS && x <= c.x1 + EPS && z >= c.z0 - EPS && z <= c.z1 + EPS,
+  );
+}
+
+/** Flip triangle winding when the face normal points into the wall solid. */
+export function orientWallFacesOutward(geo, cells) {
+  if (!cells?.length) return geo;
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  const probe = 0.05;
+
+  for (let i = 0; i < pos.count; i += 3) {
+    const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
+    const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
+    const cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+    const nx = norm.getX(i);
+    const ny = norm.getY(i);
+    const nz = norm.getZ(i);
+    if (Math.abs(ny) > 0.85) continue;
+
+    const inPlus = pointInFootprint(cx + probe * nx, cz + probe * nz, cells);
+    const inMinus = pointInFootprint(cx - probe * nx, cz - probe * nz, cells);
+    if (!inPlus || inMinus) continue;
+
+    const x1 = pos.getX(i + 1);
+    const y1 = pos.getY(i + 1);
+    const z1 = pos.getZ(i + 1);
+    pos.setXYZ(i + 1, pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+    pos.setXYZ(i + 2, x1, y1, z1);
+    for (let k = 0; k < 3; k++) {
+      const j = (i + k) * 3;
+      norm.array[j] = -norm.array[j];
+      norm.array[j + 1] = -norm.array[j + 1];
+      norm.array[j + 2] = -norm.array[j + 2];
+    }
+  }
+
+  pos.needsUpdate = true;
+  norm.needsUpdate = true;
+  return geo;
+}
+
+export function finalizeWallMeshGeometry(geo, cells = null) {
   let out = geo.index ? geo.toNonIndexed() : geo;
   if (out !== geo) geo.dispose();
 
   quantizeWallPositions(out);
   out = applyAxisFaceNormals(out);
+  if (cells) orientWallFacesOutward(out, cells);
   return out;
 }
