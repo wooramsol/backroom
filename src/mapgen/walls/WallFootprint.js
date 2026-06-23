@@ -118,7 +118,7 @@ function rectBoundaryEdges(rects) {
 
 /**
  * Closed outline loops from center-line footprint rectangles.
- * Uses rect-corner occupancy grid (union) then merges collinear boundary edges.
+ * Subdivide rect corners on a fine grid, trace boundary, merge collinear runs.
  */
 export function footprintOutlineLoopsFromRects(rects) {
   const cells = subdivideFootprintCells(rects);
@@ -126,7 +126,7 @@ export function footprintOutlineLoopsFromRects(rects) {
 }
 
 function snapSegCoord(v) {
-  return Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP;
+  return Number((Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP).toFixed(4));
 }
 
 function snapRect(r) {
@@ -136,6 +136,56 @@ function snapRect(r) {
     z0: snapSegCoord(r.z0),
     z1: snapSegCoord(r.z1),
   };
+}
+
+function isThinX(r) {
+  return r.x1 - r.x0 < r.z1 - r.z0 - EPS;
+}
+
+function isThinZ(r) {
+  return r.z1 - r.z0 < r.x1 - r.x0 - EPS;
+}
+
+/** Snap perpendicular wall rect edges at corners — removes sub-thickness outline stairs. */
+export function healWallRectJunctions(rects) {
+  const healed = rects.map((r) => ({ ...r }));
+  const junctionTol = WALL_T + 0.1;
+
+  for (const r of healed) {
+    for (const o of healed) {
+      if (r === o) continue;
+
+      if (isThinX(r) && isThinZ(o)) {
+        const xOverlap = r.x0 < o.x1 - EPS && r.x1 > o.x0 + EPS;
+        const zOverlap = o.z0 < r.z1 - EPS && o.z1 > r.z0 + EPS;
+        if (!xOverlap || !zOverlap) continue;
+
+        for (const z of [o.z0, o.z1]) {
+          if (Math.abs(r.z0 - z) < junctionTol) r.z0 = z;
+          if (Math.abs(r.z1 - z) < junctionTol) r.z1 = z;
+        }
+        for (const x of [r.x0, r.x1]) {
+          if (Math.abs(o.x0 - x) < junctionTol) o.x0 = x;
+          if (Math.abs(o.x1 - x) < junctionTol) o.x1 = x;
+        }
+      } else if (isThinZ(r) && isThinX(o)) {
+        const xOverlap = o.x0 < r.x1 - EPS && o.x1 > r.x0 + EPS;
+        const zOverlap = r.z0 < o.z1 - EPS && r.z1 > o.z0 + EPS;
+        if (!xOverlap || !zOverlap) continue;
+
+        for (const x of [o.x0, o.x1]) {
+          if (Math.abs(r.x0 - x) < junctionTol) r.x0 = x;
+          if (Math.abs(r.x1 - x) < junctionTol) r.x1 = x;
+        }
+        for (const z of [r.z0, r.z1]) {
+          if (Math.abs(o.z0 - z) < junctionTol) o.z0 = z;
+          if (Math.abs(o.z1 - z) < junctionTol) o.z1 = z;
+        }
+      }
+    }
+  }
+
+  return healed.map(snapRect);
 }
 
 /** Axis-aligned wall run → solid footprint rectangle in chunk XZ (metres). */
@@ -458,7 +508,7 @@ function mergeCollinearEdges(edges) {
 const OUTLINE_SNAP = 0.02;
 
 function snapOutlineCoord(v) {
-  return Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP;
+  return Number((Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP).toFixed(4));
 }
 
 function snapOutlineLoop(loop) {
@@ -522,7 +572,8 @@ export function footprintOutlineLoops(cells) {
 
 /** Outline → outer shell + optional holes for one connected island. */
 export function footprintSolidOutlineFromRects(rects) {
-  const loops = footprintOutlineLoopsFromRects(rects).map(snapOutlineLoop);
+  const healed = healWallRectJunctions(rects);
+  const loops = footprintOutlineLoopsFromRects(healed).map(snapOutlineLoop);
   const { outer, holes } = classifyFootprintLoops(loops);
   return orientExtrudeLoops(outer, holes);
 }
