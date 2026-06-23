@@ -7,7 +7,7 @@ import { ROOM_H, CHUNK } from "../constants.js";
 import { generateRoom } from "../room.js";
 import { buildRoomWallGeometry } from "../mapgen/walls/WallMeshBuilder.js";
 import { collectRoomWallSegments } from "../mapgen/walls/wallSegments.js";
-import { segmentsToFootprint, footprintExtrudeOutlines } from "../mapgen/walls/WallFootprint.js";
+import { segmentsToFootprint, footprintExtrudeOutlines, outlineGenerationMode } from "../mapgen/walls/WallFootprint.js";
 import { validateWallMesh } from "../mapgen/walls/WallQuality.js";
 import {
   WALLPAPER_URL,
@@ -100,6 +100,7 @@ if (view === "corner") {
 window.__WALL_PREVIEW__ = {
   cx,
   cz,
+  outlineMode: outlineGenerationMode(),
   segments: segs.length,
   islands: outlines.length,
   cells: cells.length,

@@ -3,24 +3,162 @@ import { orientExtrudeLoops } from "./WallGeometryFinalize.js";
 
 const EPS = 1e-5;
 
+/** Outline source for QA reporting — center-line rects, not grid-cell boundary. */
+export const OUTLINE_SOURCE = "wall-center-line";
+
+export function outlineGenerationMode() {
+  return OUTLINE_SOURCE;
+}
+
+/** Merge collinear wall runs that share the same center line (axis + pos). */
+export function mergeCollinearWallSegments(segments) {
+  const zByPos = new Map();
+  const xByPos = new Map();
+
+  for (const seg of segments) {
+    const s0 = seg.span0;
+    const s1 = seg.span1;
+    if (s1 - s0 < 0.05) continue;
+    const entry = {
+      axis: seg.axis,
+      pos: snapSegCoord(seg.pos),
+      span0: snapSegCoord(seg.span0),
+      span1: snapSegCoord(seg.span1),
+      door: seg.door ?? null,
+    };
+    if (seg.axis === "z") {
+      if (!zByPos.has(seg.pos)) zByPos.set(seg.pos, []);
+      zByPos.get(seg.pos).push(entry);
+    } else {
+      if (!xByPos.has(seg.pos)) xByPos.set(seg.pos, []);
+      xByPos.get(seg.pos).push(entry);
+    }
+  }
+
+  const mergeIntervals = (list) => {
+    const sorted = list
+      .filter((s) => !s.door)
+      .map((s) => ({ ...s }))
+      .sort((a, b) => a.span0 - b.span0);
+    const out = [];
+    for (const s of sorted) {
+      const last = out[out.length - 1];
+      if (!last || s.span0 > last.span1 + EPS) {
+        out.push(s);
+        continue;
+      }
+      last.span1 = Math.max(last.span1, s.span1);
+    }
+    for (const s of list.filter((x) => x.door)) out.push(s);
+    return out;
+  };
+
+  const merged = [];
+  for (const [, list] of zByPos) merged.push(...mergeIntervals(list));
+  for (const [, list] of xByPos) merged.push(...mergeIntervals(list));
+  return merged;
+}
+
+function rectsOverlap(a, b) {
+  return a.x0 < b.x1 - EPS && a.x1 > b.x0 + EPS && a.z0 < b.z1 - EPS && a.z1 > b.z0 + EPS;
+}
+
+/** Group footprint rectangles that touch or overlap (center-line union islands). */
+export function connectedRectGroups(rects) {
+  const groups = [];
+  const used = new Set();
+
+  for (let i = 0; i < rects.length; i++) {
+    if (used.has(i)) continue;
+    const group = [];
+    const stack = [i];
+    used.add(i);
+    while (stack.length) {
+      const idx = stack.pop();
+      group.push(rects[idx]);
+      for (let j = 0; j < rects.length; j++) {
+        if (used.has(j)) continue;
+        if (rectsOverlap(rects[idx], rects[j])) {
+          used.add(j);
+          stack.push(j);
+        }
+      }
+    }
+    groups.push(group);
+  }
+  return groups;
+}
+
+function rectBoundaryEdges(rects) {
+  const counts = new Map();
+  const directed = new Map();
+
+  const add = (x0, z0, x1, z1) => {
+    if (Math.hypot(x1 - x0, z1 - z0) < EPS) return;
+    const k = edgeKey(x0, z0, x1, z1);
+    const prev = counts.get(k) || 0;
+    counts.set(k, prev + 1);
+    if (prev === 0) directed.set(k, { x0, z0, x1, z1 });
+  };
+
+  for (const r of rects) {
+    add(r.x0, r.z0, r.x1, r.z0);
+    add(r.x1, r.z0, r.x1, r.z1);
+    add(r.x1, r.z1, r.x0, r.z1);
+    add(r.x0, r.z1, r.x0, r.z0);
+  }
+
+  const edges = [];
+  for (const [k, n] of counts) {
+    if (n !== 1) continue;
+    edges.push(directed.get(k));
+  }
+  return edges;
+}
+
+/**
+ * Closed outline loops from center-line footprint rectangles.
+ * Uses rect-corner occupancy grid (union) then merges collinear boundary edges.
+ */
+export function footprintOutlineLoopsFromRects(rects) {
+  const cells = subdivideFootprintCells(rects);
+  return chainBoundaryLoops(mergeCollinearEdges(gridBoundaryEdges(cells)));
+}
+
+function snapSegCoord(v) {
+  return Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP;
+}
+
+function snapRect(r) {
+  return {
+    x0: snapSegCoord(r.x0),
+    x1: snapSegCoord(r.x1),
+    z0: snapSegCoord(r.z0),
+    z1: snapSegCoord(r.z1),
+  };
+}
+
 /** Axis-aligned wall run → solid footprint rectangle in chunk XZ (metres). */
 export function segmentToRect(seg) {
   const half = WALL_T / 2;
   const pad = WALL_JOINT_OVERLAP * 0.5;
+  const pos = snapSegCoord(seg.pos);
+  const span0 = snapSegCoord(seg.span0) - pad;
+  const span1 = snapSegCoord(seg.span1) + pad;
   if (seg.axis === "z") {
-    return {
-      x0: seg.span0 - pad,
-      x1: seg.span1 + pad,
-      z0: seg.pos - half,
-      z1: seg.pos + half,
-    };
+    return snapRect({
+      x0: span0,
+      x1: span1,
+      z0: pos - half,
+      z1: pos + half,
+    });
   }
-  return {
-    x0: seg.pos - half,
-    x1: seg.pos + half,
-    z0: seg.span0 - pad,
-    z1: seg.span1 + pad,
-  };
+  return snapRect({
+    x0: pos - half,
+    x1: pos + half,
+    z0: span0,
+    z1: span1,
+  });
 }
 
 function pointInRect(px, pz, r) {
@@ -272,61 +410,59 @@ function edgeAxis(e) {
   return null;
 }
 
-/** Merge collinear boundary segments that share an endpoint. */
+/** Merge all collinear boundary segments on the same axis line. */
 function mergeCollinearEdges(edges) {
-  let list = edges.map((e) => ({ x0: e.x0, z0: e.z0, x1: e.x1, z1: e.z1 }));
-  let changed = true;
+  const horiz = new Map();
+  const vert = new Map();
 
-  while (changed) {
-    changed = false;
-    const adj = new Map();
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      const sk = ptKey(e.x0, e.z0);
-      const ek = ptKey(e.x1, e.z1);
-      if (!adj.has(sk)) adj.set(sk, []);
-      if (!adj.has(ek)) adj.set(ek, []);
-      adj.get(sk).push(i);
-      adj.get(ek).push(i);
-    }
-
-    outer: for (const [, idxs] of adj) {
-      if (idxs.length !== 2) continue;
-      const [i, j] = idxs;
-      const a = list[i];
-      const b = list[j];
-      const axis = edgeAxis(a);
-      if (!axis || axis !== edgeAxis(b)) continue;
-
-      const uniq = new Map();
-      for (const [x, z] of [
-        [a.x0, a.z0],
-        [a.x1, a.z1],
-        [b.x0, b.z0],
-        [b.x1, b.z1],
-      ]) {
-        uniq.set(ptKey(x, z), [x, z]);
-      }
-      if (uniq.size !== 3) continue;
-
-      const pts = [...uniq.values()];
-      if (axis === "h") {
-        pts.sort((p, q) => p[0] - q[0]);
-        if (Math.abs(pts[0][1] - pts[2][1]) > EPS) continue;
-        list = list.filter((_, k) => k !== i && k !== j);
-        list.push({ x0: pts[0][0], z0: pts[0][1], x1: pts[2][0], z1: pts[2][1] });
-      } else {
-        pts.sort((p, q) => p[1] - q[1]);
-        if (Math.abs(pts[0][0] - pts[2][0]) > EPS) continue;
-        list = list.filter((_, k) => k !== i && k !== j);
-        list.push({ x0: pts[0][0], z0: pts[0][1], x1: pts[2][0], z1: pts[2][1] });
-      }
-      changed = true;
-      break outer;
+  for (const e of edges) {
+    const axis = edgeAxis(e);
+    if (axis === "h") {
+      const z = snapOutlineCoord(e.z0);
+      if (!horiz.has(z)) horiz.set(z, []);
+      horiz.get(z).push([Math.min(e.x0, e.x1), Math.max(e.x0, e.x1)]);
+    } else if (axis === "v") {
+      const x = snapOutlineCoord(e.x0);
+      if (!vert.has(x)) vert.set(x, []);
+      vert.get(x).push([Math.min(e.z0, e.z1), Math.max(e.z0, e.z1)]);
     }
   }
 
-  return list;
+  const mergeIntervals = (intervals) => {
+    if (!intervals.length) return [];
+    intervals.sort((a, b) => a[0] - b[0]);
+    const out = [intervals[0].slice()];
+    for (let i = 1; i < intervals.length; i++) {
+      const [a, b] = intervals[i];
+      const last = out[out.length - 1];
+      if (a <= last[1] + EPS) last[1] = Math.max(last[1], b);
+      else out.push([a, b]);
+    }
+    return out;
+  };
+
+  const merged = [];
+  for (const [z, intervals] of horiz) {
+    for (const [x0, x1] of mergeIntervals(intervals)) {
+      if (x1 - x0 > EPS) merged.push({ x0, z0: z, x1, z1: z });
+    }
+  }
+  for (const [x, intervals] of vert) {
+    for (const [z0, z1] of mergeIntervals(intervals)) {
+      if (z1 - z0 > EPS) merged.push({ x0: x, z0, x1: x, z1 });
+    }
+  }
+  return merged;
+}
+
+const OUTLINE_SNAP = 0.02;
+
+function snapOutlineCoord(v) {
+  return Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP;
+}
+
+function snapOutlineLoop(loop) {
+  return loop.map(([x, z]) => [snapOutlineCoord(x), snapOutlineCoord(z)]);
 }
 
 function chainBoundaryLoops(edges) {
@@ -385,16 +521,27 @@ export function footprintOutlineLoops(cells) {
 }
 
 /** Outline → outer shell + optional holes for one connected island. */
+export function footprintSolidOutlineFromRects(rects) {
+  const loops = footprintOutlineLoopsFromRects(rects).map(snapOutlineLoop);
+  const { outer, holes } = classifyFootprintLoops(loops);
+  return orientExtrudeLoops(outer, holes);
+}
+
+/** @deprecated grid-cell outline — kept for diagnostics only */
 export function footprintSolidOutline(cells) {
   const loops = footprintOutlineLoops(cells);
   const { outer, holes } = classifyFootprintLoops(loops);
   return orientExtrudeLoops(outer, holes);
 }
 
-/** Per connected island: one outer loop (+ holes) ready for extrusion. */
+/**
+ * Per connected island: one outer loop (+ holes) ready for extrusion.
+ * Outline follows wall center-line footprint rectangles, not grid-cell stairs.
+ */
 export function footprintExtrudeOutlines(segments) {
-  const grid = subdivideFootprintCells(segments.map(segmentToRect));
-  return connectedFootprintGroups(grid).map((group) => footprintSolidOutline(group));
+  const merged = mergeCollinearWallSegments(segments);
+  const rects = merged.map(segmentToRect);
+  return connectedRectGroups(rects).map((group) => footprintSolidOutlineFromRects(group));
 }
 
 function signedArea(loop) {
