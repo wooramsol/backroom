@@ -1,22 +1,27 @@
-import { MAP_CELL_M, MAP_GRID_SIZE } from "../constants.js";
-import { CELL_FLOOR, GridMap } from "./grid.js";
-import { BackroomsRoomPacker } from "./BackroomsRoomPacker.js";
-import { RoomConnector, roomOpeningCounts } from "./RoomConnector.js";
-import { CorridorGenerator } from "./CorridorGenerator.js";
-import { ConnectivityValidator } from "./ConnectivityValidator.js";
-import { mergeFloorIslands } from "./floorConnect.js";
-import { corridorBudgetOK, roomGenStats, roomSpaceOK } from "./backroomsMetrics.js";
-import { analyzeSpatialLayout } from "./RoomSpatialQA.js";
-import { innerWallsFromGrid, wallsFromGrid } from "./wallOutline.js";
-import { shapeFallback } from "./roomShapes.js";
-
 /**
- * Backrooms-first map generation:
- * pack offices → punch doorways in shared walls → minimal door spurs only
+ * Step 3 — zone-aware map orchestrator (parallel to frozen MapGenerator).
  */
-export class MapGenerator {
-  constructor(rng) {
+import { MAP_CELL_M, MAP_GRID_SIZE } from "../constants.js";
+import { CELL_FLOOR, GridMap } from "../mapgen/grid.js";
+import { CorridorGenerator } from "../mapgen/CorridorGenerator.js";
+import { ConnectivityValidator } from "../mapgen/ConnectivityValidator.js";
+import { mergeFloorIslands } from "../mapgen/floorConnect.js";
+import { corridorBudgetOK, roomGenStats, roomSpaceOK } from "../mapgen/backroomsMetrics.js";
+import { analyzeSpatialLayout } from "../mapgen/RoomSpatialQA.js";
+import { innerWallsFromGrid, wallsFromGrid } from "../mapgen/wallOutline.js";
+import { roomOpeningCounts } from "../mapgen/RoomConnector.js";
+import { shapeFallback } from "../mapgen/roomShapes.js";
+import { getMacroZoneAt } from "./ZoneClusterField.js";
+import { getZoneProfile } from "./ZoneTypes.js";
+import { createZonePacker } from "./ZoneRoomPacker.js";
+import { createZoneConnector } from "./ZoneRoomConnector.js";
+
+export class ZoneMapGenerator {
+  constructor(rng, zoneType, macroZone) {
     this.rng = rng;
+    this.zoneType = zoneType;
+    this.macroZone = macroZone;
+    this.profile = getZoneProfile(zoneType);
   }
 
   zonesFromRooms(rooms) {
@@ -42,10 +47,10 @@ export class MapGenerator {
 
   buildOnce(doors) {
     const grid = new GridMap(MAP_GRID_SIZE);
-    const packer = new BackroomsRoomPacker(this.rng);
+    const packer = createZonePacker(this.rng, this.zoneType);
     const rooms = packer.generate(grid);
 
-    const connector = new RoomConnector(this.rng);
+    const connector = createZoneConnector(this.rng, this.zoneType);
     connector.connect(grid, rooms);
     mergeFloorIslands(grid, connector, rooms);
     const openEdges = connector.openEdges;
@@ -63,8 +68,7 @@ export class MapGenerator {
       validation = validator.validate(grid, rooms, doors, wallSegments);
     }
 
-    const kind =
-      rooms.length === 1 ? rooms[0].kind : `backrooms-${rooms.length}`;
+    const kind = `zone-${this.zoneType}-${rooms.length}`;
 
     return {
       kind,
@@ -75,6 +79,9 @@ export class MapGenerator {
       innerWalls: innerWallsFromGrid(grid, openEdges),
       wallSegments,
       validation,
+      macroZone: this.macroZone,
+      zoneType: this.zoneType,
+      zoneProfile: this.profile,
       metrics: {
         roomSpace: roomSpaceOK(grid),
         corridorBudget: corridorBudgetOK(grid),
@@ -101,6 +108,7 @@ export class MapGenerator {
         cells: shape.cells.map(([x, z]) => [ox + x, oz + z]),
         localCells: shape.cells,
         centroid: { x: ox + shape.w / 2, z: oz + shape.h / 2 },
+        sizeKey: `${shape.w}x${shape.h}`,
       },
     ];
 
@@ -111,15 +119,9 @@ export class MapGenerator {
     const validator = new ConnectivityValidator(this.rng);
     let wallSegments = wallsFromGrid(grid, openEdges);
     let validation = validator.validate(grid, rooms, doors, wallSegments);
-    if (!validation.ok) {
-      const stub = new RoomConnector(this.rng);
-      const repaired = validator.repair(grid, rooms, doors, openEdges, stub);
-      wallSegments = repaired.wallSegments;
-      validation = validator.validate(grid, rooms, doors, wallSegments);
-    }
 
     return {
-      kind: shape.kind,
+      kind: `zone-${this.zoneType}-fallback`,
       zones: this.zonesFromRooms(rooms),
       rooms,
       grid,
@@ -127,6 +129,9 @@ export class MapGenerator {
       innerWalls: innerWallsFromGrid(grid, openEdges),
       wallSegments,
       validation,
+      macroZone: this.macroZone,
+      zoneType: this.zoneType,
+      zoneProfile: this.profile,
       metrics: { roomSpace: true, corridorBudget: true },
     };
   }
@@ -138,18 +143,32 @@ export class MapGenerator {
       const rooms = result.rooms ?? [];
       const unique = new Set(rooms.map((r) => r.sizeKey)).size;
       const dupes = unique < rooms.length;
+      const meetsMin = rooms.length >= this.profile.minRooms;
+      const sp = result.metrics.spatial;
+      let spatialBonus = 0;
+      if (sp) {
+        spatialBonus += sp.uniqueSizes * 3;
+        spatialBonus += sp.orthoShapeCount * 2;
+        if (sp.narrowPresent && sp.widePresent) spatialBonus += 12;
+        if (sp.loungePresent) spatialBonus += 4;
+        spatialBonus -= sp.sameSizeConsecutive * 8;
+        spatialBonus -= Math.max(0, sp.longestCorridorCells - 6) * 3;
+        if (sp.roomToRoomDirectRatio >= 0.5) spatialBonus += 5;
+      }
       const score =
         (result.validation.ok ? 100 : 0) +
         (result.metrics.roomSpace ? 10 : 0) +
         (result.metrics.corridorBudget ? 10 : 0) +
         rooms.length * 5 +
-        (dupes ? 0 : 8);
+        (dupes ? 0 : 8) +
+        (meetsMin ? 12 : 0) +
+        spatialBonus;
       if (!best || score > best.score) best = { result, score };
       if (
         result.validation.ok &&
         result.metrics.roomSpace &&
         result.metrics.corridorBudget &&
-        rooms.length >= 2 &&
+        rooms.length >= Math.max(1, this.profile.minRooms - 1) &&
         !dupes
       ) {
         return result;
@@ -160,6 +179,14 @@ export class MapGenerator {
   }
 }
 
-export function buildGridMap(doors, rng) {
-  return new MapGenerator(rng).generate(doors);
+/**
+ * Build chunk map for macro zone at (cx, cz).
+ * Wall + room frozen pipelines run inside via shared grid/wall outline imports.
+ */
+export function buildZoneMap(cx, cz, doors, rng) {
+  const macroZone = getMacroZoneAt(cx, cz);
+  return new ZoneMapGenerator(rng, macroZone.type, macroZone).generate(doors);
 }
+
+export { getMacroZoneAt } from "./ZoneClusterField.js";
+export { ZONE_TYPES, ZONE_PROFILES, getZoneProfile } from "./ZoneTypes.js";

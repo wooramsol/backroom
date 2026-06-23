@@ -5,6 +5,7 @@ import {
   pickRoomShape,
   pickCompactRoomShape,
   pickSeedLoungeShape,
+  shapeNarrow,
   roomCentroid,
   roomSizeKey,
   shapePassageOK,
@@ -156,9 +157,20 @@ export class BackroomsRoomPacker {
     return this.placeRoom(shape, ox, oz, id);
   }
 
+  hasSmallRoom() {
+    return this.rooms.some((r) => {
+      const parts = (r.sizeKey ?? "9x9").split("x").map(Number);
+      return Math.min(parts[0], parts[1]) <= 3 || (r.cells?.length ?? 99) <= 22;
+    });
+  }
+
   pickNextShape(fillRatio = 0) {
     if (this.rooms.length === 0) {
       return pickSeedLoungeShape(this.rng, this.usedSizes);
+    }
+    if (this.rooms.length >= 2 && !this.hasSmallRoom()) {
+      const narrow = shapeNarrow(this.rng, this.usedSizes);
+      if (narrow) return narrow;
     }
     if (fillRatio >= 0.55) {
       return pickCompactRoomShape(this.rng, this.usedSizes) ?? pickRoomShape(this.rng, this.usedSizes);

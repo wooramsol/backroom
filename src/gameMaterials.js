@@ -3,7 +3,7 @@ import {
   createCeilingGapMaterial,
   createCeilingSeamTexture,
   createCeilingTileMaterial,
-  createSurfaceMaterial,
+  createUnlitSurfaceMaterial,
   createBakedWallMaterial,
 } from "./textures.js";
 
@@ -21,7 +21,7 @@ export function createGameMaterials(wallpaper, surfaceTex, floorTex) {
     surfaceTex,
     floorTex,
     wall: createBakedWallMaterial(wallpaper),
-    floor: createSurfaceMaterial(floorTex),
+    floor: createUnlitSurfaceMaterial(floorTex),
     ceilingTile,
     ceilingGroove: createCeilingGapMaterial(),
   };

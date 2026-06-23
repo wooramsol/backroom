@@ -505,7 +505,7 @@ function mergeCollinearEdges(edges) {
   return merged;
 }
 
-const OUTLINE_SNAP = 0.02;
+const OUTLINE_SNAP = 0.01;
 
 function snapOutlineCoord(v) {
   return Number((Math.round(v / OUTLINE_SNAP) * OUTLINE_SNAP).toFixed(4));

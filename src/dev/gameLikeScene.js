@@ -16,7 +16,6 @@ import {
 import {
   loadWallpaperOrFallback,
   loadSurfaceOrFallback,
-  loadCarpetFloor,
 } from "../textures.js";
 
 export function configureGameLikeRenderer(renderer) {
@@ -33,11 +32,13 @@ export function configureGameLikeScene(scene) {
 }
 
 export async function loadGameTextures(loader = new THREE.TextureLoader()) {
-  const [wallpaper, surfaceTex, floorTex] = await Promise.all([
+  const [wallpaper, surfaceTex] = await Promise.all([
     loadWallpaperOrFallback(loader),
     loadSurfaceOrFallback(loader),
-    loadCarpetFloor(loader),
   ]);
+  const floorTex = surfaceTex.clone();
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+  floorTex.userData = { ...surfaceTex.userData };
   return { wallpaper, surfaceTex, floorTex };
 }
 
