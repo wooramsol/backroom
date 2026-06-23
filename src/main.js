@@ -26,8 +26,6 @@ import {
   CAMERA_NEAR,
   CAMERA_FAR,
   ENABLE_BACKGROUND_MUSIC,
-  BOOTSTRAP_RADIUS,
-  PRELOAD_RADIUS,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
 import { findSpawnPosition } from "./spawnPosition.js";
@@ -160,7 +158,7 @@ async function init() {
     syncCrosshair();
     overlay.style.cursor = "pointer";
     if (hintStatus) {
-      hintStatus.innerHTML = `Click to start<br /><span style="opacity:0.55;font-size:0.85em">Nearby rooms are ready — more load in the background</span>`;
+      hintStatus.innerHTML = `Click to start<br /><span style="opacity:0.55;font-size:0.85em">Nearby rooms are ready — more load as you explore</span>`;
     }
   }
 
@@ -168,11 +166,7 @@ async function init() {
     .preloadAround(camera, {
       onProgress: (done, total) => {
         if (hintStatus && !ready) {
-          const phase =
-            done <= (BOOTSTRAP_RADIUS * 2 + 1) ** 2
-              ? "Starting area"
-              : "Background";
-          hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br /><span style="opacity:0.55;font-size:0.85em">${phase}</span>`;
+          hintStatus.innerHTML = `Building starting area… ${done}/${total}`;
         }
       },
       onBootstrapReady: markPlayable,
@@ -214,7 +208,7 @@ async function init() {
 
     if (!world.preloading) {
       world.update(player.position);
-      if (world.hasPendingLoads()) {
+      if (started && world.hasPendingLoads()) {
         world.processLoadQueue(player.position);
       }
       if (world.consumeColliderRebuild()) {
