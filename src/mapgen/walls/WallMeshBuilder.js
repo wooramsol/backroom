@@ -5,6 +5,7 @@ import { collectRoomWallSegments } from "./wallSegments.js";
 import { segmentsToFootprint, footprintExtrudeOutlines } from "./WallFootprint.js";
 import { validateWallMesh, repairFootprint } from "./WallQuality.js";
 import { bakeWorldWallUVBuffer } from "./WorldWallUV.js";
+import { finalizeWallMeshGeometry } from "./WallGeometryFinalize.js";
 
 const SNAP = 1e-4;
 
@@ -33,11 +34,15 @@ function extrudeFootprint(outer, holes, height) {
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: height,
     bevelEnabled: false,
+    bevelThickness: 0,
+    bevelSize: 0,
+    bevelSegments: 0,
     steps: 1,
     curveSegments: 1,
   });
   geo.rotateX(-Math.PI / 2);
   geo.scale(1, 1, -1);
+  geo.computeBoundingBox();
   return stripHorizontalCaps(geo);
 }
 
@@ -80,8 +85,8 @@ export function buildSolidWallGeometry(
     if (p !== geo) p.dispose();
   }
 
-  geo.computeVertexNormals();
   geo = removeDegenerateFaces(geo);
+  geo = finalizeWallMeshGeometry(geo);
   bakeWorldWallUVBuffer(geo, roomWx, roomWz, tileW, tileH);
 
   if (options.validate !== false && options.room && issues.length && options.onIssues) {

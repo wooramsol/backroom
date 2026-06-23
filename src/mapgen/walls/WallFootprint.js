@@ -1,14 +1,16 @@
-import { WALL_T } from "../../constants.js";
+import { WALL_T, WALL_JOINT_OVERLAP } from "../../constants.js";
+import { orientExtrudeLoops } from "./WallGeometryFinalize.js";
 
 const EPS = 1e-5;
 
 /** Axis-aligned wall run → solid footprint rectangle in chunk XZ (metres). */
 export function segmentToRect(seg) {
   const half = WALL_T / 2;
+  const pad = WALL_JOINT_OVERLAP * 0.5;
   if (seg.axis === "z") {
     return {
-      x0: seg.span0,
-      x1: seg.span1,
+      x0: seg.span0 - pad,
+      x1: seg.span1 + pad,
       z0: seg.pos - half,
       z1: seg.pos + half,
     };
@@ -16,8 +18,8 @@ export function segmentToRect(seg) {
   return {
     x0: seg.pos - half,
     x1: seg.pos + half,
-    z0: seg.span0,
-    z1: seg.span1,
+    z0: seg.span0 - pad,
+    z1: seg.span1 + pad,
   };
 }
 
@@ -172,12 +174,28 @@ export function connectedFootprintGroups(cells) {
 
   const neighbors = (c) => {
     const out = [];
+    const corners = (r) => [
+      [r.x0, r.z0],
+      [r.x0, r.z1],
+      [r.x1, r.z0],
+      [r.x1, r.z1],
+    ];
+    const sharesCorner = (a, b) => {
+      for (const [x, z] of corners(a)) {
+        for (const [x2, z2] of corners(b)) {
+          if (Math.abs(x - x2) < EPS && Math.abs(z - z2) < EPS) return true;
+        }
+      }
+      return false;
+    };
+
     for (const o of cells) {
       if (o === c) continue;
       if (Math.abs(o.x0 - c.x1) < EPS && o.z0 < c.z1 - EPS && o.z1 > c.z0 + EPS) out.push(o);
       if (Math.abs(o.x1 - c.x0) < EPS && o.z0 < c.z1 - EPS && o.z1 > c.z0 + EPS) out.push(o);
       if (Math.abs(o.z0 - c.z1) < EPS && o.x0 < c.x1 - EPS && o.x1 > c.x0 + EPS) out.push(o);
       if (Math.abs(o.z1 - c.z0) < EPS && o.x0 < c.x1 - EPS && o.x1 > c.x0 + EPS) out.push(o);
+      if (sharesCorner(c, o)) out.push(o);
     }
     return out;
   };
@@ -369,7 +387,8 @@ export function footprintOutlineLoops(cells) {
 /** Outline → outer shell + optional holes for one connected island. */
 export function footprintSolidOutline(cells) {
   const loops = footprintOutlineLoops(cells);
-  return classifyFootprintLoops(loops);
+  const { outer, holes } = classifyFootprintLoops(loops);
+  return orientExtrudeLoops(outer, holes);
 }
 
 /** Per connected island: one outer loop (+ holes) ready for extrusion. */

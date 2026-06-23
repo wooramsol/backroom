@@ -84,19 +84,16 @@ geo.computeBoundingBox();
 const center = geo.boundingBox.getCenter(new THREE.Vector3()).add(new THREE.Vector3(wx, 0, wz));
 
 if (view === "corner") {
-  // L-corner at inner walls (x=7, z=2)
-  camera.position.set(wx + 8.6, 1.55, wz + 3.4);
-  controls.target.set(wx + 7.0, 1.25, wz + 2.0);
+  camera.position.set(wx + 7.55, 1.38, wz + 2.55);
+  controls.target.set(wx + 7.0, 1.28, wz + 2.0);
 } else if (view === "endcap") {
-  // Open end of z-wall at x=2 (span 2→7)
-  camera.position.set(wx + 1.15, 1.45, wz + 2.0);
-  controls.target.set(wx + 2.05, 1.3, wz + 2.0);
+  camera.position.set(wx + 1.55, 1.38, wz + 2.55);
+  controls.target.set(wx + 2.0, 1.28, wz + 2.0);
 } else if (view === "jamb") {
-  // Opening in x-wall at x=7 (gap z=2…11)
-  camera.position.set(wx + 6.35, 1.55, wz + 5.8);
-  controls.target.set(wx + 7.15, 1.3, wz + 6.5);
+  camera.position.set(wx + 6.55, 1.42, wz + 6.35);
+  controls.target.set(wx + 7.0, 1.28, wz + 6.0);
 } else {
-  camera.position.set(wx + 9.5, 3.2, wz + 10.5);
+  camera.position.set(wx + 8.0, 2.6, wz + 9.0);
   controls.target.set(wx + 6.5, 1.2, wz + 6.5);
 }
 
