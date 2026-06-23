@@ -6,7 +6,7 @@ import {
   collidersFromMap,
 } from "./room.js";
 import {
-  BOOTSTRAP_RADIUS,
+  LANDING_RADIUS,
   GRID_RADIUS,
   PREFETCH_RADIUS,
   DESPAWN_RADIUS,
@@ -42,6 +42,7 @@ export class World {
     this.cellCz = NaN;
     this.lastPrefetchEdge = false;
     this.preloading = false;
+    this.landingReady = false;
   }
 
   key(cx, cz) {
@@ -59,6 +60,12 @@ export class World {
     const lz = playerPos.z - cz * CHUNK;
     const t = CHUNK * EDGE_PREFETCH;
     return lx > t || lx < CHUNK - t || lz > t || lz < CHUNK - t;
+  }
+
+  atEdge(playerPos) {
+    const cx = Math.floor(playerPos.x / CHUNK);
+    const cz = Math.floor(playerPos.z / CHUNK);
+    return this.nearPrefetchEdge(playerPos, cx, cz);
   }
 
   ringKeys(ccx, ccz, radius) {
@@ -243,6 +250,8 @@ export class World {
     }
 
     const backlog = this.loadQueue.length;
+    if (!atEdge) return;
+
     const enqueueCap = backlog > 6 ? 1 : backlog > 2 ? MAX_ENQUEUE_PER_UPDATE : MAX_ENQUEUE_PER_UPDATE + 1;
     const missing = [];
     for (const k of need) {
@@ -257,9 +266,34 @@ export class World {
     }
   }
 
-  /** Exactly one load step per frame — never blocks for a full chunk build. */
-  processLoadQueue() {
+  countLandingChunks(cx, cz) {
+    let n = 0;
+    for (let z = cz - LANDING_RADIUS; z <= cz + LANDING_RADIUS; z++) {
+      for (let x = cx - LANDING_RADIUS; x <= cx + LANDING_RADIUS; x++) {
+        if (this.chunks.has(this.key(x, z))) n++;
+      }
+    }
+    return n;
+  }
+
+  tryFinishLanding(playerPos) {
+    if (!this.preloading || this.landingReady) return false;
+    const cx = Math.floor(playerPos.x / CHUNK);
+    const cz = Math.floor(playerPos.z / CHUNK);
+    const total = (LANDING_RADIUS * 2 + 1) ** 2;
+    if (this.countLandingChunks(cx, cz) < total || this.loadQueue.length > 0) return false;
+
+    this.init(playerPos);
+    this.rebuildColliderList();
+    this.preloading = false;
+    this.landingReady = true;
+    return true;
+  }
+
+  /** Edge streaming only during play — full steps while landing on the title screen. */
+  processLoadQueue(playerPos) {
     if (!this.loadQueue.length) return;
+    if (!this.preloading && !this.atEdge(playerPos)) return;
 
     const job = this.loadQueue[0];
     const k = this.key(job.cx, job.cz);
@@ -303,7 +337,7 @@ export class World {
   _spawnChunkComplete(cx, cz) {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
-    this.addCollidersForRoom(room);
+    appendRoomWalls(this.wallMap, room);
     const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
@@ -340,36 +374,41 @@ export class World {
     };
 
     this.preloading = true;
+    this.landingReady = false;
     this.loadQueue.length = 0;
     this.pendingKeys.clear();
+    this._landingTotal = (LANDING_RADIUS * 2 + 1) ** 2;
+    this._landingCx = cx;
+    this._landingCz = cz;
+    this._onLandingProgress = onProgress;
+    this._onLandingReady = onBootstrapReady;
+    this._onLandingComplete = onComplete;
 
-    const bootstrap = collectRing(BOOTSTRAP_RADIUS);
-
-    try {
-      let done = 0;
-      for (const { cx: x, cz: z } of bootstrap) {
-        this._spawnChunkSafe(x, z);
-        done++;
-        onProgress?.(done, bootstrap.length || 1);
-      }
-
-      this.init(playerPos);
-      this.rebuildColliderList();
-      onBootstrapReady?.();
-      onComplete?.();
-    } catch (err) {
-      this.preloading = false;
-      throw err;
+    for (const { cx: x, cz: z } of collectRing(LANDING_RADIUS)) {
+      this.enqueue(x, z, playerPos);
     }
+  }
 
-    this.preloading = false;
+  tickLandingPreload(playerPos) {
+    if (!this.preloading) return;
+    this.processLoadQueue(playerPos);
+    const done = this.countLandingChunks(this._landingCx, this._landingCz);
+    this._onLandingProgress?.(done, this._landingTotal);
+    if (this.tryFinishLanding(playerPos)) {
+      this._onLandingReady?.();
+      this._onLandingComplete?.();
+    }
   }
 
   hasPendingLoads() {
-    return !this.preloading && this.loadQueue.length > 0;
+    return !this.preloading && this.landingReady && this.loadQueue.length > 0;
   }
 
   isStreaming() {
     return this.hasPendingLoads();
+  }
+
+  shouldStream(playerPos) {
+    return this.landingReady && this.atEdge(playerPos) && this.loadQueue.length > 0;
   }
 }

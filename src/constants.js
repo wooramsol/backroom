@@ -86,10 +86,12 @@ export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 8;
 export const FOG_FAR = 34;
 export const FOG_COLOR = 0x3a3830;
-/** Chunks built before “Click to start” — center 3×3 only */
-export const BOOTSTRAP_RADIUS = 1;
 /** Loaded cells around player — ring must cover FOG_FAR */
 export const GRID_RADIUS = 2;
+/** Chunks built before “Click to start” — full 5×5 play grid (covers fog) */
+export const LANDING_RADIUS = GRID_RADIUS;
+/** @deprecated use LANDING_RADIUS */
+export const BOOTSTRAP_RADIUS = LANDING_RADIUS;
 /** One extra ring built ahead while moving (infinite map — not all preloaded) */
 export const PREFETCH_RADIUS = GRID_RADIUS + 1;
 /** Preload must cover edge-prefetch outer strip (PREFETCH_RADIUS + 1) */
