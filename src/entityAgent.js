@@ -1,18 +1,19 @@
 import * as THREE from "three";
+import { CHUNK } from "./constants.js";
+import { generateRoom, isWalkableLocal, reachableCellsFrom } from "./room.js";
+import { createRng } from "./rng.js";
 import { EntityBody } from "./entityPhysics.js";
 import { findNavPath } from "./entityNav.js";
 
 const WALK_SPEED = 3.1;
-const RUN_SPEED = 5.5;
-const RUN_DIST = 3.2;
 const LOOK_AHEAD = 1.35;
 const GOAL_REPLAN_DIST = 2.2;
 const STUCK_REPLAN = 0.55;
-const MOVE_HOLD = 0.12;
+const REPLAN_COOLDOWN = 0.4;
+const GOAL_REACHED = 0.45;
 
-const _fwd = new THREE.Vector3();
 const _target = new THREE.Vector3();
-const _toPlayer = new THREE.Vector3();
+const _toGoal = new THREE.Vector3();
 const _moveGoal = new THREE.Vector3();
 const _pos = new THREE.Vector3();
 
@@ -40,15 +41,28 @@ function bindAnimations(mixer, clips, movePatterns, idlePatterns) {
   return { moveAction, idleAction };
 }
 
-/** One GLB entity that chases the player with collision + animation */
+function walkableCellsInChunk(cx, cz, localX, localZ) {
+  const room = generateRoom(cx, cz);
+  let cells = reachableCellsFrom(room.innerWalls, localX, localZ);
+  if (!cells.length) {
+    for (let iz = 0; iz < Math.ceil(CHUNK / 0.5); iz++) {
+      for (let ix = 0; ix < Math.ceil(CHUNK / 0.5); ix++) {
+        const x = ix * 0.5 + 0.25;
+        const z = iz * 0.5 + 0.25;
+        if (isWalkableLocal(x, z, room.innerWalls)) cells.push({ x, z });
+      }
+    }
+  }
+  return cells.map((c) => ({ wx: cx * CHUNK + c.x, wz: cz * CHUNK + c.z }));
+}
+
+/** GLB entity with collision, pathfinding, and optional room wandering */
 export class EntityAgent {
   constructor(data, scene, opts = {}) {
     this.id = opts.id || "entity";
     this.active = false;
     this.root = data.model;
-    this.followBehind = opts.followBehind === true;
-    this.followDist = opts.followDist ?? 2.35;
-    this.spawnOffset = opts.spawnOffset ?? null;
+    this.wanderMode = opts.wanderMode === true;
 
     this.body = new EntityBody({ footOffset: data.footOffset ?? 0 });
     this.mixer = new THREE.AnimationMixer(this.root);
@@ -65,9 +79,12 @@ export class EntityAgent {
     this._navPath = null;
     this._navIdx = 0;
     this._stuckT = 0;
-    this._moveHold = 0;
+    this._replanCooldown = 0;
     this._lastGoalX = NaN;
     this._lastGoalZ = NaN;
+    this._wanderGoalX = NaN;
+    this._wanderGoalZ = NaN;
+    this._wanderSeed = 901;
 
     this.root.visible = false;
     scene.add(this.root);
@@ -81,59 +98,36 @@ export class EntityAgent {
 
   spawn(player, groundY) {
     const gy = groundY ?? player.groundY;
-    const px = player.position.x;
-    const pz = player.position.z;
-    const candidates = [];
+    const cx = Math.floor(player.position.x / CHUNK);
+    const cz = Math.floor(player.position.z / CHUNK);
+    const localX = player.position.x - cx * CHUNK;
+    const localZ = player.position.z - cz * CHUNK;
 
-    if (this.followBehind) {
-      player.camera.getWorldDirection(_fwd);
-      _fwd.y = 0;
-      if (_fwd.lengthSq() < 1e-10) _fwd.set(0, 0, 1);
-      else _fwd.normalize();
-      candidates.push({
-        x: px - _fwd.x * this.followDist,
-        z: pz - _fwd.z * this.followDist,
-      });
+    const spots = walkableCellsInChunk(cx, cz, localX, localZ).filter(
+      (s) => !this.body.insideWall(s.wx, s.wz),
+    );
+
+    this._wanderSeed += 1;
+    const rng = createRng(cx, cz, this._wanderSeed);
+    const spot = rng.pick(spots) ?? spots[0];
+
+    if (spot) {
+      this.body.setFeetWorld(spot.wx, spot.wz, gy);
+    } else {
+      this.body.setFeetWorld(player.position.x, player.position.z, gy);
+      this.body.resolvePenetration();
     }
 
-    for (let i = 0; i < 12; i++) {
-      const ang = player.yaw + Math.PI + (i / 12) * Math.PI * 2;
-      candidates.push({
-        x: px + Math.sin(ang) * this.followDist,
-        z: pz + Math.cos(ang) * this.followDist,
-      });
-    }
-
-    for (const scale of [0.65, 0.4, 1.15]) {
-      candidates.push({ x: px + scale, z: pz }, { x: px - scale, z: pz });
-      candidates.push({ x: px, z: pz + scale }, { x: px, z: pz - scale });
-    }
-
-    for (const pos of candidates) {
-      if (!this.body.insideWall(pos.x, pos.z)) {
-        this.body.setFeetWorld(pos.x, pos.z, gy);
-        this.body.yaw = Math.atan2(px - pos.x, pz - pos.z);
-        this.body.desiredYaw = this.body.yaw;
-        this.root.visible = true;
-        this.active = true;
-        this._navPath = null;
-        this._navIdx = 0;
-        this.body.syncRoot(this.root);
-        this._setMoving(false);
-        return;
-      }
-    }
-
-    this.body.setFeetWorld(px, pz, gy);
-    this.body.resolvePenetration();
-    this.body.yaw = player.yaw;
-    this.body.desiredYaw = player.yaw;
+    this.body.yaw = Math.random() * Math.PI * 2;
+    this.body.desiredYaw = this.body.yaw;
     this.root.visible = true;
     this.active = true;
     this._navPath = null;
     this._navIdx = 0;
+    this._stuckT = 0;
+    this._pickWanderGoal();
     this.body.syncRoot(this.root);
-    this._setMoving(false);
+    this._setWalkAnim();
   }
 
   hide() {
@@ -144,41 +138,49 @@ export class EntityAgent {
     this._navPath = null;
   }
 
-  _setMoving(on) {
+  _setWalkAnim() {
     if (!this.moveAction) return;
-    if (on === this.moving) return;
-    this.moving = on;
-
-    if (!this.idleAction) {
-      if (!this.moveAction.isRunning()) this.moveAction.play();
-      this.moveAction.timeScale = on ? 1 : 0.15;
-      return;
-    }
-
-    if (on) {
-      this.idleAction.fadeOut(0.22);
-      if (!this.moveAction.isRunning()) this.moveAction.play();
-      this.moveAction.fadeIn(0.22);
-    } else {
-      this.moveAction.fadeOut(0.28);
-      if (!this.idleAction.isRunning()) this.idleAction.play();
-      this.idleAction.fadeIn(0.28);
-    }
+    this.moving = true;
+    if (!this.moveAction.isRunning()) this.moveAction.play();
+    this.moveAction.timeScale = 1;
+    if (this.idleAction?.isRunning()) this.idleAction.fadeOut(0.15);
   }
 
-  _chaseTarget(player) {
-    if (this.followBehind) {
-      player.camera.getWorldDirection(_fwd);
-      _fwd.y = 0;
-      if (_fwd.lengthSq() < 1e-10) _fwd.set(0, 0, 1);
-      else _fwd.normalize();
-      _target.copy(player.position).addScaledVector(_fwd, -this.followDist);
-      return _target;
-    }
-    return player.position;
+  _pickWanderGoal() {
+    const sx = this.body.position.x;
+    const sz = this.body.position.z;
+    const cx = Math.floor(sx / CHUNK);
+    const cz = Math.floor(sz / CHUNK);
+    const localX = sx - cx * CHUNK;
+    const localZ = sz - cz * CHUNK;
+
+    const spots = walkableCellsInChunk(cx, cz, localX, localZ).filter((s) => {
+      if (this.body.insideWall(s.wx, s.wz)) return false;
+      return Math.hypot(s.wx - sx, s.wz - sz) > 1.8;
+    });
+
+    this._wanderSeed += 1;
+    const rng = createRng(cx, cz, this._wanderSeed);
+    const spot = rng.pick(spots);
+    if (!spot) return;
+
+    this._wanderGoalX = spot.wx;
+    this._wanderGoalZ = spot.wz;
+    this._navPath = null;
+    this._navIdx = 0;
+    this._lastGoalX = NaN;
+    this._lastGoalZ = NaN;
+    this._stuckT = 0;
+    this._replanCooldown = 0;
+  }
+
+  _wanderTarget() {
+    _target.set(this._wanderGoalX, 0, this._wanderGoalZ);
+    return _target;
   }
 
   _needsReplan(goalX, goalZ) {
+    if (this._replanCooldown > 0) return false;
     if (!this._navPath?.length) return true;
     if (this._stuckT >= STUCK_REPLAN) return true;
     const gx = this._lastGoalX;
@@ -196,6 +198,7 @@ export class EntityAgent {
     this._lastGoalX = goalX;
     this._lastGoalZ = goalZ;
     this._stuckT = 0;
+    this._replanCooldown = REPLAN_COOLDOWN;
   }
 
   _advanceNavIdx() {
@@ -246,29 +249,38 @@ export class EntityAgent {
     return _moveGoal;
   }
 
-  update(dt, player) {
+  update(dt, _player) {
     if (!this.active) return;
 
-    _target.copy(this._chaseTarget(player));
-    const navGoal = this._lookAheadGoal(_target.x, _target.z);
+    if (this._replanCooldown > 0) this._replanCooldown -= dt;
 
-    _toPlayer.subVectors(navGoal, this.body.position);
-    _toPlayer.y = 0;
-    const dist = _toPlayer.length();
+    if (!Number.isFinite(this._wanderGoalX)) this._pickWanderGoal();
+
+    const goal = this._wanderTarget();
+    const navGoal = this._lookAheadGoal(goal.x, goal.z);
+
+    _toGoal.subVectors(navGoal, this.body.position);
+    _toGoal.y = 0;
+    const dist = _toGoal.length();
 
     let moved = 0;
     if (dist > 0.2) {
-      const speed = dist > RUN_DIST ? RUN_SPEED : WALK_SPEED;
-      moved = this.body.moveToward(_toPlayer.x, _toPlayer.z, speed, dt);
+      moved = this.body.moveToward(_toGoal.x, _toGoal.z, WALK_SPEED, dt);
       if (moved < 0.0005) this._stuckT += dt;
       else this._stuckT = 0;
     } else {
-      this._stuckT = 0;
+      this._stuckT += dt;
     }
 
-    if (moved > 0.002) this._moveHold = MOVE_HOLD;
-    else this._moveHold = Math.max(0, this._moveHold - dt);
-    this._setMoving(this._moveHold > 0);
+    const goalDist = Math.hypot(
+      this._wanderGoalX - this.body.position.x,
+      this._wanderGoalZ - this.body.position.z,
+    );
+    if (goalDist <= GOAL_REACHED || this._stuckT >= STUCK_REPLAN) {
+      this._pickWanderGoal();
+    }
+
+    this._setWalkAnim();
 
     this.body.smoothYaw(dt);
     this.body.updateVertical(dt);

@@ -4,6 +4,7 @@ import {
   appendRoomWalls,
   removeRoomWalls,
   collidersFromMap,
+  evictRoomCache,
 } from "./room.js";
 import {
   PRELOAD_RADIUS,
@@ -174,7 +175,10 @@ export class World {
       this.disposeQueue.push(mesh);
     }
     this.chunks.delete(k);
-    if (room) this.removeCollidersForRoom(room);
+    if (room) {
+      this.removeCollidersForRoom(room);
+      evictRoomCache(room.cx, room.cz);
+    }
   }
 
   enqueue(cx, cz, playerPos) {
@@ -283,7 +287,9 @@ export class World {
 
   tick(dt) {
     this.time += dt;
-    if (this.disposeQueue.length) disposeChunkRoot(this.disposeQueue.shift());
+    for (let i = 0; i < DESPAWN_PER_FRAME && this.disposeQueue.length; i++) {
+      disposeChunkRoot(this.disposeQueue.shift());
+    }
     for (let i = 0; i < DESPAWN_PER_FRAME && this.despawnPending.length; i++) {
       this.despawn(this.despawnPending.shift());
     }

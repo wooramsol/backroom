@@ -69,8 +69,13 @@ export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 10
 
   while (open.length && iterations < maxIter) {
     iterations++;
-    open.sort((a, b) => a.f - b.f);
-    const cur = open.shift();
+    let bestI = 0;
+    for (let i = 1; i < open.length; i++) {
+      if (open[i].f < open[bestI].f) bestI = i;
+    }
+    const cur = open[bestI];
+    open[bestI] = open[open.length - 1];
+    open.pop();
     const ck = cellKey(cur.ix, cur.iz);
     if (closed.has(ck)) continue;
     closed.add(ck);
