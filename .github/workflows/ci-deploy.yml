@@ -38,8 +38,10 @@ jobs:
           fi
 
       - run: npm ci
-      - name: Set build time
-        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+      - name: Set build metadata
+        run: |
+          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -102,8 +104,10 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - name: Set build time
-        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+      - name: Set build metadata
+        run: |
+          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -139,8 +143,10 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - name: Set build time
-        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+      - name: Set build metadata
+        run: |
+          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -170,8 +176,10 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - name: Set build time
-        run: echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+      - name: Set build metadata
+        run: |
+          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: npm run build
         env:
           VITE_BASE: /backroom/
