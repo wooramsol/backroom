@@ -9,6 +9,7 @@
 | **개발** | https://wooramsol.github.io/backroom/ | `main` push 시 자동 |
 | **운영 (테스트)** | https://wooramsol.github.io/backroom-live/ | 수동 (아래 참고) |
 
+- 변경 사항은 **항상 개발(`backroom`)에 먼저** 배포합니다. 운영(`backroom-live`)은 사용자가 요청할 때만 배포합니다.
 - `cursor/*` 브랜치 push 또는 PR → 빌드 성공 시 **자동 머지 + 개발 배포**
 - `main` push → 개발 서버(`gh-pages`)에 **자동 배포**
 - 운영 배포는 **GitHub Actions → Deploy Production → Run workflow** 또는 에이전트에게 "운영 배포해줘" 요청 (`production` 브랜치 push로도 트리거)
@@ -30,9 +31,19 @@ npm run dev
 
 ## 조작
 
+### 데스크톱
+
 - **WASD** — 이동
 - **Shift** — 달리기
+- **Space** — 점프
+- **C** — 앉기
 - **마우스** — 시야 (포인터 잠금)
+
+### 모바일 (가로 모드)
+
+- **왼쪽 스틱** — 이동
+- **오른쪽 드래그** — 시야
+- **Run / Jump** — 달리기·점프 버튼
 
 ## 특징
 

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Backrooms — Level 0</title>
     <style>
       * {
@@ -197,6 +197,117 @@
       #vignette.visible {
         opacity: 1;
       }
+
+      /* —— Mobile landscape controls —— */
+      #mobile-rotate {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background: rgba(8, 7, 5, 0.92);
+        color: #c9b87a;
+        z-index: 20;
+        text-align: center;
+        padding: 2rem;
+        letter-spacing: 0.12em;
+        font-size: 0.85rem;
+        line-height: 1.7;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+      #mobile-rotate.visible {
+        opacity: 1;
+      }
+      #mobile-rotate .rotate-icon {
+        font-size: 2.4rem;
+        opacity: 0.7;
+        transform: rotate(90deg);
+      }
+      #mobile-controls {
+        position: fixed;
+        inset: 0;
+        z-index: 12;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+      }
+      #mobile-controls.visible {
+        opacity: 1;
+      }
+      .mc-stick-base,
+      .mc-look-zone,
+      .mc-btn {
+        pointer-events: auto;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .mc-stick-base {
+        position: absolute;
+        left: max(1rem, env(safe-area-inset-left));
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        width: 112px;
+        height: 112px;
+        border-radius: 50%;
+        background: rgba(201, 184, 122, 0.08);
+        border: 1px solid rgba(201, 184, 122, 0.22);
+      }
+      .mc-stick-knob {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(201, 184, 122, 0.28);
+        border: 1px solid rgba(201, 184, 122, 0.45);
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+      }
+      .mc-look-zone {
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 52%;
+        height: 100%;
+      }
+      .mc-actions {
+        position: absolute;
+        right: max(1rem, env(safe-area-inset-right));
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        pointer-events: none;
+      }
+      .mc-btn {
+        min-width: 4.2rem;
+        height: 2.6rem;
+        padding: 0 0.9rem;
+        border-radius: 999px;
+        border: 1px solid rgba(201, 184, 122, 0.35);
+        background: rgba(26, 24, 16, 0.55);
+        color: rgba(201, 184, 122, 0.88);
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .mc-btn.pressed {
+        background: rgba(201, 184, 122, 0.28);
+        border-color: rgba(201, 184, 122, 0.6);
+      }
+      html.mobile #overlay .hint-controls {
+        font-size: 0.72rem;
+      }
+      @media (orientation: portrait) {
+        html.mobile #overlay .hint-controls br + br {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -227,6 +338,21 @@
       <span class="ch-v"></span>
     </div>
     <div id="vignette"></div>
+    <div id="mobile-rotate" hidden>
+      <div class="rotate-icon" aria-hidden="true">📱</div>
+      <div>가로로 돌려 주세요</div>
+      <div style="opacity: 0.55; font-size: 0.72rem">Rotate your device to landscape</div>
+    </div>
+    <div id="mobile-controls" hidden>
+      <div class="mc-stick-base" aria-label="Move">
+        <div class="mc-stick-knob"></div>
+      </div>
+      <div class="mc-look-zone" aria-label="Look"></div>
+      <div class="mc-actions">
+        <button type="button" class="mc-btn mc-btn-run">Run</button>
+        <button type="button" class="mc-btn mc-btn-jump">Jump</button>
+      </div>
+    </div>
     <div id="resume-prompt" hidden>Click to resume</div>
     <script type="module" src="/src/main.js"></script>
   </body>

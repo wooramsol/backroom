@@ -9,6 +9,7 @@ import {
   PLAYER_R,
   CHUNK,
   MOUSE_SENS,
+  MOBILE_LOOK_SENS,
   PITCH_LIMIT,
   JUMP_V,
   GRAVITY,
@@ -37,6 +38,11 @@ export class Player {
     this.pitch = 0;
     this.keys = {};
     this.locked = false;
+    this.mobileMode = false;
+    this.mobileActive = false;
+    this.mobileMove = { x: 0, y: 0 };
+    this.mobileRun = false;
+    this.mobileControls = null;
     this.colliders = [];
     this.bob = 0;
     this.vy = 0;
@@ -91,7 +97,11 @@ export class Player {
   }
 
   get crouching() {
-    return this.locked && Boolean(this.keys.KeyC);
+    return this.inputActive && Boolean(this.keys.KeyC);
+  }
+
+  get inputActive() {
+    return this.locked || (this.mobileMode && this.mobileActive);
   }
 
   _eyeHeight() {
@@ -115,8 +125,18 @@ export class Player {
     window.addEventListener("blur", this._onBlur);
   }
 
+  setMobileMode(enabled, controls = null) {
+    this.mobileMode = enabled;
+    this.mobileControls = controls;
+  }
+
+  startMobile() {
+    this.mobileActive = true;
+    this.onLockAcquired?.();
+  }
+
   requestLock() {
-    if (this.locked) return;
+    if (this.mobileMode || this.locked) return;
     this.domElement.requestPointerLock();
   }
 
@@ -247,7 +267,31 @@ export class Player {
     this.position.z = out.pz;
   }
 
+  _applyMobileLook() {
+    if (!this.mobileMode || !this.mobileActive || !this.mobileControls) return;
+    const { dx, dy } = this.mobileControls.consumeLook();
+    if (dx === 0 && dy === 0) return;
+    this.yaw -= dx * MOBILE_LOOK_SENS;
+    this.pitch -= dy * MOBILE_LOOK_SENS;
+    this.pitch = THREE.MathUtils.clamp(this.pitch, -PITCH_LIMIT, PITCH_LIMIT);
+  }
+
+  _tryMobileJump() {
+    if (!this.mobileMode || !this.mobileActive || !this.mobileControls) return;
+    if (!this.mobileControls.consumeJump()) return;
+    if (this.grounded && !this.crouching) {
+      this.vy = JUMP_V;
+      this.grounded = false;
+      this.onJump?.();
+    }
+  }
+
   update(dt) {
+    if (!this.inputActive) return;
+
+    this._applyMobileLook();
+    this._tryMobileJump();
+
     const crouchTarget = this.crouching ? 1 : 0;
     this.crouchBlend += (crouchTarget - this.crouchBlend) * Math.min(1, CROUCH_BLEND_SPEED * dt);
 
@@ -255,12 +299,20 @@ export class Player {
     this._syncWalkFromCamera();
 
     _move.set(0, 0, 0);
-    if (this.keys.KeyW || this.keys.ArrowUp) _move.add(_fwd);
-    if (this.keys.KeyS || this.keys.ArrowDown) _move.sub(_fwd);
-    if (this.keys.KeyA || this.keys.ArrowLeft) _move.sub(_right);
-    if (this.keys.KeyD || this.keys.ArrowRight) _move.add(_right);
+    if (this.mobileMode && this.mobileActive) {
+      const { x, y } = this.mobileControls?.move ?? this.mobileMove;
+      _move.addScaledVector(_fwd, -y);
+      _move.addScaledVector(_right, x);
+    } else {
+      if (this.keys.KeyW || this.keys.ArrowUp) _move.add(_fwd);
+      if (this.keys.KeyS || this.keys.ArrowDown) _move.sub(_fwd);
+      if (this.keys.KeyA || this.keys.ArrowLeft) _move.sub(_right);
+      if (this.keys.KeyD || this.keys.ArrowRight) _move.add(_right);
+    }
 
-    const running = !this.crouching && (this.keys.ShiftLeft || this.keys.ShiftRight);
+    const shiftRun = this.keys.ShiftLeft || this.keys.ShiftRight;
+    const mobileRun = this.mobileMode && this.mobileActive && (this.mobileControls?.run ?? this.mobileRun);
+    const running = !this.crouching && (shiftRun || mobileRun);
     const speed = this.crouching ? CROUCH_SPEED : running ? RUN : WALK;
 
     const px0 = this.position.x;

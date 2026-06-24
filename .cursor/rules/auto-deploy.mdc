@@ -14,7 +14,7 @@ This repo deploys to **https://wooramsol.github.io/backroom/** via GitHub Action
 3. CI (`CI, Auto-merge, Deploy`) will:
    - build and test
    - auto-merge `cursor/*` PRs / promote `cursor/*` pushes into `main`
-   - publish `dist/` to the `gh-pages` branch
+   - publish `dist/` to the `gh-pages` branch (**dev only**)
 4. **Do not stop at PR creation.** Pushing the branch is enough; deployment is automatic.
 5. After push, verify deploy: `gh run list --branch <branch> --limit 1` (expect `success`).
 6. Tell the user the dev URL and that a hard refresh (`Ctrl+Shift+R`) may be needed.
@@ -22,5 +22,6 @@ This repo deploys to **https://wooramsol.github.io/backroom/** via GitHub Action
 ## Notes
 
 - Dev base path: `VITE_BASE=/backroom/` (set in CI).
-- Production (`backroom-live`) is **manual** — only when the user asks for prod deploy.
+- **Deploy to dev (`backroom`) first.** Never push to `production` or run prod deploy as part of a normal task.
+- Production (`backroom-live`) is **manual only** — when the user explicitly asks for prod deploy.
 - Required assets: `public/assets/wallpaper2.jpg`, `public/assets/bottom2.jpg`.
