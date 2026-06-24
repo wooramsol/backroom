@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { CAMERA_FOV, CHUNK } from "./constants.js";
-import { generateRoom, isWalkableLocal, reachableCellsFrom } from "./room.js";
+import { generateRoom, isWalkableLocal } from "./room.js";
 import { createRng } from "./rng.js";
 
 const VANISH_DIST = 10;
 const CHUNK_RADIUS = 2;
 const MIN_SPAWN_DIST = 4.5;
-const INITIAL_AHEAD_DIST = 4.2;
+const INITIAL_AHEAD_DIST = 5;
+const CORRIDOR_INSET = 1.0;
 const SPAWN_GRACE = 8;
 const RESPAWN_COOLDOWN = 1.0;
 
@@ -29,11 +30,18 @@ function chunkOrigin(playerX, playerZ) {
   };
 }
 
-function inPlayerView(player, wx, wz) {
+function lookForward(player) {
   player.camera.getWorldDirection(_fwd);
   _fwd.y = 0;
-  if (_fwd.lengthSq() < 1e-10) return true;
-  _fwd.normalize();
+  if (_fwd.lengthSq() < 1e-10) {
+    _fwd.set(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+  } else {
+    _fwd.normalize();
+  }
+}
+
+function inPlayerView(player, wx, wz) {
+  lookForward(player);
 
   _to.set(wx - player.position.x, 0, wz - player.position.z);
   const dist = _to.length();
@@ -45,7 +53,47 @@ function inPlayerView(player, wx, wz) {
   return dot > limit;
 }
 
-function collectCandidates(player, minDist, maxDist, chunkRadius) {
+function collectCorridorLocals(room) {
+  const spots = [];
+  const doors = room.doors;
+  const h = CHUNK / 2;
+  const inner = room.innerWalls;
+
+  const add = (x, z) => {
+    if (isWalkableLocal(x, z, inner)) spots.push({ x, z });
+  };
+
+  for (const z of [CORRIDOR_INSET, CORRIDOR_INSET + 0.85]) {
+    add(h + doors.north.offset, z);
+  }
+  for (const z of [CHUNK - CORRIDOR_INSET, CHUNK - CORRIDOR_INSET - 0.85]) {
+    add(h + doors.south.offset, z);
+  }
+  for (const x of [CORRIDOR_INSET, CORRIDOR_INSET + 0.85]) {
+    add(x, h + doors.west.offset);
+  }
+  for (const x of [CHUNK - CORRIDOR_INSET, CHUNK - CORRIDOR_INSET - 0.85]) {
+    add(x, h + doors.east.offset);
+  }
+
+  for (const wall of inner) {
+    if (!wall.door) continue;
+    const mid = (wall.span0 + wall.span1) / 2 + wall.door.offset;
+    if (wall.axis === "z") {
+      for (const dz of [-CORRIDOR_INSET, CORRIDOR_INSET, -1.75, 1.75]) {
+        add(mid, wall.pos + dz);
+      }
+    } else {
+      for (const dx of [-CORRIDOR_INSET, CORRIDOR_INSET, -1.75, 1.75]) {
+        add(wall.pos + dx, mid);
+      }
+    }
+  }
+
+  return spots;
+}
+
+function collectCorridorCandidates(player, minDist, maxDist, chunkRadius) {
   const { cx: pcx, cz: pcz } = chunkOrigin(player.position.x, player.position.z);
   const px = player.position.x;
   const pz = player.position.z;
@@ -54,29 +102,9 @@ function collectCandidates(player, minDist, maxDist, chunkRadius) {
   for (let cz = pcz - chunkRadius; cz <= pcz + chunkRadius; cz++) {
     for (let cx = pcx - chunkRadius; cx <= pcx + chunkRadius; cx++) {
       const room = generateRoom(cx, cz);
-      const startX = CHUNK / 2;
-      const startZ = CHUNK / 2;
-      const origin = isWalkableLocal(startX, startZ, room.innerWalls)
-        ? { x: startX, z: startZ }
-        : null;
-
-      const cells = origin
-        ? reachableCellsFrom(room.innerWalls, origin.x, origin.z)
-        : [];
-
-      if (!cells.length) {
-        for (let iz = 0; iz < Math.ceil(CHUNK / 0.5); iz++) {
-          for (let ix = 0; ix < Math.ceil(CHUNK / 0.5); ix++) {
-            const x = ix * 0.5 + 0.25;
-            const z = iz * 0.5 + 0.25;
-            if (isWalkableLocal(x, z, room.innerWalls)) cells.push({ x, z });
-          }
-        }
-      }
-
-      for (const cell of cells) {
-        const wx = cx * CHUNK + cell.x;
-        const wz = cz * CHUNK + cell.z;
+      for (const local of collectCorridorLocals(room)) {
+        const wx = cx * CHUNK + local.x;
+        const wz = cz * CHUNK + local.z;
         const d = Math.hypot(wx - px, wz - pz);
         if (d < minDist || d > maxDist) continue;
         out.push({ wx, wz });
@@ -97,19 +125,13 @@ function isBlockedAt(x, z, colliders, probeY) {
 }
 
 function spotAheadOfPlayer(player, colliders) {
-  player.camera.getWorldDirection(_fwd);
-  _fwd.y = 0;
-  if (_fwd.lengthSq() < 1e-10) {
-    _fwd.set(Math.sin(player.yaw), 0, Math.cos(player.yaw));
-  } else {
-    _fwd.normalize();
-  }
+  lookForward(player);
 
   const px = player.position.x;
   const pz = player.position.z;
   const probeY = player.groundY + 1.1;
 
-  for (const dist of [INITIAL_AHEAD_DIST, 3.5, 5, 3, 6, 7]) {
+  for (const dist of [INITIAL_AHEAD_DIST, 4, 6, 3.5, 7]) {
     const wx = px + _fwd.x * dist;
     const wz = pz + _fwd.z * dist;
     if (!isBlockedAt(wx, wz, colliders, probeY)) return { wx, wz };
@@ -121,8 +143,48 @@ function spotAheadOfPlayer(player, colliders) {
   };
 }
 
+function spotCorridorAhead(player, colliders) {
+  lookForward(player);
+
+  const px = player.position.x;
+  const pz = player.position.z;
+  const probeY = player.groundY + 1.1;
+  const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
+
+  const corridors = collectCorridorCandidates(player, 1.5, maxDist, CHUNK_RADIUS).filter(
+    (c) => !isBlockedAt(c.wx, c.wz, colliders, probeY),
+  );
+
+  let best = null;
+  let bestScore = -Infinity;
+  for (const c of corridors) {
+    const dx = c.wx - px;
+    const dz = c.wz - pz;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 0.5) continue;
+    const dot = (dx / dist) * _fwd.x + (dz / dist) * _fwd.z;
+    if (dot < 0.15) continue;
+    const score = dot * 4 - Math.abs(dist - INITIAL_AHEAD_DIST) * 0.35;
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  if (best) return best;
+
+  if (corridors.length) {
+    corridors.sort(
+      (a, b) =>
+        Math.hypot(a.wx - px, a.wz - pz) - Math.hypot(b.wx - px, b.wz - pz),
+    );
+    return corridors[0];
+  }
+
+  return spotAheadOfPlayer(player, colliders);
+}
+
 function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius) {
-  const candidates = collectCandidates(player, minDist, maxDist, chunkRadius);
+  const candidates = collectCorridorCandidates(player, minDist, maxDist, chunkRadius);
   if (!candidates.length) return null;
 
   const hidden = candidates.filter((c) => !inPlayerView(player, c.wx, c.wz));
@@ -149,7 +211,7 @@ function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
   return true;
 }
 
-/** Library — spawns ahead of player first; vanishes within 10m when seen */
+/** Library — spawns in corridors; vanishes within 10m when seen */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -168,7 +230,7 @@ export class LibraryEntity {
 
   spawnInitial(player, colliders = []) {
     if (!this.data?.model) return;
-    const spot = spotAheadOfPlayer(player, colliders);
+    const spot = spotCorridorAhead(player, colliders);
     this._placeAt(spot.wx, spot.wz, player.groundY, SPAWN_GRACE);
     const dx = player.position.x - spot.wx;
     const dz = player.position.z - spot.wz;
