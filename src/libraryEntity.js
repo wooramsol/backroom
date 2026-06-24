@@ -1,15 +1,14 @@
 import * as THREE from "three";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { CAMERA_FOV, CHUNK } from "./constants.js";
-import { generateRoom, isWalkableLocal } from "./room.js";
+import { generateRoom, isCorridorLocal } from "./room.js";
 import { createRng } from "./rng.js";
 
 const VANISH_DIST = 10;
 const CHUNK_RADIUS = 2;
 const MIN_SPAWN_DIST = 4.5;
-const INITIAL_AHEAD_DIST = 5;
+const INITIAL_MIN_DIST = 5;
 const CORRIDOR_INSET = 1.0;
-const SPAWN_GRACE = 8;
 const RESPAWN_COOLDOWN = 1.0;
 
 const _fwd = new THREE.Vector3();
@@ -60,31 +59,30 @@ function collectCorridorLocals(room) {
   const inner = room.innerWalls;
 
   const add = (x, z) => {
-    if (isWalkableLocal(x, z, inner)) spots.push({ x, z });
+    if (isCorridorLocal(x, z, inner)) spots.push({ x, z });
   };
 
-  for (const z of [CORRIDOR_INSET, CORRIDOR_INSET + 0.85]) {
-    add(h + doors.north.offset, z);
-  }
-  for (const z of [CHUNK - CORRIDOR_INSET, CHUNK - CORRIDOR_INSET - 0.85]) {
-    add(h + doors.south.offset, z);
-  }
-  for (const x of [CORRIDOR_INSET, CORRIDOR_INSET + 0.85]) {
-    add(x, h + doors.west.offset);
-  }
-  for (const x of [CHUNK - CORRIDOR_INSET, CHUNK - CORRIDOR_INSET - 0.85]) {
-    add(x, h + doors.east.offset);
-  }
+  const northX = h + doors.north.offset;
+  for (let z = CORRIDOR_INSET; z <= 3.6; z += 0.45) add(northX, z);
+
+  const southX = h + doors.south.offset;
+  for (let z = CHUNK - CORRIDOR_INSET; z >= CHUNK - 3.6; z -= 0.45) add(southX, z);
+
+  const westZ = h + doors.west.offset;
+  for (let x = CORRIDOR_INSET; x <= 3.6; x += 0.45) add(x, westZ);
+
+  const eastZ = h + doors.east.offset;
+  for (let x = CHUNK - CORRIDOR_INSET; x >= CHUNK - 3.6; x -= 0.45) add(x, eastZ);
 
   for (const wall of inner) {
     if (!wall.door) continue;
     const mid = (wall.span0 + wall.span1) / 2 + wall.door.offset;
     if (wall.axis === "z") {
-      for (const dz of [-CORRIDOR_INSET, CORRIDOR_INSET, -1.75, 1.75]) {
+      for (const dz of [-0.9, 0.9, -1.6, 1.6, -2.3, 2.3]) {
         add(mid, wall.pos + dz);
       }
     } else {
-      for (const dx of [-CORRIDOR_INSET, CORRIDOR_INSET, -1.75, 1.75]) {
+      for (const dx of [-0.9, 0.9, -1.6, 1.6, -2.3, 2.3]) {
         add(wall.pos + dx, mid);
       }
     }
@@ -115,79 +113,14 @@ function collectCorridorCandidates(player, minDist, maxDist, chunkRadius) {
   return out;
 }
 
-function isBlockedAt(x, z, colliders, probeY) {
-  for (const c of colliders) {
-    if (c.isCeiling) continue;
-    if (probeY < c.minY - 0.2 || probeY > c.maxY + 0.2) continue;
-    if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) return true;
-  }
-  return false;
-}
-
-function spotAheadOfPlayer(player, colliders) {
-  lookForward(player);
-
-  const px = player.position.x;
-  const pz = player.position.z;
-  const probeY = player.groundY + 1.1;
-
-  for (const dist of [INITIAL_AHEAD_DIST, 4, 6, 3.5, 7]) {
-    const wx = px + _fwd.x * dist;
-    const wz = pz + _fwd.z * dist;
-    if (!isBlockedAt(wx, wz, colliders, probeY)) return { wx, wz };
-  }
-
-  return {
-    wx: px + _fwd.x * INITIAL_AHEAD_DIST,
-    wz: pz + _fwd.z * INITIAL_AHEAD_DIST,
-  };
-}
-
-function spotCorridorAhead(player, colliders) {
-  lookForward(player);
-
-  const px = player.position.x;
-  const pz = player.position.z;
-  const probeY = player.groundY + 1.1;
-  const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-
-  const corridors = collectCorridorCandidates(player, 1.5, maxDist, CHUNK_RADIUS).filter(
-    (c) => !isBlockedAt(c.wx, c.wz, colliders, probeY),
-  );
-
-  let best = null;
-  let bestScore = -Infinity;
-  for (const c of corridors) {
-    const dx = c.wx - px;
-    const dz = c.wz - pz;
-    const dist = Math.hypot(dx, dz);
-    if (dist < 0.5) continue;
-    const dot = (dx / dist) * _fwd.x + (dz / dist) * _fwd.z;
-    if (dot < 0.15) continue;
-    const score = dot * 4 - Math.abs(dist - INITIAL_AHEAD_DIST) * 0.35;
-    if (score > bestScore) {
-      bestScore = score;
-      best = c;
-    }
-  }
-  if (best) return best;
-
-  if (corridors.length) {
-    corridors.sort(
-      (a, b) =>
-        Math.hypot(a.wx - px, a.wz - pz) - Math.hypot(b.wx - px, b.wz - pz),
-    );
-    return corridors[0];
-  }
-
-  return spotAheadOfPlayer(player, colliders);
-}
-
-function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius) {
+function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius, offScreenOnly = false) {
   const candidates = collectCorridorCandidates(player, minDist, maxDist, chunkRadius);
   if (!candidates.length) return null;
 
   const hidden = candidates.filter((c) => !inPlayerView(player, c.wx, c.wz));
+  if (offScreenOnly) {
+    return rng.pick(hidden) ?? null;
+  }
   return rng.pick(hidden.length ? hidden : candidates);
 }
 
@@ -211,7 +144,7 @@ function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
   return true;
 }
 
-/** Library — spawns in corridors; vanishes within 10m when seen */
+/** Library — corridor-only spawn; vanishes within 10m when seen */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -224,20 +157,44 @@ export class LibraryEntity {
     this.worldZ = 0;
     this.groundY = 0;
     this._respawnCooldown = 0;
-    this._vanishGrace = 0;
     this._seed = 1307;
   }
 
-  spawnInitial(player, colliders = []) {
+  _pickCorridorSpot(player, minDist, offScreenOnly) {
+    const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
+
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const rng = createRng(
+        Math.floor(player.position.x),
+        Math.floor(player.position.z),
+        this._seed + attempt * 31,
+      );
+      const spot = pickSpawnSpot(
+        player,
+        rng,
+        minDist,
+        maxDist,
+        CHUNK_RADIUS,
+        offScreenOnly,
+      );
+      if (spot) return spot;
+    }
+
+    return null;
+  }
+
+  spawnInitial(player) {
     if (!this.data?.model) return;
-    const spot = spotCorridorAhead(player, colliders);
-    this._placeAt(spot.wx, spot.wz, player.groundY, SPAWN_GRACE);
+    this._seed = 1307;
+    const spot = this._pickCorridorSpot(player, INITIAL_MIN_DIST, false);
+    if (!spot) return;
+    this._placeAt(spot.wx, spot.wz, player.groundY);
     const dx = player.position.x - spot.wx;
     const dz = player.position.z - spot.wz;
     if (this.root) this.root.rotation.y = Math.atan2(dx, dz);
   }
 
-  _placeAt(wx, wz, groundY, vanishGrace = 0) {
+  _placeAt(wx, wz, groundY) {
     if (!this.data?.model) return;
 
     if (!this.root) {
@@ -262,29 +219,18 @@ export class LibraryEntity {
     this.root.visible = true;
     this.active = true;
     this._respawnCooldown = 0.6;
-    this._vanishGrace = vanishGrace;
   }
 
   _respawn(player) {
     this._seed += 1;
-    const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const rng = createRng(
-        Math.floor(player.position.x),
-        Math.floor(player.position.z),
-        this._seed + attempt * 31,
-      );
-      const spot = pickSpawnSpot(player, rng, MIN_SPAWN_DIST, maxDist, CHUNK_RADIUS);
-      if (!spot) continue;
-      if (inPlayerView(player, spot.wx, spot.wz)) continue;
-      this._placeAt(spot.wx, spot.wz, player.groundY);
+    const spot = this._pickCorridorSpot(player, MIN_SPAWN_DIST, true);
+    if (!spot) {
+      if (this.root) this.root.visible = false;
+      this.active = false;
       this._respawnCooldown = RESPAWN_COOLDOWN;
       return;
     }
-
-    if (this.root) this.root.visible = false;
-    this.active = false;
+    this._placeAt(spot.wx, spot.wz, player.groundY);
     this._respawnCooldown = RESPAWN_COOLDOWN;
   }
 
@@ -311,10 +257,7 @@ export class LibraryEntity {
 
     const dist = Math.hypot(dx, dz);
     const probeY = this.groundY + (this.data.height ?? 1.5) * 0.55;
-
-    if (this._vanishGrace > 0) {
-      this._vanishGrace -= dt;
-    } else if (
+    if (
       dist <= VANISH_DIST &&
       hasLineOfSight(px, pz, this.worldX, this.worldZ, colliders, probeY)
     ) {
