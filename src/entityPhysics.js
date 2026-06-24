@@ -17,6 +17,7 @@ export class EntityBody {
     this.radius = radius;
     this.position = new THREE.Vector3();
     this.yaw = 0;
+    this.desiredYaw = 0;
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
@@ -214,12 +215,19 @@ export class EntityBody {
 
     const moved = Math.hypot(this.position.x - px0, this.position.z - pz0);
     if (moved > 1e-5) {
-      this.yaw = Math.atan2(this.position.x - px0, this.position.z - pz0);
+      this.desiredYaw = Math.atan2(this.position.x - px0, this.position.z - pz0);
     } else {
-      this.yaw = Math.atan2(best.nx, best.nz);
+      this.desiredYaw = Math.atan2(best.nx, best.nz);
     }
 
     return moved;
+  }
+
+  smoothYaw(dt, turnSpeed = 9) {
+    let dy = this.desiredYaw - this.yaw;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    this.yaw += dy * Math.min(1, turnSpeed * dt);
   }
 
   updateVertical(dt) {
