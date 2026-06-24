@@ -87,7 +87,10 @@ async function init() {
   const waitHint = "Loading… please wait";
   const clickHint = mobileMode ? "Tap to start" : "Click to start";
 
-  if (hintStatus) hintStatus.textContent = waitHint;
+  if (hintStatus) {
+    hintStatus.textContent = waitHint;
+    hintStatus.classList.add("loading");
+  }
   overlay.style.cursor = "wait";
 
   const loader = new THREE.TextureLoader();
@@ -159,7 +162,8 @@ async function init() {
   world
     .preloadAround(camera, (done, total) => {
       if (hintStatus && !ready) {
-        hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br />Please wait`;
+        hintStatus.classList.add("loading");
+        hintStatus.innerHTML = `Building nearby rooms… ${done}/${total}<br /><span class="hint-wait">Please wait</span>`;
       }
     })
     .then(() => {
@@ -169,14 +173,20 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      if (hintStatus) hintStatus.textContent = clickHint;
+      if (hintStatus) {
+        hintStatus.classList.remove("loading");
+        hintStatus.textContent = clickHint;
+      }
     })
     .catch((err) => {
       console.error(err);
       ready = true;
       renderer.domElement.style.visibility = "visible";
       overlay.style.cursor = "pointer";
-      if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
+      if (hintStatus) {
+        hintStatus.classList.remove("loading");
+        hintStatus.textContent = "Load error — please refresh.";
+      }
     });
 
   overlay.addEventListener("click", () => {
@@ -262,5 +272,8 @@ async function init() {
 init().catch((err) => {
   console.error(err);
   const hintStatus = document.getElementById("hint-status");
-  if (hintStatus) hintStatus.textContent = "Load error — please refresh.";
+  if (hintStatus) {
+    hintStatus.classList.remove("loading");
+    hintStatus.textContent = "Load error — please refresh.";
+  }
 });

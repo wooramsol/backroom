@@ -147,39 +147,83 @@ export class EntityBody {
     this.position.z = out.pz;
   }
 
-  /** Try steering directions; returns distance moved on XZ */
+  /** How far we can walk along (nx,nz) before hitting a blocker */
+  _probeClearance(nx, nz, maxDist, steps = 5) {
+    const inc = maxDist / steps;
+    for (let i = 1; i <= steps; i++) {
+      const d = inc * i;
+      const tx = this.position.x + nx * d;
+      const tz = this.position.z + nz * d;
+      if (this.insideWall(tx, tz)) return Math.max(0, d - inc);
+    }
+    return maxDist;
+  }
+
+  _steerAngles() {
+    const out = [0];
+    for (let deg = 12; deg <= 180; deg += 12) {
+      const rad = THREE.MathUtils.degToRad(deg);
+      out.push(rad, -rad);
+    }
+    return out;
+  }
+
+  /** Steer around walls/furniture toward a world XZ goal */
   moveToward(dirX, dirZ, speed, dt) {
     const desiredLen = Math.hypot(dirX, dirZ);
     if (desiredLen < 1e-6) return 0;
 
+    const goalNX = dirX / desiredLen;
+    const goalNZ = dirZ / desiredLen;
     const step = speed * dt;
-    const angles = [0, 0.55, -0.55, 1.1, -1.1, 1.65, -1.65, Math.PI];
+    const probeDist = Math.max(step * 3.5, 1.1);
+
     let best = null;
     let bestScore = -Infinity;
 
-    for (const a of angles) {
+    for (const a of this._steerAngles()) {
       const c = Math.cos(a);
       const s = Math.sin(a);
-      const dx = dirX * c - dirZ * s;
-      const dz = dirX * s + dirZ * c;
-      const len = Math.hypot(dx, dz);
+      const nx = goalNX * c - goalNZ * s;
+      const nz = goalNX * s + goalNZ * c;
+      const len = Math.hypot(nx, nz);
       if (len < 1e-6) continue;
-      const nx = dx / len;
-      const nz = dz / len;
-      const tx = this.position.x + nx * step;
-      const tz = this.position.z + nz * step;
+
+      const tx = this.position.x + (nx / len) * step;
+      const tz = this.position.z + (nz / len) * step;
       if (this.insideWall(tx, tz)) continue;
-      const score = nx * (dirX / desiredLen) + nz * (dirZ / desiredLen);
+
+      const alignment = (nx / len) * goalNX + (nz / len) * goalNZ;
+      const clearance = this._probeClearance(nx / len, nz / len, probeDist);
+      const score = alignment * 2.2 + clearance * 0.45 + (Math.abs(a) < 1e-4 ? 0.08 : 0);
+
       if (score > bestScore) {
         bestScore = score;
-        best = { tx, tz, nx, nz };
+        best = { tx, tz, nx: nx / len, nz: nz / len };
+      }
+    }
+
+    if (!best) {
+      const slides = [
+        { nx: -goalNZ, nz: goalNX },
+        { nx: goalNZ, nz: -goalNX },
+        { nx: goalNX, nz: goalNZ },
+        { nx: -goalNX, nz: -goalNZ },
+      ];
+      for (const slide of slides) {
+        const tx = this.position.x + slide.nx * step;
+        const tz = this.position.z + slide.nz * step;
+        if (this.insideWall(tx, tz)) continue;
+        const clearance = this._probeClearance(slide.nx, slide.nz, probeDist);
+        best = { tx, tz, nx: slide.nx, nz: slide.nz, slide: true, clearance };
+        break;
       }
     }
 
     if (!best) {
       this._blockedT += dt;
       if (this._blockedT > 0.12 && this.grounded && this.crouchBlend < 0.05) {
-        if (this._lowCeilingAhead(dirX / desiredLen, dirZ / desiredLen)) {
+        if (this._lowCeilingAhead(goalNX, goalNZ)) {
           this.crouchTarget = 1;
         } else if (this._blockedT > 0.35) {
           this.vy = JUMP_V;

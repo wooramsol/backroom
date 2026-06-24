@@ -76,6 +76,23 @@
       #overlay .hint-controls {
         margin-top: 1.5rem;
       }
+      #overlay .hint-status {
+        font-size: 0.82rem;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.35rem;
+      }
+      #overlay .hint-status.loading {
+        animation: hint-loading-pulse 1.1s ease-in-out infinite;
+      }
+      @keyframes hint-loading-pulse {
+        0%,
+        100% {
+          opacity: 0.32;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
       #overlay.hidden {
         opacity: 0;
         pointer-events: none;
