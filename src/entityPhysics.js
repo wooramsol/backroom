@@ -54,9 +54,12 @@ export class EntityBody {
 
   _blocksHorizontal(c, y) {
     if (c.isCeiling) return false;
-    if (c.isFurniture) return false;
     if (y < c.minY - 0.2 || y > c.maxY + 0.2) return false;
     return true;
+  }
+
+  isBlocked(px, pz, r = this.collisionRadius()) {
+    return this.insideWall(px, pz, r);
   }
 
   insideWall(px, pz, r = this.collisionRadius()) {
