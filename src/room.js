@@ -219,6 +219,26 @@ export function isWalkableLocal(x, z, innerWalls) {
   return !navBlocked(x, z, innerWalls);
 }
 
+/** Walkable cell centres reachable from a chunk-local start point */
+export function reachableCellsFrom(innerWalls, startX, startZ) {
+  const keys = navFloodKeys(innerWalls, startX, startZ);
+  const cells = [];
+  for (const key of keys) {
+    const [ix, iz] = key.split(",").map(Number);
+    cells.push({
+      x: ix * NAV_CELL + NAV_CELL * 0.5,
+      z: iz * NAV_CELL + NAV_CELL * 0.5,
+    });
+  }
+  return cells;
+}
+
+export function isReachableLocal(fromX, fromZ, toX, toZ, innerWalls) {
+  if (!isWalkableLocal(toX, toZ, innerWalls)) return false;
+  if (navBlocked(fromX, fromZ, innerWalls)) return false;
+  return navFloodKeys(innerWalls, fromX, fromZ).has(navCellKey(toX, toZ));
+}
+
 function chunkDoors(cx, cz) {
   return {
     north: getSharedDoor(cx, cz, cx, cz - 1),
