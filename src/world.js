@@ -25,10 +25,11 @@ const PRELOAD_BATCH = 2;
 const LOAD_QUEUE_BATCH = 2;
 
 export class World {
-  constructor(scene, materials, furnitureModels = null) {
+  constructor(scene, materials, furnitureModels = null, specialAssets = null) {
     this.scene = scene;
     this.materials = materials;
     this.furnitureModels = furnitureModels;
+    this.specialAssets = specialAssets;
     this.chunks = new Map();
     this.wallMap = new Map();
     this.colliders = [];
@@ -158,7 +159,7 @@ export class World {
   spawnComplete(cx, cz) {
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
-    const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
+    const mesh = buildRoomMesh(room, this.materials, this.furnitureModels, this.specialAssets);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
     this.chunks.set(this.key(cx, cz), { mesh, room, ...furniture });
@@ -257,7 +258,7 @@ export class World {
 
       if (!job.room) {
         job.room = generateRoom(job.cx, job.cz);
-        job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels);
+        job.build = createRoomBuildState(job.room, this.materials, this.furnitureModels, this.specialAssets);
         if (!this.chunks.has(k)) {
           appendRoomWalls(this.wallMap, job.room);
           this._markCollidersDirty();
@@ -296,7 +297,7 @@ export class World {
     const k = this.key(cx, cz);
     const room = generateRoom(cx, cz);
     this.addCollidersForRoom(room);
-    const mesh = buildRoomMesh(room, this.materials, this.furnitureModels);
+    const mesh = buildRoomMesh(room, this.materials, this.furnitureModels, this.specialAssets);
     const furniture = this.addFurnitureForChunk(mesh);
     this.scene.add(mesh);
     this.chunks.set(k, { mesh, room, ...furniture });

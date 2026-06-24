@@ -9,6 +9,7 @@ import {
 import { colliderFromFurniture } from "./furnitureColliders.js";
 import { applyChairGlitchVisual } from "./chairStatic.js";
 import { recordFurnitureSurface, supportYAt } from "./furnitureSurfaces.js";
+import { addSpecialChunkProps } from "./specialPlacement.js";
 
 const _box = new THREE.Box3();
 const _euler = new THREE.Euler();
@@ -279,35 +280,38 @@ function placePileCluster(group, room, models, rng, used, colliders, surfaces) {
 }
 
 /** Scatter chair/stool props in chunk-local space */
-export function addChunkFurniture(group, room, models) {
-  if (!models?.allProps?.length) return { colliders: [] };
+export function addChunkFurniture(group, room, models, specialAssets = null) {
+  if (!models?.allProps?.length && !specialAssets) return { colliders: [] };
 
   const colliders = [];
   const surfaces = [];
   const rng = createRng(room.cx, room.cz, 881);
-  if (!rng.chance(0.5)) {
-    group.userData.furnitureColliders = colliders;
-    return { colliders };
-  }
-
   const used = new Set();
   let placed = 0;
 
-  if (rng.chance(0.3)) {
-    placed += placePileCluster(group, room, models, rng, used, colliders, surfaces);
-  }
+  if (models?.allProps?.length) {
+    if (rng.chance(0.5)) {
+      if (rng.chance(0.3)) {
+        placed += placePileCluster(group, room, models, rng, used, colliders, surfaces);
+      }
 
-  const scatterGoal = placed > 0 ? rng.int(0, 2) : rng.int(1, 2);
-  let scattered = 0;
-  for (let i = 0; i < scatterGoal * 6 && scattered < scatterGoal; i++) {
-    if (placeOne(group, room, models, rng, used, colliders, surfaces)) scattered++;
-  }
-  placed += scattered;
+      const scatterGoal = placed > 0 ? rng.int(0, 2) : rng.int(1, 2);
+      let scattered = 0;
+      for (let i = 0; i < scatterGoal * 6 && scattered < scatterGoal; i++) {
+        if (placeOne(group, room, models, rng, used, colliders, surfaces)) scattered++;
+      }
+      placed += scattered;
 
-  if (placed === 0) {
-    for (let i = 0; i < 4; i++) {
-      if (placeOne(group, room, models, rng, used, colliders, surfaces)) break;
+      if (placed === 0) {
+        for (let i = 0; i < 4; i++) {
+          if (placeOne(group, room, models, rng, used, colliders, surfaces)) break;
+        }
+      }
     }
+  }
+
+  if (specialAssets) {
+    addSpecialChunkProps(group, room, specialAssets, colliders, used);
   }
 
   group.userData.furnitureColliders = colliders;
