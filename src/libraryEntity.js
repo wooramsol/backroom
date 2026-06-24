@@ -7,7 +7,7 @@ import { createRng } from "./rng.js";
 const VANISH_DIST = 10;
 const CHUNK_RADIUS = 2;
 const MIN_SPAWN_DIST = 4.5;
-const INITIAL_MIN_DIST = 8;
+const INITIAL_MIN_DIST = 5;
 const RESPAWN_COOLDOWN = 1.0;
 
 const _fwd = new THREE.Vector3();
@@ -86,13 +86,35 @@ function collectCandidates(player, minDist, maxDist, chunkRadius) {
   return out;
 }
 
-function pickOffScreenSpot(player, rng, minDist, maxDist, chunkRadius) {
+function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius) {
   const candidates = collectCandidates(player, minDist, maxDist, chunkRadius);
+  if (!candidates.length) return null;
+
   const hidden = candidates.filter((c) => !inPlayerView(player, c.wx, c.wz));
-  return rng.pick(hidden) ?? null;
+  return rng.pick(hidden.length ? hidden : candidates);
 }
 
-/** Library — random map spawn; vanishes within 10m and respawns off-screen */
+function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
+  const dx = tx - px;
+  const dz = tz - pz;
+  const dist = Math.hypot(dx, dz);
+  if (dist < 0.15) return true;
+
+  const steps = Math.max(2, Math.ceil(dist / 0.32));
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const x = px + dx * t;
+    const z = pz + dz * t;
+    for (const c of colliders) {
+      if (c.isCeiling) continue;
+      if (probeY < c.minY - 0.2 || probeY > c.maxY + 0.2) continue;
+      if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) return false;
+    }
+  }
+  return true;
+}
+
+/** Library — random spawn; vanishes within 10m when seen, respawns off-screen */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -110,12 +132,16 @@ export class LibraryEntity {
 
   spawnInitial(player) {
     if (!this.data?.model) return;
-    this._seed = 1307;
-    const rng = createRng(0, 0, this._seed);
     const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-    const spot = pickOffScreenSpot(player, rng, INITIAL_MIN_DIST, maxDist, CHUNK_RADIUS);
-    if (!spot) return;
-    this._placeAt(spot.wx, spot.wz, player.groundY);
+
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const rng = createRng(0, 0, this._seed + attempt * 31);
+      const spot = pickSpawnSpot(player, rng, INITIAL_MIN_DIST, maxDist, CHUNK_RADIUS);
+      if (spot) {
+        this._placeAt(spot.wx, spot.wz, player.groundY);
+        return;
+      }
+    }
   }
 
   _placeAt(wx, wz, groundY) {
@@ -147,24 +173,28 @@ export class LibraryEntity {
 
   _respawn(player) {
     this._seed += 1;
-    const rng = createRng(
-      Math.floor(player.position.x),
-      Math.floor(player.position.z),
-      this._seed,
-    );
     const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-    const spot = pickOffScreenSpot(player, rng, MIN_SPAWN_DIST, maxDist, CHUNK_RADIUS);
-    if (!spot) {
-      this.root.visible = false;
-      this.active = false;
+
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const rng = createRng(
+        Math.floor(player.position.x),
+        Math.floor(player.position.z),
+        this._seed + attempt * 31,
+      );
+      const spot = pickSpawnSpot(player, rng, MIN_SPAWN_DIST, maxDist, CHUNK_RADIUS);
+      if (!spot) continue;
+      if (inPlayerView(player, spot.wx, spot.wz)) continue;
+      this._placeAt(spot.wx, spot.wz, player.groundY);
       this._respawnCooldown = RESPAWN_COOLDOWN;
       return;
     }
-    this._placeAt(spot.wx, spot.wz, player.groundY);
+
+    if (this.root) this.root.visible = false;
+    this.active = false;
     this._respawnCooldown = RESPAWN_COOLDOWN;
   }
 
-  update(dt, player, _colliders) {
+  update(dt, player, colliders) {
     if (!this.data?.model) return;
 
     if (this._respawnCooldown > 0) {
@@ -185,7 +215,12 @@ export class LibraryEntity {
     const dz = pz - this.worldZ;
     this.root.rotation.y = Math.atan2(dx, dz);
 
-    if (Math.hypot(dx, dz) <= VANISH_DIST) {
+    const dist = Math.hypot(dx, dz);
+    const probeY = this.groundY + (this.data.height ?? 1.5) * 0.55;
+    if (
+      dist <= VANISH_DIST &&
+      hasLineOfSight(px, pz, this.worldX, this.worldZ, colliders, probeY)
+    ) {
       this._respawn(player);
     }
 

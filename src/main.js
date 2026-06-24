@@ -7,7 +7,6 @@ import {
 import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
 import { loadSpecialAssets } from "./specialAssets.js";
-import { EntitySquad } from "./entitySquad.js";
 import { LibraryEntity } from "./libraryEntity.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
@@ -103,7 +102,6 @@ async function init() {
   if (ENABLE_BACKGROUND_MUSIC) await audio.preload();
 
   const world = new World(scene, materials, furnitureModels, specialAssets);
-  const entitySquad = new EntitySquad(scene, specialAssets?.entities);
   const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene);
   const player = new Player(camera, renderer.domElement);
   if (mobileMode && mobileControls) {
@@ -169,7 +167,6 @@ async function init() {
     })
     .then(() => {
       player.setColliders(world.getColliders());
-      entitySquad.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
@@ -207,7 +204,6 @@ async function init() {
       syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
-      entitySquad.spawnAtStart(player);
       libraryEntity.spawnInitial(player);
     }
   });
@@ -237,14 +233,12 @@ async function init() {
       }
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
-        entitySquad.setColliders(world.getColliders());
         player.resolvePenetration();
       }
     }
 
     if (started) {
       player.update(dt);
-      entitySquad.update(dt, player);
       libraryEntity.update(dt, player, world.getColliders());
     }
 
