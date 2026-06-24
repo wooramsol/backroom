@@ -6,10 +6,12 @@ const ASSET_BASE = import.meta.env.BASE_URL;
 const CAR_URL = `${ASSET_BASE}assets/car.glb`;
 const ARMCHAIR_URL = `${ASSET_BASE}assets/armchair.glb`;
 const SKINSTEALER_URL = `${ASSET_BASE}assets/entity_skinstealer.glb`;
+const BATERIA_URL = `${ASSET_BASE}assets/entity_bateria.glb`;
+const LIBRARY_URL = `${ASSET_BASE}assets/entity_library.glb`;
 
 const CAR_TARGET_LEN = 4.6;
 const ARMCHAIR_TARGET_H = 0.86;
-const SKINSTEALER_TARGET_H = 1.78;
+const ENTITY_TARGET_H = 1.78;
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
@@ -37,10 +39,10 @@ function normalizeMaterials(root) {
 const SG_EXT = "KHR_materials_pbrSpecularGlossiness";
 
 /**
- * Three.js r177 dropped KHR_materials_pbrSpecularGlossiness — loader leaves
- * MeshStandardMaterial with no map (reads as black). Rebuild from GLB defs.
+ * Rebuild entity materials for this scene's Lambert lighting.
+ * Handles legacy specular-glossiness and standard metallic-roughness GLBs.
  */
-async function repairSpecularGlossinessMaterials(gltf) {
+async function repairEntityMaterials(gltf) {
   const parser = gltf.parser;
   const json = parser.json;
   if (!json?.materials) return;
@@ -62,21 +64,41 @@ async function repairSpecularGlossinessMaterials(gltf) {
 
       const matDef = json.materials[matIndex];
       const sg = matDef.extensions?.[SG_EXT];
-      if (!sg) return;
-
-      const diffuseFactor = sg.diffuseFactor ?? [1, 1, 1, 1];
+      const mr = matDef.pbrMetallicRoughness;
       const params = {
-        color: new THREE.Color(diffuseFactor[0], diffuseFactor[1], diffuseFactor[2]),
-        transparent: diffuseFactor[3] < 0.999,
-        opacity: diffuseFactor[3],
         side: matDef.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
       };
 
-      if (sg.diffuseTexture !== undefined) {
-        params.map = await parser.getDependency("texture", sg.diffuseTexture.index);
-        if (params.map) params.map.colorSpace = THREE.SRGBColorSpace;
+      if (sg) {
+        const diffuseFactor = sg.diffuseFactor ?? [1, 1, 1, 1];
+        params.color = new THREE.Color(diffuseFactor[0], diffuseFactor[1], diffuseFactor[2]);
+        params.transparent = diffuseFactor[3] < 0.999;
+        params.opacity = diffuseFactor[3];
+        if (sg.diffuseTexture !== undefined) {
+          params.map = await parser.getDependency("texture", sg.diffuseTexture.index);
+          if (params.map) params.map.colorSpace = THREE.SRGBColorSpace;
+        }
+      } else if (mr) {
+        const base = mr.baseColorFactor ?? [1, 1, 1, 1];
+        params.color = new THREE.Color(base[0], base[1], base[2]);
+        params.transparent = base[3] < 0.999 || matDef.alphaMode === "BLEND";
+        params.opacity = base[3];
+        if (mr.baseColorTexture !== undefined) {
+          params.map = await parser.getDependency("texture", mr.baseColorTexture.index);
+          if (params.map) params.map.colorSpace = THREE.SRGBColorSpace;
+        }
+      } else {
+        return;
       }
 
+      if (matDef.emissiveFactor) {
+        const e = matDef.emissiveFactor;
+        params.emissive = new THREE.Color(e[0], e[1], e[2]);
+      }
+      if (matDef.emissiveTexture !== undefined) {
+        params.emissiveMap = await parser.getDependency("texture", matDef.emissiveTexture.index);
+        if (params.emissiveMap) params.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+      }
       if (matDef.normalTexture !== undefined) {
         params.normalMap = await parser.getDependency("texture", matDef.normalTexture.index);
         const scale = matDef.normalTexture.scale ?? 1;
@@ -151,33 +173,33 @@ async function loadStaticProp(loader, url, targetSize, meta, axis = "y") {
   return prepareStaticProp(gltf.scene, targetSize, meta, axis);
 }
 
-async function loadSkinstealerModel(loader) {
-  const gltf = await loader.loadAsync(SKINSTEALER_URL);
-  await repairSpecularGlossinessMaterials(gltf);
+async function loadEntityModel(loader, url) {
+  const gltf = await loader.loadAsync(url);
+  await repairEntityMaterials(gltf);
   const root = new THREE.Group();
-  const model = gltf.scene;
-  root.add(model);
+  root.add(gltf.scene);
 
   const bounds = measureBounds(root);
-  scaleToSize(root, bounds.sizeY, SKINSTEALER_TARGET_H);
+  scaleToSize(root, bounds.sizeY, ENTITY_TARGET_H);
 
   root.traverse((obj) => {
     if (obj.isMesh) obj.frustumCulled = false;
   });
 
+  const finalBounds = measureBounds(root);
   return {
     model: root,
     animations: gltf.animations,
-    footOffset: measureBounds(root).minY,
-    height: measureBounds(root).sizeY,
+    footOffset: finalBounds.minY,
+    height: finalBounds.sizeY,
   };
 }
 
-/** Car, armchair templates + skinstealer rig */
+/** Car, armchair templates + entity rigs */
 export async function loadSpecialAssets() {
   const loader = new GLTFLoader();
   try {
-    const [car, armchair, skinstealer] = await Promise.all([
+    const [car, armchair, skinstealer, bateria, library] = await Promise.all([
       loadStaticProp(loader, CAR_URL, CAR_TARGET_LEN, { id: "car" }, "x").catch((err) => {
         console.warn("Car model unavailable", err);
         return null;
@@ -188,12 +210,25 @@ export async function loadSpecialAssets() {
           return null;
         },
       ),
-      loadSkinstealerModel(loader).catch((err) => {
+      loadEntityModel(loader, SKINSTEALER_URL).catch((err) => {
         console.warn("Skinstealer model unavailable", err);
         return null;
       }),
+      loadEntityModel(loader, BATERIA_URL).catch((err) => {
+        console.warn("Bateria entity unavailable", err);
+        return null;
+      }),
+      loadEntityModel(loader, LIBRARY_URL).catch((err) => {
+        console.warn("Library entity unavailable", err);
+        return null;
+      }),
     ]);
-    return { car, armchair, skinstealer };
+    return {
+      car,
+      armchair,
+      skinstealer,
+      entities: { skinstealer, bateria, library },
+    };
   } catch (err) {
     console.warn("Special assets unavailable", err);
     return null;

@@ -7,7 +7,7 @@ import {
 import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
 import { loadSpecialAssets } from "./specialAssets.js";
-import { Skinstealer } from "./skinstealer.js";
+import { EntitySquad } from "./entitySquad.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { GameAudio } from "./audio.js";
@@ -99,9 +99,7 @@ async function init() {
   if (ENABLE_BACKGROUND_MUSIC) await audio.preload();
 
   const world = new World(scene, materials, furnitureModels, specialAssets);
-  const skinstealer = specialAssets?.skinstealer
-    ? new Skinstealer(specialAssets.skinstealer, scene)
-    : null;
+  const entitySquad = new EntitySquad(scene, specialAssets?.entities);
   const player = new Player(camera, renderer.domElement);
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
@@ -165,6 +163,7 @@ async function init() {
     })
     .then(() => {
       player.setColliders(world.getColliders());
+      entitySquad.setColliders(world.getColliders());
       ready = true;
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
@@ -196,7 +195,7 @@ async function init() {
       syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
-      skinstealer?.spawnBehind(player);
+      entitySquad.spawnAtStart(player);
     }
   });
   overlay.addEventListener(
@@ -225,13 +224,14 @@ async function init() {
       }
       if (world.consumeColliderRebuild()) {
         player.setColliders(world.getColliders());
+        entitySquad.setColliders(world.getColliders());
         player.resolvePenetration();
       }
     }
 
     if (started) {
       player.update(dt);
-      skinstealer?.update(dt, player);
+      entitySquad.update(dt, player);
     }
 
     if (ready) {
