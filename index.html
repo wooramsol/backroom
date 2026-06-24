@@ -198,35 +198,7 @@
         opacity: 1;
       }
 
-      /* —— Mobile landscape controls —— */
-      #mobile-rotate {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        background: rgba(8, 7, 5, 0.92);
-        color: #c9b87a;
-        z-index: 20;
-        text-align: center;
-        padding: 2rem;
-        letter-spacing: 0.12em;
-        font-size: 0.85rem;
-        line-height: 1.7;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.25s ease;
-      }
-      #mobile-rotate.visible {
-        opacity: 1;
-      }
-      #mobile-rotate .rotate-icon {
-        font-size: 2.4rem;
-        opacity: 0.7;
-        transform: rotate(90deg);
-      }
+      /* —— Mobile touch controls —— */
       #mobile-controls {
         position: fixed;
         inset: 0;
@@ -249,7 +221,7 @@
       .mc-stick-base {
         position: absolute;
         left: max(1rem, env(safe-area-inset-left));
-        bottom: max(1rem, env(safe-area-inset-bottom));
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
         width: 112px;
         height: 112px;
         border-radius: 50%;
@@ -278,16 +250,14 @@
       .mc-actions {
         position: absolute;
         right: max(1rem, env(safe-area-inset-right));
-        bottom: max(1rem, env(safe-area-inset-bottom));
-        display: flex;
-        flex-direction: column;
-        gap: 0.65rem;
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
+        z-index: 2;
         pointer-events: none;
       }
       .mc-btn {
-        min-width: 4.2rem;
-        height: 2.6rem;
-        padding: 0 0.9rem;
+        min-width: 4.6rem;
+        height: 2.8rem;
+        padding: 0 1rem;
         border-radius: 999px;
         border: 1px solid rgba(201, 184, 122, 0.35);
         background: rgba(26, 24, 16, 0.55);
@@ -304,12 +274,22 @@
         font-size: 0.72rem;
       }
       @media (orientation: portrait) {
-        html.mobile #overlay .hint-controls br + br {
-          display: none;
+        .mc-stick-base {
+          width: 100px;
+          height: 100px;
+          bottom: max(1.5rem, env(safe-area-inset-bottom));
+        }
+        .mc-look-zone {
+          width: 58%;
+          bottom: 0;
+          height: calc(100% - 7.5rem);
+        }
+        .mc-actions {
+          bottom: max(1.5rem, env(safe-area-inset-bottom));
         }
       }
     </style>
-    <script type="module" crossorigin src="/backroom/assets/index-BeFErLQj.js"></script>
+    <script type="module" crossorigin src="/backroom/assets/index-DL6D7Lla.js"></script>
   </head>
   <body>
     <div id="overlay">
@@ -339,18 +319,12 @@
       <span class="ch-v"></span>
     </div>
     <div id="vignette"></div>
-    <div id="mobile-rotate" hidden>
-      <div class="rotate-icon" aria-hidden="true">📱</div>
-      <div>가로로 돌려 주세요</div>
-      <div style="opacity: 0.55; font-size: 0.72rem">Rotate your device to landscape</div>
-    </div>
     <div id="mobile-controls" hidden>
       <div class="mc-stick-base" aria-label="Move">
         <div class="mc-stick-knob"></div>
       </div>
       <div class="mc-look-zone" aria-label="Look"></div>
       <div class="mc-actions">
-        <button type="button" class="mc-btn mc-btn-run">Run</button>
         <button type="button" class="mc-btn mc-btn-jump">Jump</button>
       </div>
     </div>
