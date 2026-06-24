@@ -4,6 +4,8 @@ import { EntityBody } from "./entityPhysics.js";
 const WALK_SPEED = 3.1;
 const RUN_SPEED = 5.5;
 const RUN_DIST = 3.2;
+const STUCK_TIME = 10;
+const STUCK_PROGRESS = 0.15;
 
 const _fwd = new THREE.Vector3();
 const _target = new THREE.Vector3();
@@ -55,6 +57,8 @@ export class EntityAgent {
     this.moveAction = moveAction;
     this.idleAction = idleAction;
     this.moving = false;
+    this._stuckTimer = 0;
+    this._bestDist = Infinity;
 
     this.root.visible = false;
     scene.add(this.root);
@@ -90,6 +94,8 @@ export class EntityAgent {
 
     this.root.visible = true;
     this.active = true;
+    this._stuckTimer = 0;
+    this._bestDist = Infinity;
     this.body.syncRoot(this.root);
     this._setMoving(false);
   }
@@ -143,11 +149,25 @@ export class EntityAgent {
 
     let moved = 0;
     if (dist > 0.2) {
+      if (dist < this._bestDist - STUCK_PROGRESS) {
+        this._bestDist = dist;
+        this._stuckTimer = 0;
+      } else {
+        this._stuckTimer += dt;
+      }
+
+      if (this._stuckTimer >= STUCK_TIME) {
+        this.spawn(player, player.groundY);
+        return;
+      }
+
       const speed = dist > RUN_DIST ? RUN_SPEED : WALK_SPEED;
       const actualSpeed = this.body.crouchBlend > 0.5 ? speed * 0.72 : speed;
       moved = this.body.moveToward(_toPlayer.x, _toPlayer.z, actualSpeed, dt);
       this._setMoving(moved > 0.001);
     } else {
+      this._stuckTimer = 0;
+      this._bestDist = dist;
       this.body.crouchTarget = 0;
       this._setMoving(false);
     }

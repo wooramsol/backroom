@@ -8,6 +8,7 @@ import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
 import { loadSpecialAssets } from "./specialAssets.js";
 import { EntitySquad } from "./entitySquad.js";
+import { tickEntityStatues } from "./entityStatues.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { GameAudio } from "./audio.js";
@@ -215,6 +216,7 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
+    tickEntityStatues(dt);
     tickChairGlitchVisuals(scene, lightT);
 
     if (!world.preloading) {

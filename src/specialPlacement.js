@@ -4,6 +4,7 @@ import { isWalkableLocal } from "./room.js";
 import { createRng } from "./rng.js";
 import { cloneSpecialTemplate } from "./specialAssets.js";
 import { colliderFromFurniture } from "./furnitureColliders.js";
+import { addChunkStatueEntities } from "./entityStatues.js";
 
 const _box = new THREE.Box3();
 const SPAWN_CHUNK = { cx: 0, cz: 0 };
@@ -139,4 +140,5 @@ export function addSpecialChunkProps(group, room, specialAssets, colliders, used
   if (!specialAssets) return;
   addSpawnCar(group, room, specialAssets.car, colliders);
   addChunkArmchairs(group, room, specialAssets.armchair, colliders, used);
+  addChunkStatueEntities(group, room, specialAssets.entities, colliders, used);
 }
