@@ -34,20 +34,62 @@ function normalizeMaterials(root) {
   });
 }
 
-/** Keep authored GLB PBR/textures — only fix color spaces for the renderer */
-function preserveGlbMaterials(root) {
-  const srgbKeys = ["map", "emissiveMap", "specularMap", "alphaMap"];
-  root.traverse((obj) => {
-    if (!obj.isMesh || !obj.material) return;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    for (const mat of mats) {
-      for (const key of srgbKeys) {
-        const tex = mat[key];
-        if (tex) tex.colorSpace = THREE.SRGBColorSpace;
-      }
-      mat.userData.entityOwned = true;
-    }
+const SG_EXT = "KHR_materials_pbrSpecularGlossiness";
+
+/**
+ * Three.js r177 dropped KHR_materials_pbrSpecularGlossiness — loader leaves
+ * MeshStandardMaterial with no map (reads as black). Rebuild from GLB defs.
+ */
+async function repairSpecularGlossinessMaterials(gltf) {
+  const parser = gltf.parser;
+  const json = parser.json;
+  if (!json?.materials) return;
+
+  const meshes = [];
+  gltf.scene.traverse((obj) => {
+    if (obj.isMesh) meshes.push(obj);
   });
+
+  await Promise.all(
+    meshes.map(async (mesh) => {
+      const assoc = parser.associations.get(mesh);
+      if (assoc?.meshes === undefined) return;
+
+      const meshDef = json.meshes[assoc.meshes];
+      const prim = meshDef?.primitives?.[assoc.primitives ?? 0];
+      const matIndex = prim?.material;
+      if (matIndex === undefined) return;
+
+      const matDef = json.materials[matIndex];
+      const sg = matDef.extensions?.[SG_EXT];
+      if (!sg) return;
+
+      const diffuseFactor = sg.diffuseFactor ?? [1, 1, 1, 1];
+      const params = {
+        color: new THREE.Color(diffuseFactor[0], diffuseFactor[1], diffuseFactor[2]),
+        transparent: diffuseFactor[3] < 0.999,
+        opacity: diffuseFactor[3],
+        side: matDef.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+      };
+
+      if (sg.diffuseTexture !== undefined) {
+        params.map = await parser.getDependency("texture", sg.diffuseTexture.index);
+        if (params.map) params.map.colorSpace = THREE.SRGBColorSpace;
+      }
+
+      if (matDef.normalTexture !== undefined) {
+        params.normalMap = await parser.getDependency("texture", matDef.normalTexture.index);
+        const scale = matDef.normalTexture.scale ?? 1;
+        params.normalScale = new THREE.Vector2(scale, scale);
+      }
+
+      const old = mesh.material;
+      const next = new THREE.MeshLambertMaterial(params);
+      next.userData.entityOwned = true;
+      mesh.material = next;
+      if (old?.dispose) old.dispose();
+    }),
+  );
 }
 
 function measureBounds(root) {
@@ -111,9 +153,9 @@ async function loadStaticProp(loader, url, targetSize, meta, axis = "y") {
 
 async function loadSkinstealerModel(loader) {
   const gltf = await loader.loadAsync(SKINSTEALER_URL);
+  await repairSpecularGlossinessMaterials(gltf);
   const root = new THREE.Group();
   const model = gltf.scene;
-  preserveGlbMaterials(model);
   root.add(model);
 
   const bounds = measureBounds(root);
