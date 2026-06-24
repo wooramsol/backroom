@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { EntityBody } from "./entityPhysics.js";
 import { findNavPath } from "./entityNav.js";
+import { pickRandomSpawnSpot } from "./entitySpawn.js";
 
 const WALK_SPEED = 3.1;
 const RUN_SPEED = 5.5;
@@ -46,9 +47,14 @@ export class EntityAgent {
     this.id = opts.id || "entity";
     this.active = false;
     this.root = data.model;
-    this.followBehind = opts.followBehind === true;
+    this.huntPlayer = opts.huntPlayer === true;
+    this.followBehind = !this.huntPlayer && opts.followBehind === true;
     this.followDist = opts.followDist ?? 2.35;
-    this.spawnOffset = opts.spawnOffset ?? null;
+    this.vanishDist = opts.vanishDist ?? 3;
+    this.spawnMinDist = opts.spawnMinDist ?? 8;
+    this.spawnMaxDist = opts.spawnMaxDist ?? 48;
+    this.spawnChunkRadius = opts.spawnChunkRadius ?? 3;
+    this._spawnSeed = opts.spawnSeed ?? 1701;
 
     this.body = new EntityBody({ footOffset: data.footOffset ?? 0 });
     this.mixer = new THREE.AnimationMixer(this.root);
@@ -77,6 +83,41 @@ export class EntityAgent {
     this.body.setColliders(colliders);
     this._navPath = null;
     this._navIdx = 0;
+  }
+
+  spawnRandom(player, groundY, seed) {
+    const gy = groundY ?? player.groundY;
+    const px = player.position.x;
+    const pz = player.position.z;
+    const blocked = (x, z) => this.body.insideWall(x, z);
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const spot = pickRandomSpawnSpot(
+        px,
+        pz,
+        (seed ?? this._spawnSeed) + attempt * 97,
+        this.spawnMinDist,
+        this.spawnMaxDist,
+        this.spawnChunkRadius,
+        blocked,
+      );
+      if (!spot) continue;
+
+      this.body.setFeetWorld(spot.wx, spot.wz, gy);
+      this.body.yaw = Math.atan2(px - spot.wx, pz - spot.wz);
+      this.body.desiredYaw = this.body.yaw;
+      this.root.visible = true;
+      this.active = true;
+      this._navPath = null;
+      this._navIdx = 0;
+      this._stuckT = 0;
+      this._moveHold = MOVE_HOLD;
+      this.body.syncRoot(this.root);
+      this._setHuntMoving();
+      return true;
+    }
+
+    return this.spawn(player, gy);
   }
 
   spawn(player, groundY) {
@@ -144,7 +185,20 @@ export class EntityAgent {
     this._navPath = null;
   }
 
+  _setHuntMoving() {
+    if (!this.moveAction) return;
+    this.moving = true;
+    if (!this.moveAction.isRunning()) this.moveAction.play();
+    this.moveAction.timeScale = 1;
+    if (this.idleAction?.isRunning()) this.idleAction.fadeOut(0.15);
+  }
+
   _setMoving(on) {
+    if (this.huntPlayer) {
+      this._setHuntMoving();
+      return;
+    }
+
     if (!this.moveAction) return;
     if (on === this.moving) return;
     this.moving = on;
@@ -247,7 +301,16 @@ export class EntityAgent {
   }
 
   update(dt, player) {
-    if (!this.active) return;
+    if (!this.active) return null;
+
+    if (this.huntPlayer) {
+      const dx = player.position.x - this.body.position.x;
+      const dz = player.position.z - this.body.position.z;
+      if (Math.hypot(dx, dz) <= this.vanishDist) {
+        this.hide();
+        return { vanished: true };
+      }
+    }
 
     _target.copy(this._chaseTarget(player));
     const navGoal = this._lookAheadGoal(_target.x, _target.z);
@@ -274,5 +337,6 @@ export class EntityAgent {
     this.body.updateVertical(dt);
     this.body.syncRoot(this.root);
     this.mixer.update(dt);
+    return null;
   }
 }
