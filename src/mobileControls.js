@@ -1,49 +1,31 @@
-import { isLandscape } from "./device.js";
-
 const STICK_RADIUS = 52;
 const STICK_DEAD = 0.12;
 
-/**
- * On-screen landscape controls: left move stick, right look drag, jump + run buttons.
- */
+/** On-screen touch controls: left move stick, right look drag, jump button. */
 export class MobileControls {
   constructor(root) {
     this.root = root;
     this.active = false;
     this.move = { x: 0, y: 0 };
     this.look = { dx: 0, dy: 0 };
-    this.run = false;
     this._jumpQueued = false;
 
     this._stickBase = root.querySelector(".mc-stick-base");
     this._stickKnob = root.querySelector(".mc-stick-knob");
     this._lookZone = root.querySelector(".mc-look-zone");
-    this._btnRun = root.querySelector(".mc-btn-run");
     this._btnJump = root.querySelector(".mc-btn-jump");
-    this._rotatePrompt = document.getElementById("mobile-rotate");
 
     this._stickTouchId = null;
     this._stickOrigin = { x: 0, y: 0 };
     this._lookTouchId = null;
     this._lookLast = { x: 0, y: 0 };
 
-    this._onOrientation = () => this._syncRotatePrompt();
     this._onStickStart = (e) => this._stickDown(e);
     this._onStickMove = (e) => this._stickMove(e);
     this._onStickEnd = (e) => this._stickUp(e);
     this._onLookStart = (e) => this._lookDown(e);
     this._onLookMove = (e) => this._lookMove(e);
     this._onLookEnd = (e) => this._lookUp(e);
-    this._onRunDown = (e) => {
-      e.preventDefault();
-      this.run = true;
-      this._btnRun?.classList.add("pressed");
-    };
-    this._onRunUp = (e) => {
-      e.preventDefault();
-      this.run = false;
-      this._btnRun?.classList.remove("pressed");
-    };
     this._onJump = (e) => {
       e.preventDefault();
       this._jumpQueued = true;
@@ -63,26 +45,13 @@ export class MobileControls {
     this._lookZone?.addEventListener("touchend", this._onLookEnd);
     this._lookZone?.addEventListener("touchcancel", this._onLookEnd);
 
-    this._btnRun?.addEventListener("touchstart", this._onRunDown, { passive: false });
-    this._btnRun?.addEventListener("touchend", this._onRunUp);
-    this._btnRun?.addEventListener("touchcancel", this._onRunUp);
-
     this._btnJump?.addEventListener("touchstart", this._onJump, { passive: false });
-
-    window.addEventListener("orientationchange", this._onOrientation);
-    window.addEventListener("resize", this._onOrientation);
-    this._syncRotatePrompt();
-
-    if (screen.orientation?.lock) {
-      void screen.orientation.lock("landscape").catch(() => {});
-    }
   }
 
   show() {
     this.active = true;
     this.root.hidden = false;
     this.root.classList.add("visible");
-    this._syncRotatePrompt();
   }
 
   hide() {
@@ -106,23 +75,14 @@ export class MobileControls {
     return { dx, dy };
   }
 
-  _syncRotatePrompt() {
-    if (!this._rotatePrompt) return;
-    const show = this.active && !isLandscape();
-    this._rotatePrompt.hidden = !show;
-    this._rotatePrompt.classList.toggle("visible", show);
-  }
-
   _reset() {
     this.move.x = 0;
     this.move.y = 0;
     this.look.dx = 0;
     this.look.dy = 0;
-    this.run = false;
     this._jumpQueued = false;
     this._stickTouchId = null;
     this._lookTouchId = null;
-    this._btnRun?.classList.remove("pressed");
     this._btnJump?.classList.remove("pressed");
     this._stickKnob?.style.setProperty("transform", "translate(-50%, -50%)");
   }
