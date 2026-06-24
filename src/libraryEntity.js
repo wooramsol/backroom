@@ -10,6 +10,8 @@ const MIN_SPAWN_DIST = 4.5;
 const INITIAL_MIN_DIST = 5;
 const CORRIDOR_INSET = 1.0;
 const RESPAWN_COOLDOWN = 1.0;
+const AHEAD_RELOCATE_WALK = 12;
+const MAX_BEHIND_DIST = 22;
 
 const _fwd = new THREE.Vector3();
 const _to = new THREE.Vector3();
@@ -39,15 +41,17 @@ function lookForward(player) {
   }
 }
 
-function inPlayerView(player, wx, wz) {
+function bearingDot(player, wx, wz) {
   lookForward(player);
-
   _to.set(wx - player.position.x, 0, wz - player.position.z);
   const dist = _to.length();
-  if (dist < 0.6) return true;
-
+  if (dist < 0.01) return 1;
   _to.multiplyScalar(1 / dist);
-  const dot = _fwd.dot(_to);
+  return _fwd.dot(_to);
+}
+
+function inPlayerView(player, wx, wz) {
+  const dot = bearingDot(player, wx, wz);
   const limit = Math.cos(THREE.MathUtils.degToRad(CAMERA_FOV * 0.5));
   return dot > limit;
 }
@@ -113,9 +117,15 @@ function collectCorridorCandidates(player, minDist, maxDist, chunkRadius) {
   return out;
 }
 
-function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius, offScreenOnly = false) {
-  const candidates = collectCorridorCandidates(player, minDist, maxDist, chunkRadius);
+function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius, opts = {}) {
+  const { offScreenOnly = false, forwardOnly = false } = opts;
+  let candidates = collectCorridorCandidates(player, minDist, maxDist, chunkRadius);
   if (!candidates.length) return null;
+
+  if (forwardOnly) {
+    const ahead = candidates.filter((c) => bearingDot(player, c.wx, c.wz) > 0.1);
+    if (ahead.length) candidates = ahead;
+  }
 
   const hidden = candidates.filter((c) => !inPlayerView(player, c.wx, c.wz));
   if (offScreenOnly) {
@@ -144,7 +154,7 @@ function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
   return true;
 }
 
-/** Library — corridor-only spawn; vanishes within 10m when seen */
+/** Library — corridor spawn; shifts ahead if player walks away */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -158,9 +168,12 @@ export class LibraryEntity {
     this.groundY = 0;
     this._respawnCooldown = 0;
     this._seed = 1307;
+    this._trailPx = NaN;
+    this._trailPz = NaN;
+    this._behindWalk = 0;
   }
 
-  _pickCorridorSpot(player, minDist, offScreenOnly) {
+  _pickCorridorSpot(player, minDist, opts = {}) {
     const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
 
     for (let attempt = 0; attempt < 16; attempt++) {
@@ -169,14 +182,7 @@ export class LibraryEntity {
         Math.floor(player.position.z),
         this._seed + attempt * 31,
       );
-      const spot = pickSpawnSpot(
-        player,
-        rng,
-        minDist,
-        maxDist,
-        CHUNK_RADIUS,
-        offScreenOnly,
-      );
+      const spot = pickSpawnSpot(player, rng, minDist, maxDist, CHUNK_RADIUS, opts);
       if (spot) return spot;
     }
 
@@ -186,7 +192,10 @@ export class LibraryEntity {
   spawnInitial(player) {
     if (!this.data?.model) return;
     this._seed = 1307;
-    const spot = this._pickCorridorSpot(player, INITIAL_MIN_DIST, false);
+    const spot = this._pickCorridorSpot(player, INITIAL_MIN_DIST, {
+      forwardOnly: true,
+      offScreenOnly: false,
+    });
     if (!spot) return;
     this._placeAt(spot.wx, spot.wz, player.groundY);
     const dx = player.position.x - spot.wx;
@@ -219,11 +228,17 @@ export class LibraryEntity {
     this.root.visible = true;
     this.active = true;
     this._respawnCooldown = 0.6;
+    this._trailPx = NaN;
+    this._trailPz = NaN;
+    this._behindWalk = 0;
   }
 
-  _respawn(player) {
+  _respawn(player, forwardOnly = true) {
     this._seed += 1;
-    const spot = this._pickCorridorSpot(player, MIN_SPAWN_DIST, true);
+    const spot = this._pickCorridorSpot(player, MIN_SPAWN_DIST, {
+      forwardOnly,
+      offScreenOnly: true,
+    });
     if (!spot) {
       if (this.root) this.root.visible = false;
       this.active = false;
@@ -232,6 +247,33 @@ export class LibraryEntity {
     }
     this._placeAt(spot.wx, spot.wz, player.groundY);
     this._respawnCooldown = RESPAWN_COOLDOWN;
+  }
+
+  _relocateIfLeftBehind(player) {
+    const px = player.position.x;
+    const pz = player.position.z;
+    const dist = Math.hypot(px - this.worldX, pz - this.worldZ);
+    const behind = bearingDot(player, this.worldX, this.worldZ) < -0.05;
+    const hidden = !inPlayerView(player, this.worldX, this.worldZ);
+
+    if (!behind || !hidden) {
+      this._behindWalk = 0;
+      this._trailPx = px;
+      this._trailPz = pz;
+      return false;
+    }
+
+    if (Number.isFinite(this._trailPx)) {
+      const step = Math.hypot(px - this._trailPx, pz - this._trailPz);
+      if (step > 0.04) this._behindWalk += step;
+    }
+    this._trailPx = px;
+    this._trailPz = pz;
+
+    if (this._behindWalk < AHEAD_RELOCATE_WALK && dist < MAX_BEHIND_DIST) return false;
+
+    this._respawn(player, true);
+    return true;
   }
 
   update(dt, player, colliders) {
@@ -244,7 +286,12 @@ export class LibraryEntity {
     }
 
     if (!this.active || !this.root) {
-      this._respawn(player);
+      this._respawn(player, true);
+      this.mixer?.update(dt);
+      return;
+    }
+
+    if (this._relocateIfLeftBehind(player)) {
       this.mixer?.update(dt);
       return;
     }
@@ -261,7 +308,7 @@ export class LibraryEntity {
       dist <= VANISH_DIST &&
       hasLineOfSight(px, pz, this.worldX, this.worldZ, colliders, probeY)
     ) {
-      this._respawn(player);
+      this._respawn(player, true);
     }
 
     this.mixer?.update(dt);
