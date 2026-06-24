@@ -6,6 +6,8 @@ import {
 } from "./textures.js";
 import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
+import { loadSpecialAssets } from "./specialAssets.js";
+import { Skinstealer } from "./skinstealer.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { GameAudio } from "./audio.js";
@@ -93,9 +95,13 @@ async function init() {
   const floorTex = await loadCarpetFloor(loader);
   const materials = createGameMaterials(wallpaper, surfaceTex, floorTex);
   const furnitureModels = await loadFurnitureModels();
+  const specialAssets = await loadSpecialAssets();
   if (ENABLE_BACKGROUND_MUSIC) await audio.preload();
 
-  const world = new World(scene, materials, furnitureModels);
+  const world = new World(scene, materials, furnitureModels, specialAssets);
+  const skinstealer = specialAssets?.skinstealer
+    ? new Skinstealer(specialAssets.skinstealer, scene)
+    : null;
   const player = new Player(camera, renderer.domElement);
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
@@ -190,6 +196,7 @@ async function init() {
       syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
+      skinstealer?.spawnBehind(player);
     }
   });
   overlay.addEventListener(
@@ -224,6 +231,7 @@ async function init() {
 
     if (started) {
       player.update(dt);
+      skinstealer?.update(dt, player);
     }
 
     if (ready) {

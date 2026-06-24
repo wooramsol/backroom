@@ -108,7 +108,7 @@ function finalizeChunkBounds(group) {
   });
 }
 
-export function createRoomBuildState(room, materials, furnitureModels = null) {
+export function createRoomBuildState(room, materials, furnitureModels = null, specialAssets = null) {
   const group = new THREE.Group();
   group.position.set(room.cx * CHUNK, 0, room.cz * CHUNK);
   return {
@@ -116,6 +116,7 @@ export function createRoomBuildState(room, materials, furnitureModels = null) {
     group,
     materials,
     furnitureModels,
+    specialAssets,
     shellDone: false,
     worldX: room.cx * CHUNK,
     worldZ: room.cz * CHUNK,
@@ -130,7 +131,9 @@ export function buildRoomShell(state) {
   addFloor(group, materials, state.worldX, state.worldZ);
   addCeiling(group, h, materials, state.worldX, state.worldZ);
   addMergedWalls(group, room, materials, h, state.worldX, state.worldZ);
-  if (state.furnitureModels) addChunkFurniture(group, room, state.furnitureModels);
+  if (state.furnitureModels) {
+    addChunkFurniture(group, room, state.furnitureModels, state.specialAssets);
+  }
   state.shellDone = true;
 }
 
@@ -149,8 +152,8 @@ export function finalizeRoomBuild(state) {
   return group;
 }
 
-export function buildRoomMesh(room, materials, furnitureModels = null) {
-  const state = createRoomBuildState(room, materials, furnitureModels);
+export function buildRoomMesh(room, materials, furnitureModels = null, specialAssets = null) {
+  const state = createRoomBuildState(room, materials, furnitureModels, specialAssets);
   buildRoomShell(state);
   return finalizeRoomBuild(state);
 }
