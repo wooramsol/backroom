@@ -208,7 +208,7 @@ async function init() {
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
       entitySquad.spawnAtStart(player);
-      libraryEntity.begin(player);
+      libraryEntity.spawnInitial(player);
     }
   });
   overlay.addEventListener(
