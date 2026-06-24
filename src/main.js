@@ -103,7 +103,7 @@ async function init() {
     const hintControls = document.querySelector("#overlay .hint-controls");
     if (hintControls) {
       hintControls.innerHTML =
-        "Move: left stick<br />Look: drag right<br />Jump: button";
+        "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
     }
   }
   player.connect();
