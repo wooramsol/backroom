@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { CAMERA_FOV, FOG_FAR } from "./constants.js";
+import { CAMERA_FOV } from "./constants.js";
 import { createRng } from "./rng.js";
 
 const IDLE_SPAWN = 10;
-const SPAWN_DIST_MIN = 4;
-const SPAWN_DIST_MAX = 18;
-const VANISH_MARGIN = 1.8;
-const VANISH_MIN = 2;
+const SPAWN_NEAR = 1.4;
+const SPAWN_PROBE_STEP = 0.25;
+const SPAWN_PROBE_MAX = 14;
+const VANISH_MARGIN = 1.5;
+const VANISH_MIN = 1.2;
 
 const _fwd = new THREE.Vector3();
 
@@ -38,35 +39,62 @@ function isBlockedAt(x, z, colliders, probeY) {
   return false;
 }
 
-function spotInView(player, colliders, rng) {
-  lookForward(player);
+/** March along a direction until a blocker; return last clear floor point in view */
+function probeAlong(player, dirX, dirZ, colliders, rng, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
   const px = player.position.x;
   const pz = player.position.z;
   const probeY = player.groundY + 1.1;
-  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.48);
-  const maxDist = Math.min(SPAWN_DIST_MAX, FOG_FAR - 4);
 
-  let fallback = null;
-
-  for (let attempt = 0; attempt < 24; attempt++) {
-    const offset = rng.range(-halfFov, halfFov);
-    const cos = Math.cos(offset);
-    const sin = Math.sin(offset);
-    const nx = _fwd.x * cos - _fwd.z * sin;
-    const nz = _fwd.x * sin + _fwd.z * cos;
-    const dist = rng.range(SPAWN_DIST_MIN, maxDist);
-
-    const wx = px + nx * dist;
-    const wz = pz + nz * dist;
-    const spot = { wx, wz, dist };
-    if (!fallback) fallback = spot;
-
-    if (!isBlockedAt(wx, wz, colliders, probeY)) {
-      return spot;
-    }
+  let furthest = null;
+  for (let d = minD; d <= maxD; d += SPAWN_PROBE_STEP) {
+    const wx = px + dirX * d;
+    const wz = pz + dirZ * d;
+    if (isBlockedAt(wx, wz, colliders, probeY)) break;
+    furthest = d;
   }
 
-  return fallback;
+  if (furthest === null) return null;
+
+  const preferMax = Math.min(furthest, 10);
+  const preferMin = Math.max(SPAWN_NEAR, Math.min(3.5, preferMax * 0.55));
+  const dist = preferMax <= preferMin ? preferMax : rng.range(preferMin, preferMax);
+
+  return {
+    wx: px + dirX * dist,
+    wz: pz + dirZ * dist,
+    dist,
+  };
+}
+
+function dirFromOffset(offset) {
+  const cos = Math.cos(offset);
+  const sin = Math.sin(offset);
+  return {
+    x: _fwd.x * cos - _fwd.z * sin,
+    z: _fwd.x * sin + _fwd.z * cos,
+  };
+}
+
+function findSpawnSpot(player, colliders, rng) {
+  lookForward(player);
+  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.45);
+  const angles = [0];
+
+  for (let i = 0; i < 8; i++) {
+    angles.push(rng.range(-halfFov, halfFov));
+  }
+  for (let i = 0; i < 4; i++) {
+    const side = rng.chance(0.5) ? 1 : -1;
+    angles.push(side * rng.range(halfFov * 1.05, halfFov * 1.65));
+  }
+
+  for (const offset of angles) {
+    const { x, z } = dirFromOffset(offset);
+    const spot = probeAlong(player, x, z, colliders, rng);
+    if (spot) return spot;
+  }
+
+  return null;
 }
 
 /** Library — appears in view after 10s idle; vanishes closer than spawn distance */
@@ -106,12 +134,12 @@ export class LibraryEntity {
     );
     this._seed += 1;
 
-    const spot = spotInView(player, colliders, rng);
+    const spot = findSpawnSpot(player, colliders, rng);
     if (!spot) return false;
 
-    const vanishMax = Math.max(VANISH_MIN + 0.5, spot.dist - VANISH_MARGIN);
-    const vanishMin = Math.min(VANISH_MIN, vanishMax * 0.45);
-    this._vanishDist = rng.range(vanishMin, vanishMax);
+    const vanishMax = Math.max(VANISH_MIN + 0.3, spot.dist - VANISH_MARGIN);
+    const vanishMin = Math.min(VANISH_MIN, vanishMax * 0.5);
+    this._vanishDist = Math.min(rng.range(vanishMin, vanishMax), spot.dist - 0.7);
 
     if (!this.root) {
       this.root = new THREE.Group();
