@@ -9,8 +9,16 @@ const SPAWN_PROBE_STEP = 0.25;
 const SPAWN_PROBE_MAX = 14;
 const VANISH_MARGIN = 1.5;
 const VANISH_MIN = 1.2;
+const LOOK_TURN_SPEED = 5.5;
 
 const _fwd = new THREE.Vector3();
+
+function lerpYaw(current, target, t) {
+  let delta = target - current;
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return current + delta * t;
+}
 
 function pickClip(clips, patterns) {
   for (const re of patterns) {
@@ -124,6 +132,15 @@ export class LibraryEntity {
     if (this.root) this.root.visible = false;
   }
 
+  _facePlayer(player, dt) {
+    if (!this.root) return;
+    const dx = player.position.x - this.worldX;
+    const dz = player.position.z - this.worldZ;
+    const targetYaw = Math.atan2(dx, dz);
+    const blend = 1 - Math.exp(-LOOK_TURN_SPEED * dt);
+    this.root.rotation.y = lerpYaw(this.root.rotation.y, targetYaw, blend);
+  }
+
   _spawnInView(player, colliders) {
     if (!this.data?.model) return false;
 
@@ -177,18 +194,24 @@ export class LibraryEntity {
 
     if (player.isLocomoting()) {
       this._idleT = 0;
-    } else if (!this.active) {
+    } else {
       this._idleT += dt;
       if (this._idleT >= IDLE_SPAWN) {
-        this._spawnInView(player, colliders);
+        if (!this.active) {
+          this._spawnInView(player, colliders);
+        } else {
+          this._hide();
+          this._spawnInView(player, colliders);
+          this._idleT = 0;
+        }
       }
-    } else {
-      const px = player.position.x;
-      const pz = player.position.z;
-      const dx = px - this.worldX;
-      const dz = pz - this.worldZ;
-      this.root.rotation.y = Math.atan2(dx, dz);
+    }
 
+    if (this.active) {
+      this._facePlayer(player, dt);
+
+      const dx = player.position.x - this.worldX;
+      const dz = player.position.z - this.worldZ;
       if (Math.hypot(dx, dz) <= this._vanishDist) {
         this._hide();
         this._idleT = 0;
