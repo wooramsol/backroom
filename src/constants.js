@@ -70,6 +70,8 @@ export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
 /** Touch drag on the right half — slightly higher than mouse for comfort */
 export const MOBILE_LOOK_SENS = 0.0032;
+/** Joystick tilt past this (0–1) triggers run instead of walk */
+export const MOBILE_RUN_THRESHOLD = 0.78;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 8;

@@ -6,7 +6,7 @@ export class MobileControls {
   constructor(root) {
     this.root = root;
     this.active = false;
-    this.move = { x: 0, y: 0 };
+    this.move = { x: 0, y: 0, strength: 0 };
     this.look = { dx: 0, dy: 0 };
     this._jumpQueued = false;
 
@@ -78,6 +78,7 @@ export class MobileControls {
   _reset() {
     this.move.x = 0;
     this.move.y = 0;
+    this.move.strength = 0;
     this.look.dx = 0;
     this.look.dy = 0;
     this._jumpQueued = false;
@@ -114,6 +115,7 @@ export class MobileControls {
     this._stickTouchId = null;
     this.move.x = 0;
     this.move.y = 0;
+    this.move.strength = 0;
     this._stickKnob?.style.setProperty("transform", "translate(-50%, -50%)");
   }
 
@@ -136,9 +138,11 @@ export class MobileControls {
     if (mag < STICK_DEAD) {
       this.move.x = 0;
       this.move.y = 0;
+      this.move.strength = 0;
     } else {
       this.move.x = nx;
       this.move.y = ny;
+      this.move.strength = mag;
     }
   }
 

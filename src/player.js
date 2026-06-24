@@ -10,6 +10,7 @@ import {
   CHUNK,
   MOUSE_SENS,
   MOBILE_LOOK_SENS,
+  MOBILE_RUN_THRESHOLD,
   PITCH_LIMIT,
   JUMP_V,
   GRAVITY,
@@ -298,8 +299,11 @@ export class Player {
     this._syncWalkFromCamera();
 
     _move.set(0, 0, 0);
+    let mobileStickStrength = 0;
     if (this.mobileMode && this.mobileActive) {
-      const { x, y } = this.mobileControls?.move ?? this.mobileMove;
+      const move = this.mobileControls?.move ?? this.mobileMove;
+      const { x, y } = move;
+      mobileStickStrength = move.strength ?? Math.hypot(x, y);
       _move.addScaledVector(_fwd, -y);
       _move.addScaledVector(_right, x);
     } else {
@@ -310,7 +314,9 @@ export class Player {
     }
 
     const shiftRun = this.keys.ShiftLeft || this.keys.ShiftRight;
-    const running = !this.crouching && shiftRun;
+    const mobileRun =
+      this.mobileMode && this.mobileActive && mobileStickStrength >= MOBILE_RUN_THRESHOLD;
+    const running = !this.crouching && (shiftRun || mobileRun);
     const speed = this.crouching ? CROUCH_SPEED : running ? RUN : WALK;
 
     const px0 = this.position.x;
