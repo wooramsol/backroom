@@ -2,11 +2,20 @@ import * as THREE from "three";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { CHUNK } from "./constants.js";
 import { isWalkableLocal } from "./room.js";
-import { createRng } from "./rng.js";
 import { colliderFromFurniture } from "./furnitureColliders.js";
 
 const _box = new THREE.Box3();
 const activeStatues = [];
+const SPAWN_CHUNK = { cx: 0, cz: 0 };
+const SPAWN_X = CHUNK / 2;
+const SPAWN_Z = CHUNK / 2;
+
+/** Fixed spots near the respawn tile — one bateria, one library */
+const BATERIA_SPOT = { x: SPAWN_X - 3.4, z: SPAWN_Z + 2.6, yaw: Math.PI * 0.22 };
+const LIBRARY_SPOT = { x: SPAWN_X + 3.1, z: SPAWN_Z + 2.2, yaw: -Math.PI * 0.18 };
+
+let bateriaPlaced = false;
+let libraryPlaced = false;
 
 function pickClip(clips, patterns) {
   for (const re of patterns) {
@@ -22,45 +31,14 @@ function alignLowestY(pivot, rootGroup, targetY) {
   pivot.position.y += targetY - _box.min.y;
 }
 
-function sampleWalkable(innerWalls, rng, margin = 0.9, attempts = 48) {
-  for (let i = 0; i < attempts; i++) {
-    const x = rng.range(margin, CHUNK - margin);
-    const z = rng.range(margin, CHUNK - margin);
-    if (isWalkableLocal(x, z, innerWalls)) return { x, z };
-  }
-  return null;
-}
-
-function pickFarChunk(rng, avoid = []) {
-  for (let i = 0; i < 48; i++) {
-    const cx = rng.int(-4, 4);
-    const cz = rng.int(-4, 4);
-    if (cx === 0 && cz === 0) continue;
-    if (Math.abs(cx) + Math.abs(cz) < 2) continue;
-    if (avoid.some((c) => c.cx === cx && c.cz === cz)) continue;
-    return { cx, cz };
-  }
-  return { cx: 2, cz: 1 };
-}
-
-const placeRng = createRng(0, 0, 1203);
-const BATERIA_CHUNK = pickFarChunk(placeRng);
-const LIBRARY_CHUNK = pickFarChunk(placeRng, [BATERIA_CHUNK]);
-
-let bateriaPlaced = false;
-let libraryPlaced = false;
-
-function placeStatue(group, room, entityData, opts, colliders, used) {
+function placeStatueAt(group, room, entityData, spot, opts, colliders, used) {
   if (!entityData?.model) return false;
-
-  const rng = createRng(room.cx, room.cz, opts.seed);
-  const spot = sampleWalkable(room.innerWalls, rng);
-  if (!spot) return false;
+  if (!isWalkableLocal(spot.x, spot.z, room.innerWalls)) return false;
 
   const pivot = new THREE.Group();
   const model = SkeletonUtils.clone(entityData.model);
   pivot.add(model);
-  pivot.rotation.y = rng.range(0, Math.PI * 2);
+  pivot.rotation.y = spot.yaw ?? 0;
   pivot.position.set(spot.x, 0, spot.z);
   alignLowestY(pivot, group, 0);
 
@@ -81,29 +59,38 @@ function placeStatue(group, room, entityData, opts, colliders, used) {
   return true;
 }
 
-/** One bateria + one library standing alone on the map (chunk-owned, idle loop) */
+/** One bateria + one library near respawn (spawn chunk only) */
 export function addChunkStatueEntities(group, room, entities, colliders, used = new Set()) {
   if (!entities) return;
+  if (room.cx !== SPAWN_CHUNK.cx || room.cz !== SPAWN_CHUNK.cz) return;
 
-  if (!bateriaPlaced && room.cx === BATERIA_CHUNK.cx && room.cz === BATERIA_CHUNK.cz) {
+  if (!bateriaPlaced) {
     if (
-      placeStatue(group, room, entities.bateria, {
-        id: "bateria",
-        seed: 1205,
-        idlePatterns: [/stalking|Tpose|idle/i],
-      }, colliders, used)
+      placeStatueAt(
+        group,
+        room,
+        entities.bateria,
+        BATERIA_SPOT,
+        { id: "bateria", idlePatterns: [/stalking|Tpose|idle/i] },
+        colliders,
+        used,
+      )
     ) {
       bateriaPlaced = true;
     }
   }
 
-  if (!libraryPlaced && room.cx === LIBRARY_CHUNK.cx && room.cz === LIBRARY_CHUNK.cz) {
+  if (!libraryPlaced) {
     if (
-      placeStatue(group, room, entities.library, {
-        id: "library",
-        seed: 1206,
-        idlePatterns: [/idle/i],
-      }, colliders, used)
+      placeStatueAt(
+        group,
+        room,
+        entities.library,
+        LIBRARY_SPOT,
+        { id: "library", idlePatterns: [/idle/i] },
+        colliders,
+        used,
+      )
     ) {
       libraryPlaced = true;
     }
