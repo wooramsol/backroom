@@ -4,7 +4,6 @@ import { cloneFurnitureTemplate } from "./furnitureModels.js";
 
 const ASSET_BASE = import.meta.env.BASE_URL;
 const CAR_URL = `${ASSET_BASE}assets/car.glb`;
-const SKINSTEALER_URL = `${ASSET_BASE}assets/entity_skinstealer.glb`;
 const LIBRARY_URL = `${ASSET_BASE}assets/entity_library.glb`;
 
 const CAR_TARGET_LEN = 4.6;
@@ -196,13 +195,9 @@ async function loadEntityModel(loader, url) {
 export async function loadSpecialAssets() {
   const loader = new GLTFLoader();
   try {
-    const [car, skinstealer, library] = await Promise.all([
+    const [car, library] = await Promise.all([
       loadStaticProp(loader, CAR_URL, CAR_TARGET_LEN, { id: "car" }, "x").catch((err) => {
         console.warn("Car model unavailable", err);
-        return null;
-      }),
-      loadEntityModel(loader, SKINSTEALER_URL).catch((err) => {
-        console.warn("Skinstealer model unavailable", err);
         return null;
       }),
       loadEntityModel(loader, LIBRARY_URL).catch((err) => {
@@ -212,8 +207,7 @@ export async function loadSpecialAssets() {
     ]);
     return {
       car,
-      skinstealer,
-      entities: { skinstealer, library },
+      entities: { library },
     };
   } catch (err) {
     console.warn("Special assets unavailable", err);
