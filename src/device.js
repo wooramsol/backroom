@@ -8,11 +8,3 @@ export function isMobileDevice() {
   );
   return (coarse && touch) || ua;
 }
-
-export function isLandscape() {
-  if (typeof window === "undefined") return true;
-  if (window.screen?.orientation?.type) {
-    return window.screen.orientation.type.startsWith("landscape");
-  }
-  return window.innerWidth >= window.innerHeight;
-}

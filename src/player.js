@@ -41,7 +41,6 @@ export class Player {
     this.mobileMode = false;
     this.mobileActive = false;
     this.mobileMove = { x: 0, y: 0 };
-    this.mobileRun = false;
     this.mobileControls = null;
     this.colliders = [];
     this.bob = 0;
@@ -311,8 +310,7 @@ export class Player {
     }
 
     const shiftRun = this.keys.ShiftLeft || this.keys.ShiftRight;
-    const mobileRun = this.mobileMode && this.mobileActive && (this.mobileControls?.run ?? this.mobileRun);
-    const running = !this.crouching && (shiftRun || mobileRun);
+    const running = !this.crouching && shiftRun;
     const speed = this.crouching ? CROUCH_SPEED : running ? RUN : WALK;
 
     const px0 = this.position.x;
