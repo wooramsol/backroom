@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 const STATIC_SIZE = 128;
+const _glitchChairs = new Set();
 let _canvas;
 let _ctx;
 let _staticTex;
@@ -103,6 +104,7 @@ function makeGlitchMaterial(srcMat) {
 /** TV glitch + mesh warp — Chair.glb only */
 export function applyChairGlitchVisual(pivot) {
   pivot.userData.chairGlitch = true;
+  _glitchChairs.add(pivot);
   pivot.traverse((obj) => {
     if (!obj.isMesh || !obj.material) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -111,33 +113,32 @@ export function applyChairGlitchVisual(pivot) {
   });
 }
 
-function isChairGlbRoot(obj) {
-  let node = obj;
-  while (node) {
-    if (node.userData?.furnitureId === "chairGlb") return true;
-    if (node.userData?.furnitureId) return false;
-    node = node.parent;
+function updateGlitchMesh(obj, time, amp) {
+  if (!obj.isMesh?.material) return;
+  const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+  for (const mat of mats) {
+    if (!mat.userData?.chairGlitch) continue;
+    const u = mat.userData.glitchUniforms;
+    if (u) {
+      u.uGlitchTime.value = time;
+      u.uGlitchAmp.value = amp;
+    }
+    mat.emissiveIntensity = 0.5 + Math.random() * 0.95;
   }
-  return false;
 }
 
-export function tickChairGlitchVisuals(scene, time) {
+export function tickChairGlitchVisuals(_scene, time) {
+  if (!_glitchChairs.size) return;
   if ((Math.floor(time * 60) & 1) === 0) refreshStaticTexture();
 
   const spike = Math.random() < 0.11 ? 2.2 : 1;
   const amp = spike * (1.0 + Math.sin(time * 61.0) * 0.3 + Math.random() * 0.55);
 
-  scene.traverse((obj) => {
-    if (!obj.isMesh?.material || !isChairGlbRoot(obj)) return;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    for (const mat of mats) {
-      if (!mat.userData?.chairGlitch) continue;
-      const u = mat.userData.glitchUniforms;
-      if (u) {
-        u.uGlitchTime.value = time;
-        u.uGlitchAmp.value = amp;
-      }
-      mat.emissiveIntensity = 0.5 + Math.random() * 0.95;
+  for (const pivot of _glitchChairs) {
+    if (!pivot.parent) {
+      _glitchChairs.delete(pivot);
+      continue;
     }
-  });
+    pivot.traverse((obj) => updateGlitchMesh(obj, time, amp));
+  }
 }

@@ -411,6 +411,11 @@ function pickValidShape(rng, cx, cz) {
 }
 
 const _roomCache = new Map();
+const ROOM_CACHE_MAX = 196;
+
+export function evictRoomCache(cx, cz) {
+  _roomCache.delete(`${cx},${cz}`);
+}
 
 export function generateRoom(cx, cz) {
   const key = `${cx},${cz}`;
@@ -436,6 +441,10 @@ export function generateRoom(cx, cz) {
   };
 
   _roomCache.set(key, room);
+  if (_roomCache.size > ROOM_CACHE_MAX) {
+    const oldest = _roomCache.keys().next().value;
+    if (oldest) _roomCache.delete(oldest);
+  }
   return room;
 }
 

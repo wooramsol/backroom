@@ -4,10 +4,11 @@ import { CAMERA_FOV, CHUNK } from "./constants.js";
 import { generateRoom, isWalkableLocal, reachableCellsFrom } from "./room.js";
 import { createRng } from "./rng.js";
 
-const RELOCATE_DIST = 10;
+const VANISH_DIST = 10;
 const CHUNK_RADIUS = 2;
-const MIN_RELOCATE_DIST = 4.5;
+const MIN_SPAWN_DIST = 4.5;
 const INITIAL_MIN_DIST = 8;
+const RESPAWN_COOLDOWN = 1.0;
 
 const _fwd = new THREE.Vector3();
 const _to = new THREE.Vector3();
@@ -91,27 +92,7 @@ function pickOffScreenSpot(player, rng, minDist, maxDist, chunkRadius) {
   return rng.pick(hidden) ?? null;
 }
 
-function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
-  const dx = tx - px;
-  const dz = tz - pz;
-  const dist = Math.hypot(dx, dz);
-  if (dist < 0.15) return true;
-
-  const steps = Math.max(2, Math.ceil(dist / 0.32));
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps;
-    const x = px + dx * t;
-    const z = pz + dz * t;
-    for (const c of colliders) {
-      if (c.isCeiling) continue;
-      if (probeY < c.minY - 0.2 || probeY > c.maxY + 0.2) continue;
-      if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) return false;
-    }
-  }
-  return true;
-}
-
-/** Library — random placement within 2 chunks, off-screen spawn, relocates when seen */
+/** Library — random map spawn; vanishes within 10m and respawns off-screen */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -123,7 +104,7 @@ export class LibraryEntity {
     this.worldX = 0;
     this.worldZ = 0;
     this.groundY = 0;
-    this._relocateCooldown = 0;
+    this._respawnCooldown = 0;
     this._seed = 1307;
   }
 
@@ -161,10 +142,10 @@ export class LibraryEntity {
     this.root.position.set(wx, groundY - (this.data.footOffset ?? 0), wz);
     this.root.visible = true;
     this.active = true;
-    this._relocateCooldown = 0.6;
+    this._respawnCooldown = 0.6;
   }
 
-  _relocate(player) {
+  _respawn(player) {
     this._seed += 1;
     const rng = createRng(
       Math.floor(player.position.x),
@@ -172,16 +153,31 @@ export class LibraryEntity {
       this._seed,
     );
     const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-    const spot = pickOffScreenSpot(player, rng, MIN_RELOCATE_DIST, maxDist, CHUNK_RADIUS);
-    if (!spot) return;
+    const spot = pickOffScreenSpot(player, rng, MIN_SPAWN_DIST, maxDist, CHUNK_RADIUS);
+    if (!spot) {
+      this.root.visible = false;
+      this.active = false;
+      this._respawnCooldown = RESPAWN_COOLDOWN;
+      return;
+    }
     this._placeAt(spot.wx, spot.wz, player.groundY);
-    this._relocateCooldown = 1.0;
+    this._respawnCooldown = RESPAWN_COOLDOWN;
   }
 
-  update(dt, player, colliders) {
-    if (!this.active || !this.root) return;
+  update(dt, player, _colliders) {
+    if (!this.data?.model) return;
 
-    if (this._relocateCooldown > 0) this._relocateCooldown -= dt;
+    if (this._respawnCooldown > 0) {
+      this._respawnCooldown -= dt;
+      this.mixer?.update(dt);
+      return;
+    }
+
+    if (!this.active || !this.root) {
+      this._respawn(player);
+      this.mixer?.update(dt);
+      return;
+    }
 
     const px = player.position.x;
     const pz = player.position.z;
@@ -189,14 +185,8 @@ export class LibraryEntity {
     const dz = pz - this.worldZ;
     this.root.rotation.y = Math.atan2(dx, dz);
 
-    const dist = Math.hypot(dx, dz);
-    const probeY = this.groundY + (this.data.height ?? 1.5) * 0.55;
-    if (
-      this._relocateCooldown <= 0 &&
-      dist <= RELOCATE_DIST &&
-      hasLineOfSight(px, pz, this.worldX, this.worldZ, colliders, probeY)
-    ) {
-      this._relocate(player);
+    if (Math.hypot(dx, dz) <= VANISH_DIST) {
+      this._respawn(player);
     }
 
     this.mixer?.update(dt);

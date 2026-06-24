@@ -228,7 +228,7 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-    tickChairGlitchVisuals(scene, lightT);
+    if (started) tickChairGlitchVisuals(scene, lightT);
 
     if (!world.preloading) {
       world.update(player.position);
@@ -252,10 +252,6 @@ async function init() {
       pipeline.render(lightT);
     } else {
       renderer.render(scene, camera);
-    }
-
-    if (!world.preloading && started) {
-      world.processLoadQueue(player.position);
     }
   }
 

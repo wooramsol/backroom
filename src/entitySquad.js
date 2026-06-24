@@ -1,6 +1,6 @@
 import { EntityAgent } from "./entityAgent.js";
 
-/** Skinstealer chases the player; library wanders separately */
+/** Skinstealer wanders the room; library appears separately */
 export class EntitySquad {
   constructor(scene, entityAssets) {
     this.agents = [];
@@ -9,8 +9,7 @@ export class EntitySquad {
       this.agents.push(
         new EntityAgent(entityAssets.skinstealer, scene, {
           id: "skinstealer",
-          followBehind: true,
-          followDist: 2.35,
+          wanderMode: true,
           movePatterns: [/mixamo|walk|run|move/i],
         }),
       );
