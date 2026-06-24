@@ -1,15 +1,16 @@
 import * as THREE from "three";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { CAMERA_FOV, CHUNK } from "./constants.js";
-import { generateRoom, isCorridorLocal } from "./room.js";
+import { generateRoom, isWalkableLocal } from "./room.js";
 import { createRng } from "./rng.js";
 
 const VANISH_DIST = 10;
 const CHUNK_RADIUS = 2;
 const MIN_SPAWN_DIST = 4.5;
-const INITIAL_MIN_DIST = 5;
+const INITIAL_MIN_DIST = 3;
 const CORRIDOR_INSET = 1.0;
-const RESPAWN_COOLDOWN = 1.0;
+const RESPAWN_COOLDOWN = 0.8;
+const SPAWN_GRACE = 4;
 const AHEAD_RELOCATE_WALK = 12;
 const MAX_BEHIND_DIST = 22;
 
@@ -56,6 +57,7 @@ function inPlayerView(player, wx, wz) {
   return dot > limit;
 }
 
+/** Door mouths and passage openings — walkable spots only */
 function collectCorridorLocals(room) {
   const spots = [];
   const doors = room.doors;
@@ -63,7 +65,7 @@ function collectCorridorLocals(room) {
   const inner = room.innerWalls;
 
   const add = (x, z) => {
-    if (isCorridorLocal(x, z, inner)) spots.push({ x, z });
+    if (isWalkableLocal(x, z, inner)) spots.push({ x, z });
   };
 
   const northX = h + doors.north.offset;
@@ -167,6 +169,7 @@ export class LibraryEntity {
     this.worldZ = 0;
     this.groundY = 0;
     this._respawnCooldown = 0;
+    this._vanishGrace = 0;
     this._seed = 1307;
     this._trailPx = NaN;
     this._trailPz = NaN;
@@ -175,6 +178,11 @@ export class LibraryEntity {
 
   _pickCorridorSpot(player, minDist, opts = {}) {
     const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
+    const tiers = [
+      opts,
+      { ...opts, forwardOnly: false },
+      { forwardOnly: false, offScreenOnly: false },
+    ];
 
     for (let attempt = 0; attempt < 16; attempt++) {
       const rng = createRng(
@@ -182,28 +190,41 @@ export class LibraryEntity {
         Math.floor(player.position.z),
         this._seed + attempt * 31,
       );
-      const spot = pickSpawnSpot(player, rng, minDist, maxDist, CHUNK_RADIUS, opts);
-      if (spot) return spot;
+      for (const tier of tiers) {
+        const spot = pickSpawnSpot(player, rng, minDist, maxDist, CHUNK_RADIUS, tier);
+        if (spot) return spot;
+      }
     }
 
     return null;
   }
 
   spawnInitial(player) {
-    if (!this.data?.model) return;
+    if (!this.data?.model) {
+      console.warn("Library entity: model not loaded");
+      return;
+    }
     this._seed = 1307;
-    const spot = this._pickCorridorSpot(player, INITIAL_MIN_DIST, {
-      forwardOnly: true,
-      offScreenOnly: false,
-    });
-    if (!spot) return;
-    this._placeAt(spot.wx, spot.wz, player.groundY);
+    const spot =
+      this._pickCorridorSpot(player, INITIAL_MIN_DIST, {
+        forwardOnly: true,
+        offScreenOnly: false,
+      }) ??
+      this._pickCorridorSpot(player, 1.5, {
+        forwardOnly: false,
+        offScreenOnly: false,
+      });
+    if (!spot) {
+      console.warn("Library entity: no corridor spawn spot found at start");
+      return;
+    }
+    this._placeAt(spot.wx, spot.wz, player.groundY, SPAWN_GRACE);
     const dx = player.position.x - spot.wx;
     const dz = player.position.z - spot.wz;
     if (this.root) this.root.rotation.y = Math.atan2(dx, dz);
   }
 
-  _placeAt(wx, wz, groundY) {
+  _placeAt(wx, wz, groundY, vanishGrace = 0) {
     if (!this.data?.model) return;
 
     if (!this.root) {
@@ -228,6 +249,7 @@ export class LibraryEntity {
     this.root.visible = true;
     this.active = true;
     this._respawnCooldown = 0.6;
+    this._vanishGrace = vanishGrace;
     this._trailPx = NaN;
     this._trailPz = NaN;
     this._behindWalk = 0;
@@ -235,17 +257,20 @@ export class LibraryEntity {
 
   _respawn(player, forwardOnly = true) {
     this._seed += 1;
-    const spot = this._pickCorridorSpot(player, MIN_SPAWN_DIST, {
-      forwardOnly,
-      offScreenOnly: true,
-    });
+    const spot =
+      this._pickCorridorSpot(player, MIN_SPAWN_DIST, {
+        forwardOnly,
+        offScreenOnly: true,
+      }) ??
+      this._pickCorridorSpot(player, MIN_SPAWN_DIST, {
+        forwardOnly: false,
+        offScreenOnly: false,
+      });
     if (!spot) {
-      if (this.root) this.root.visible = false;
-      this.active = false;
       this._respawnCooldown = RESPAWN_COOLDOWN;
       return;
     }
-    this._placeAt(spot.wx, spot.wz, player.groundY);
+    this._placeAt(spot.wx, spot.wz, player.groundY, SPAWN_GRACE);
     this._respawnCooldown = RESPAWN_COOLDOWN;
   }
 
@@ -304,7 +329,10 @@ export class LibraryEntity {
 
     const dist = Math.hypot(dx, dz);
     const probeY = this.groundY + (this.data.height ?? 1.5) * 0.55;
-    if (
+
+    if (this._vanishGrace > 0) {
+      this._vanishGrace -= dt;
+    } else if (
       dist <= VANISH_DIST &&
       hasLineOfSight(px, pz, this.worldX, this.worldZ, colliders, probeY)
     ) {
