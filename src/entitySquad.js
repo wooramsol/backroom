@@ -1,6 +1,6 @@
 import { EntityAgent } from "./entityAgent.js";
 
-/** Skinstealer chases the player; bateria/library are map statues */
+/** Skinstealer chases the player; library wanders separately */
 export class EntitySquad {
   constructor(scene, entityAssets) {
     this.agents = [];

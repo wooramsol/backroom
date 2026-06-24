@@ -8,7 +8,7 @@ import { createGameMaterials } from "./gameMaterials.js";
 import { loadFurnitureModels } from "./furnitureModels.js";
 import { loadSpecialAssets } from "./specialAssets.js";
 import { EntitySquad } from "./entitySquad.js";
-import { tickEntityStatues } from "./entityStatues.js";
+import { LibraryEntity } from "./libraryEntity.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { GameAudio } from "./audio.js";
@@ -104,6 +104,7 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels, specialAssets);
   const entitySquad = new EntitySquad(scene, specialAssets?.entities);
+  const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene);
   const player = new Player(camera, renderer.domElement);
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
@@ -207,6 +208,7 @@ async function init() {
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
       entitySquad.spawnAtStart(player);
+      libraryEntity.spawnInitial(player);
     }
   });
   overlay.addEventListener(
@@ -226,7 +228,6 @@ async function init() {
     lightT += dt;
 
     world.tick(dt);
-    tickEntityStatues(dt);
     tickChairGlitchVisuals(scene, lightT);
 
     if (!world.preloading) {
@@ -244,6 +245,7 @@ async function init() {
     if (started) {
       player.update(dt);
       entitySquad.update(dt, player);
+      libraryEntity.update(dt, player, world.getColliders());
     }
 
     if (ready) {

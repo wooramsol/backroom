@@ -66,28 +66,49 @@ export class EntityAgent {
 
   spawn(player, groundY) {
     const gy = groundY ?? player.groundY;
+    const px = player.position.x;
+    const pz = player.position.z;
+    const candidates = [];
+
     if (this.followBehind) {
       player.camera.getWorldDirection(_fwd);
       _fwd.y = 0;
       if (_fwd.lengthSq() < 1e-10) _fwd.set(0, 0, 1);
       else _fwd.normalize();
-      _target.copy(player.position).addScaledVector(_fwd, -this.followDist);
-      this.body.setFeetWorld(_target.x, _target.z, gy);
-      this.body.yaw = player.yaw;
-    } else if (this.spawnOffset) {
-      this.body.setFeetWorld(
-        player.position.x + this.spawnOffset[0],
-        player.position.z + this.spawnOffset[1],
-        gy,
-      );
-      this.body.yaw = Math.atan2(
-        player.position.x - this.body.position.x,
-        player.position.z - this.body.position.z,
-      );
-    } else {
-      this.body.setFeetWorld(player.position.x, player.position.z, gy);
+      candidates.push({
+        x: px - _fwd.x * this.followDist,
+        z: pz - _fwd.z * this.followDist,
+      });
     }
 
+    for (let i = 0; i < 12; i++) {
+      const ang = player.yaw + Math.PI + (i / 12) * Math.PI * 2;
+      candidates.push({
+        x: px + Math.sin(ang) * this.followDist,
+        z: pz + Math.cos(ang) * this.followDist,
+      });
+    }
+
+    for (const scale of [0.65, 0.4, 1.15]) {
+      candidates.push({ x: px + scale, z: pz }, { x: px - scale, z: pz });
+      candidates.push({ x: px, z: pz + scale }, { x: px, z: pz - scale });
+    }
+
+    for (const pos of candidates) {
+      if (!this.body.insideWall(pos.x, pos.z)) {
+        this.body.setFeetWorld(pos.x, pos.z, gy);
+        this.body.yaw = Math.atan2(px - pos.x, pz - pos.z);
+        this.root.visible = true;
+        this.active = true;
+        this.body.syncRoot(this.root);
+        this._setMoving(false);
+        return;
+      }
+    }
+
+    this.body.setFeetWorld(px, pz, gy);
+    this.body.resolvePenetration();
+    this.body.yaw = player.yaw;
     this.root.visible = true;
     this.active = true;
     this.body.syncRoot(this.root);

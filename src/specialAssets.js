@@ -4,13 +4,10 @@ import { cloneFurnitureTemplate } from "./furnitureModels.js";
 
 const ASSET_BASE = import.meta.env.BASE_URL;
 const CAR_URL = `${ASSET_BASE}assets/car.glb`;
-const ARMCHAIR_URL = `${ASSET_BASE}assets/armchair.glb`;
 const SKINSTEALER_URL = `${ASSET_BASE}assets/entity_skinstealer.glb`;
-const BATERIA_URL = `${ASSET_BASE}assets/entity_bateria.glb`;
 const LIBRARY_URL = `${ASSET_BASE}assets/entity_library.glb`;
 
 const CAR_TARGET_LEN = 4.6;
-const ARMCHAIR_TARGET_H = 0.86;
 const ENTITY_TARGET_H = 1.78;
 
 const _box = new THREE.Box3();
@@ -195,27 +192,17 @@ async function loadEntityModel(loader, url) {
   };
 }
 
-/** Car, armchair templates + entity rigs */
+/** Car + entity rigs */
 export async function loadSpecialAssets() {
   const loader = new GLTFLoader();
   try {
-    const [car, armchair, skinstealer, bateria, library] = await Promise.all([
+    const [car, skinstealer, library] = await Promise.all([
       loadStaticProp(loader, CAR_URL, CAR_TARGET_LEN, { id: "car" }, "x").catch((err) => {
         console.warn("Car model unavailable", err);
         return null;
       }),
-      loadStaticProp(loader, ARMCHAIR_URL, ARMCHAIR_TARGET_H, { id: "armchair" }, "y").catch(
-        (err) => {
-          console.warn("Armchair model unavailable", err);
-          return null;
-        },
-      ),
       loadEntityModel(loader, SKINSTEALER_URL).catch((err) => {
         console.warn("Skinstealer model unavailable", err);
-        return null;
-      }),
-      loadEntityModel(loader, BATERIA_URL).catch((err) => {
-        console.warn("Bateria entity unavailable", err);
         return null;
       }),
       loadEntityModel(loader, LIBRARY_URL).catch((err) => {
@@ -225,9 +212,8 @@ export async function loadSpecialAssets() {
     ]);
     return {
       car,
-      armchair,
       skinstealer,
-      entities: { skinstealer, bateria, library },
+      entities: { skinstealer, library },
     };
   } catch (err) {
     console.warn("Special assets unavailable", err);
