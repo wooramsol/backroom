@@ -34,6 +34,22 @@ function normalizeMaterials(root) {
   });
 }
 
+/** Keep authored GLB PBR/textures — only fix color spaces for the renderer */
+function preserveGlbMaterials(root) {
+  const srgbKeys = ["map", "emissiveMap", "specularMap", "alphaMap"];
+  root.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const mat of mats) {
+      for (const key of srgbKeys) {
+        const tex = mat[key];
+        if (tex) tex.colorSpace = THREE.SRGBColorSpace;
+      }
+      mat.userData.entityOwned = true;
+    }
+  });
+}
+
 function measureBounds(root) {
   root.updateMatrixWorld(true);
   _box.setFromObject(root);
@@ -97,7 +113,7 @@ async function loadSkinstealerModel(loader) {
   const gltf = await loader.loadAsync(SKINSTEALER_URL);
   const root = new THREE.Group();
   const model = gltf.scene;
-  normalizeMaterials(model);
+  preserveGlbMaterials(model);
   root.add(model);
 
   const bounds = measureBounds(root);
