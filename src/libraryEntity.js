@@ -88,9 +88,10 @@ function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
 
 /** Library — random within 2 chunks, faces player, relocates when seen within ~10m */
 export class LibraryEntity {
-  constructor(data, scene) {
+  constructor(data, scene, opts = {}) {
     this.data = data;
     this.scene = scene;
+    this.onVanish = opts.onVanish ?? null;
     this.root = null;
     this.model = null;
     this.mixer = null;
@@ -100,6 +101,8 @@ export class LibraryEntity {
     this.groundY = 0;
     this._relocateCooldown = 0;
     this._seed = 1307;
+    this._vanishT = 0;
+    this._pendingSpot = null;
   }
 
   spawnInitial(player) {
@@ -150,11 +153,30 @@ export class LibraryEntity {
     const candidates = collectCandidates(player, MIN_RELOCATE_DIST, maxDist);
     const spot = rng.pick(candidates);
     if (!spot) return;
-    this._placeAt(spot.wx, spot.wz, player.groundY);
+
+    if (this.onVanish) this.onVanish();
+    this._pendingSpot = { wx: spot.wx, wz: spot.wz, gy: player.groundY };
+    this._vanishT = 0.42;
+    if (this.root) this.root.visible = false;
+    this._relocateCooldown = 1.1;
+  }
+
+  _finishRelocate() {
+    if (!this._pendingSpot) return;
+    const { wx, wz, gy } = this._pendingSpot;
+    this._pendingSpot = null;
+    this._placeAt(wx, wz, gy);
   }
 
   update(dt, player, colliders) {
     if (!this.active || !this.root) return;
+
+    if (this._vanishT > 0) {
+      this._vanishT -= dt;
+      if (this._vanishT <= 0) this._finishRelocate();
+      this.mixer?.update(dt);
+      return;
+    }
 
     if (this._relocateCooldown > 0) this._relocateCooldown -= dt;
 

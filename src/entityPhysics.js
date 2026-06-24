@@ -1,10 +1,6 @@
 import * as THREE from "three";
 import {
   PLAYER_R,
-  CROUCH_PLAYER_R,
-  CROUCH_BODY_H,
-  CROUCH_BLEND_SPEED,
-  JUMP_V,
   GRAVITY,
   ROOM_H,
   EYE_H,
@@ -12,8 +8,9 @@ import {
 
 const LAND_EPS = 0.09;
 const MAX_BODY_Y = ROOM_H - 0.1;
+const PROBE_Y = EYE_H - 0.35;
 
-/** Wall/floor collision body for chasing entities (player-like, no camera). */
+/** Wall/floor collision body for chasing entities — no crouch/jump */
 export class EntityBody {
   constructor({ footOffset = 0, radius = PLAYER_R * 0.95 } = {}) {
     this.footOffset = footOffset;
@@ -23,8 +20,6 @@ export class EntityBody {
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
-    this.crouchBlend = 0;
-    this.crouchTarget = 0;
     this.colliders = [];
     this._blockedT = 0;
   }
@@ -38,22 +33,18 @@ export class EntityBody {
   }
 
   collisionRadius() {
-    return THREE.MathUtils.lerp(this.radius, CROUCH_PLAYER_R, this.crouchBlend);
+    return this.radius;
   }
 
   horizontalProbeY() {
-    const feet = this.feetY();
-    const standProbe = feet + (EYE_H - 0.05);
-    const crouchProbe = feet + CROUCH_BODY_H * 0.42;
-    return THREE.MathUtils.lerp(standProbe, crouchProbe, this.crouchBlend);
+    return this.feetY() + PROBE_Y;
   }
 
   syncRoot(root) {
     root.position.copy(this.position);
     root.rotation.y = this.yaw;
-    const squat = this.crouchBlend * 0.22;
     const sx = root.scale.x || 1;
-    root.scale.set(sx, sx * (1 - squat), sx);
+    root.scale.set(sx, sx, sx);
   }
 
   _overlapsXZ(px, pz, c, r = this.collisionRadius()) {
@@ -62,6 +53,7 @@ export class EntityBody {
 
   _blocksHorizontal(c, y) {
     if (c.isCeiling) return false;
+    if (c.isFurniture) return false;
     if (y < c.minY - 0.2 || y > c.maxY + 0.2) return false;
     return true;
   }
@@ -124,22 +116,6 @@ export class EntityBody {
     return best;
   }
 
-  _lowCeilingAhead(dirX, dirZ, dist = 0.85) {
-    const px = this.position.x + dirX * dist;
-    const pz = this.position.z + dirZ * dist;
-    const feet = this.feetY();
-    const headY = feet + EYE_H - 0.15;
-    const crouchHeadY = feet + CROUCH_BODY_H;
-
-    for (const c of this.colliders) {
-      if (!this._overlapsXZ(px, pz, c, this.collisionRadius())) continue;
-      if (c.isCeiling || c.maxY > headY - 0.25) {
-        if (c.minY < headY && c.maxY > crouchHeadY) return true;
-      }
-    }
-    return false;
-  }
-
   resolvePenetration() {
     if (!this.insideWall(this.position.x, this.position.z)) return;
     const out = this._pushOut(this.position.x, this.position.z);
@@ -147,8 +123,7 @@ export class EntityBody {
     this.position.z = out.pz;
   }
 
-  /** How far we can walk along (nx,nz) before hitting a blocker */
-  _probeClearance(nx, nz, maxDist, steps = 5) {
+  _probeClearance(nx, nz, maxDist, steps = 6) {
     const inc = maxDist / steps;
     for (let i = 1; i <= steps; i++) {
       const d = inc * i;
@@ -161,14 +136,14 @@ export class EntityBody {
 
   _steerAngles() {
     const out = [0];
-    for (let deg = 12; deg <= 180; deg += 12) {
+    for (let deg = 8; deg <= 180; deg += 8) {
       const rad = THREE.MathUtils.degToRad(deg);
       out.push(rad, -rad);
     }
     return out;
   }
 
-  /** Steer around walls/furniture toward a world XZ goal */
+  /** Steer around walls toward a world XZ goal */
   moveToward(dirX, dirZ, speed, dt) {
     const desiredLen = Math.hypot(dirX, dirZ);
     if (desiredLen < 1e-6) return 0;
@@ -176,7 +151,7 @@ export class EntityBody {
     const goalNX = dirX / desiredLen;
     const goalNZ = dirZ / desiredLen;
     const step = speed * dt;
-    const probeDist = Math.max(step * 3.5, 1.1);
+    const probeDist = Math.max(step * 4, 1.4);
 
     let best = null;
     let bestScore = -Infinity;
@@ -195,7 +170,7 @@ export class EntityBody {
 
       const alignment = (nx / len) * goalNX + (nz / len) * goalNZ;
       const clearance = this._probeClearance(nx / len, nz / len, probeDist);
-      const score = alignment * 2.2 + clearance * 0.45 + (Math.abs(a) < 1e-4 ? 0.08 : 0);
+      const score = alignment * 2.4 + clearance * 0.55 + (Math.abs(a) < 1e-4 ? 0.06 : 0);
 
       if (score > bestScore) {
         bestScore = score;
@@ -214,28 +189,17 @@ export class EntityBody {
         const tx = this.position.x + slide.nx * step;
         const tz = this.position.z + slide.nz * step;
         if (this.insideWall(tx, tz)) continue;
-        const clearance = this._probeClearance(slide.nx, slide.nz, probeDist);
-        best = { tx, tz, nx: slide.nx, nz: slide.nz, slide: true, clearance };
+        best = { tx, tz, nx: slide.nx, nz: slide.nz };
         break;
       }
     }
 
     if (!best) {
       this._blockedT += dt;
-      if (this._blockedT > 0.12 && this.grounded && this.crouchBlend < 0.05) {
-        if (this._lowCeilingAhead(goalNX, goalNZ)) {
-          this.crouchTarget = 1;
-        } else if (this._blockedT > 0.35) {
-          this.vy = JUMP_V;
-          this.grounded = false;
-          this._blockedT = 0;
-        }
-      }
       return 0;
     }
 
     this._blockedT = 0;
-    this.crouchTarget = this._lowCeilingAhead(best.nx, best.nz) ? 1 : 0;
 
     const px0 = this.position.x;
     const pz0 = this.position.z;
@@ -259,9 +223,6 @@ export class EntityBody {
   }
 
   updateVertical(dt) {
-    this.crouchBlend +=
-      (this.crouchTarget - this.crouchBlend) * Math.min(1, CROUCH_BLEND_SPEED * dt);
-
     const feetY = this.feetY();
     const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);
     const targetFeetY = supportY;
