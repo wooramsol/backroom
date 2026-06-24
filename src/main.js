@@ -14,7 +14,6 @@ import { Player } from "./player.js";
 import { GameAudio } from "./audio.js";
 import { tickChairGlitchVisuals } from "./chairStatic.js";
 import { createBloomPipeline, resizeBloomPipeline } from "./postfx.js";
-import { updateScreenGlitch, triggerScreenGlitch } from "./screenGlitch.js";
 import {
   CHUNK,
   EYE_H,
@@ -105,9 +104,7 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels, specialAssets);
   const entitySquad = new EntitySquad(scene, specialAssets?.entities);
-  const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene, {
-    onVanish: () => triggerScreenGlitch(1.35, 0.48),
-  });
+  const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene);
   const player = new Player(camera, renderer.domElement);
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
@@ -247,7 +244,6 @@ async function init() {
 
     if (started) {
       player.update(dt);
-      updateScreenGlitch(dt);
       entitySquad.update(dt, player);
       libraryEntity.update(dt, player, world.getColliders());
     }

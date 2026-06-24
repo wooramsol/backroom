@@ -5,8 +5,9 @@ import { generateRoom, isWalkableLocal, reachableCellsFrom } from "./room.js";
 import { createRng } from "./rng.js";
 
 const RELOCATE_DIST = 10;
-const CHUNK_RADIUS = 2;
-const MIN_RELOCATE_DIST = 11.5;
+const INITIAL_CHUNK_RADIUS = 2;
+const RELOCATE_CHUNK_RADIUS = 0;
+const MIN_RELOCATE_DIST = 4.5;
 const INITIAL_MIN_DIST = 8;
 
 function pickClip(clips, patterns) {
@@ -24,14 +25,14 @@ function chunkOrigin(playerX, playerZ) {
   };
 }
 
-function collectCandidates(player, minDist, maxDist) {
+function collectCandidates(player, minDist, maxDist, chunkRadius) {
   const { cx: pcx, cz: pcz } = chunkOrigin(player.position.x, player.position.z);
   const px = player.position.x;
   const pz = player.position.z;
   const out = [];
 
-  for (let cz = pcz - CHUNK_RADIUS; cz <= pcz + CHUNK_RADIUS; cz++) {
-    for (let cx = pcx - CHUNK_RADIUS; cx <= pcx + CHUNK_RADIUS; cx++) {
+  for (let cz = pcz - chunkRadius; cz <= pcz + chunkRadius; cz++) {
+    for (let cx = pcx - chunkRadius; cx <= pcx + chunkRadius; cx++) {
       const room = generateRoom(cx, cz);
       const startX = CHUNK / 2;
       const startZ = CHUNK / 2;
@@ -86,12 +87,11 @@ function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
   return true;
 }
 
-/** Library — random within 2 chunks, faces player, relocates when seen within ~10m */
+/** Library — random placement, faces player, relocates when seen within ~10m */
 export class LibraryEntity {
-  constructor(data, scene, opts = {}) {
+  constructor(data, scene) {
     this.data = data;
     this.scene = scene;
-    this.onVanish = opts.onVanish ?? null;
     this.root = null;
     this.model = null;
     this.mixer = null;
@@ -101,16 +101,16 @@ export class LibraryEntity {
     this.groundY = 0;
     this._relocateCooldown = 0;
     this._seed = 1307;
-    this._vanishT = 0;
-    this._pendingSpot = null;
   }
 
   spawnInitial(player) {
     if (!this.data?.model) return;
     this._seed = 1307;
     const rng = createRng(0, 0, this._seed);
-    const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-    const spot = rng.pick(collectCandidates(player, INITIAL_MIN_DIST, maxDist));
+    const maxDist = INITIAL_CHUNK_RADIUS * CHUNK * 1.05;
+    const spot = rng.pick(
+      collectCandidates(player, INITIAL_MIN_DIST, maxDist, INITIAL_CHUNK_RADIUS),
+    );
     if (!spot) return;
     this._placeAt(spot.wx, spot.wz, player.groundY);
   }
@@ -149,34 +149,21 @@ export class LibraryEntity {
       Math.floor(player.position.z),
       this._seed,
     );
-    const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-    const candidates = collectCandidates(player, MIN_RELOCATE_DIST, maxDist);
+    const maxDist = CHUNK * 0.88;
+    const candidates = collectCandidates(
+      player,
+      MIN_RELOCATE_DIST,
+      maxDist,
+      RELOCATE_CHUNK_RADIUS,
+    );
     const spot = rng.pick(candidates);
     if (!spot) return;
-
-    if (this.onVanish) this.onVanish();
-    this._pendingSpot = { wx: spot.wx, wz: spot.wz, gy: player.groundY };
-    this._vanishT = 0.42;
-    if (this.root) this.root.visible = false;
-    this._relocateCooldown = 1.1;
-  }
-
-  _finishRelocate() {
-    if (!this._pendingSpot) return;
-    const { wx, wz, gy } = this._pendingSpot;
-    this._pendingSpot = null;
-    this._placeAt(wx, wz, gy);
+    this._placeAt(spot.wx, spot.wz, player.groundY);
+    this._relocateCooldown = 1.0;
   }
 
   update(dt, player, colliders) {
     if (!this.active || !this.root) return;
-
-    if (this._vanishT > 0) {
-      this._vanishT -= dt;
-      if (this._vanishT <= 0) this._finishRelocate();
-      this.mixer?.update(dt);
-      return;
-    }
 
     if (this._relocateCooldown > 0) this._relocateCooldown -= dt;
 
