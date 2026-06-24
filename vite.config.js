@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 const pkg = JSON.parse(readFileSync("./package.json", "utf8"));
 
 function buildId() {
+  if (process.env.BUILD_SHA) return process.env.BUILD_SHA.slice(0, 7);
   if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
   return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 12);
 }
