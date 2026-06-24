@@ -104,6 +104,24 @@ export class Player {
     return this.locked || (this.mobileMode && this.mobileActive);
   }
 
+  isLocomoting() {
+    if (!this.inputActive) return false;
+    if (this.mobileMode && this.mobileActive) {
+      const move = this.mobileControls?.move ?? this.mobileMove;
+      return (move.strength ?? Math.hypot(move.x, move.y)) > 0.08;
+    }
+    return Boolean(
+      this.keys.KeyW ||
+        this.keys.KeyS ||
+        this.keys.KeyA ||
+        this.keys.KeyD ||
+        this.keys.ArrowUp ||
+        this.keys.ArrowDown ||
+        this.keys.ArrowLeft ||
+        this.keys.ArrowRight,
+    );
+  }
+
   _eyeHeight() {
     return THREE.MathUtils.lerp(EYE_H, CROUCH_EYE_H, this.crouchBlend);
   }

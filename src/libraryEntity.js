@@ -4,9 +4,8 @@ import { CAMERA_FOV, FOG_FAR } from "./constants.js";
 import { createRng } from "./rng.js";
 
 const IDLE_SPAWN = 10;
-const MOVE_EPS = 0.035;
-const SPAWN_DIST_MIN = 6;
-const SPAWN_DIST_MAX = 26;
+const SPAWN_DIST_MIN = 4;
+const SPAWN_DIST_MAX = 18;
 const VANISH_MARGIN = 1.8;
 const VANISH_MIN = 2;
 
@@ -44,10 +43,12 @@ function spotInView(player, colliders, rng) {
   const px = player.position.x;
   const pz = player.position.z;
   const probeY = player.groundY + 1.1;
-  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.46);
-  const maxDist = Math.min(SPAWN_DIST_MAX, FOG_FAR - 2);
+  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.48);
+  const maxDist = Math.min(SPAWN_DIST_MAX, FOG_FAR - 4);
 
-  for (let attempt = 0; attempt < 20; attempt++) {
+  let fallback = null;
+
+  for (let attempt = 0; attempt < 24; attempt++) {
     const offset = rng.range(-halfFov, halfFov);
     const cos = Math.cos(offset);
     const sin = Math.sin(offset);
@@ -57,17 +58,15 @@ function spotInView(player, colliders, rng) {
 
     const wx = px + nx * dist;
     const wz = pz + nz * dist;
+    const spot = { wx, wz, dist };
+    if (!fallback) fallback = spot;
+
     if (!isBlockedAt(wx, wz, colliders, probeY)) {
-      return { wx, wz, dist };
+      return spot;
     }
   }
 
-  const dist = rng.range(SPAWN_DIST_MIN, maxDist);
-  return {
-    wx: px + _fwd.x * dist,
-    wz: pz + _fwd.z * dist,
-    dist,
-  };
+  return fallback;
 }
 
 /** Library — appears in view after 10s idle; vanishes closer than spawn distance */
@@ -84,15 +83,11 @@ export class LibraryEntity {
     this.groundY = 0;
     this._vanishDist = VANISH_MIN;
     this._idleT = 0;
-    this._lastPx = NaN;
-    this._lastPz = NaN;
     this._seed = 1307;
   }
 
   begin(player) {
     this._idleT = 0;
-    this._lastPx = player.position.x;
-    this._lastPz = player.position.z;
     this._hide();
   }
 
@@ -102,7 +97,7 @@ export class LibraryEntity {
   }
 
   _spawnInView(player, colliders) {
-    if (!this.data?.model) return;
+    if (!this.data?.model) return false;
 
     const rng = createRng(
       Math.floor(player.position.x),
@@ -112,6 +107,8 @@ export class LibraryEntity {
     this._seed += 1;
 
     const spot = spotInView(player, colliders, rng);
+    if (!spot) return false;
+
     const vanishMax = Math.max(VANISH_MIN + 0.5, spot.dist - VANISH_MARGIN);
     const vanishMin = Math.min(VANISH_MIN, vanishMax * 0.45);
     this._vanishDist = rng.range(vanishMin, vanishMax);
@@ -119,6 +116,9 @@ export class LibraryEntity {
     if (!this.root) {
       this.root = new THREE.Group();
       this.model = SkeletonUtils.clone(this.data.model);
+      this.model.traverse((obj) => {
+        if (obj.isMesh) obj.frustumCulled = false;
+      });
       this.root.add(this.model);
       this.scene.add(this.root);
 
@@ -141,28 +141,22 @@ export class LibraryEntity {
     const dx = player.position.x - spot.wx;
     const dz = player.position.z - spot.wz;
     this.root.rotation.y = Math.atan2(dx, dz);
+    return true;
   }
 
   update(dt, player, colliders) {
     if (!this.data?.model) return;
 
-    const px = player.position.x;
-    const pz = player.position.z;
-
-    if (Number.isFinite(this._lastPx)) {
-      const moved = Math.hypot(px - this._lastPx, pz - this._lastPz);
-      if (moved > MOVE_EPS) this._idleT = 0;
-    }
-    this._lastPx = px;
-    this._lastPz = pz;
-
-    if (!this.active) {
+    if (player.isLocomoting()) {
+      this._idleT = 0;
+    } else if (!this.active) {
       this._idleT += dt;
       if (this._idleT >= IDLE_SPAWN) {
         this._spawnInView(player, colliders);
-        this._idleT = 0;
       }
     } else {
+      const px = player.position.x;
+      const pz = player.position.z;
       const dx = px - this.worldX;
       const dz = pz - this.worldZ;
       this.root.rotation.y = Math.atan2(dx, dz);
