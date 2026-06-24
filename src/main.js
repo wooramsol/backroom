@@ -29,6 +29,11 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
+import { isMobileDevice } from "./device.js";
+import { MobileControls } from "./mobileControls.js";
+
+const mobileMode = isMobileDevice();
+document.documentElement.classList.toggle("mobile", mobileMode);
 
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
@@ -38,6 +43,9 @@ const buildLabel = document.getElementById("build-label");
 const buildBadge = document.getElementById("build-badge");
 const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
+const mobileControlsRoot = document.getElementById("mobile-controls");
+const mobileControls = mobileMode && mobileControlsRoot ? new MobileControls(mobileControlsRoot) : null;
+if (mobileControls) mobileControls.mount();
 
 const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
@@ -74,7 +82,7 @@ const audio = new GameAudio();
 async function init() {
   const hintStatus = document.getElementById("hint-status");
   const waitHint = "Loading… please wait";
-  const clickHint = "Click to start";
+  const clickHint = mobileMode ? "Tap to start" : "Click to start";
 
   if (hintStatus) hintStatus.textContent = waitHint;
   overlay.style.cursor = "wait";
@@ -89,6 +97,15 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels);
   const player = new Player(camera, renderer.domElement);
+  if (mobileMode && mobileControls) {
+    player.setMobileMode(true, mobileControls);
+    if (resumePrompt) resumePrompt.hidden = true;
+    const hintControls = document.querySelector("#overlay .hint-controls");
+    if (hintControls) {
+      hintControls.innerHTML =
+        "Move: left stick<br />Look: drag right<br />Run / Jump: buttons<br />Hold phone sideways";
+    }
+  }
   player.connect();
 
   function showResumePrompt() {
@@ -104,12 +121,12 @@ async function init() {
   }
 
   function tryResumeLock() {
-    if (!ready || !started) return;
+    if (!ready || !started || mobileMode) return;
     if (!player.isLocked()) player.requestLock();
   }
 
   player.onLockLost = () => {
-    if (started) showResumePrompt();
+    if (started && !mobileMode) showResumePrompt();
   };
   player.onLockAcquired = hideResumePrompt;
 
@@ -157,19 +174,31 @@ async function init() {
     });
 
   overlay.addEventListener("click", () => {
+    if (audio.ctx?.state === "suspended") void audio.ctx.resume();
     if (!ready) return;
-    player.requestLock();
+    if (!mobileMode) player.requestLock();
     if (!started) {
       started = true;
+      if (mobileMode && mobileControls) {
+        player.startMobile();
+        mobileControls.show();
+      }
       overlay.classList.add("hidden");
       hud.classList.add("visible");
       vignette.classList.add("visible");
-      crosshair?.classList.add("visible");
+      if (!mobileMode) crosshair?.classList.add("visible");
       syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
     }
   });
+  overlay.addEventListener(
+    "touchstart",
+    () => {
+      if (audio.ctx?.state === "suspended") void audio.ctx.resume();
+    },
+    { passive: true },
+  );
 
   const clock = new THREE.Clock();
   let lightT = 0;

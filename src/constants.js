@@ -68,6 +68,8 @@ export const CAMERA_WALL_CLEAR = 0.04;
 /** Camera may shift slightly off body center to stay out of geometry */
 export const CAMERA_MAX_OFFSET = 0.035;
 export const MOUSE_SENS = 0.0022;
+/** Touch drag on the right half — slightly higher than mouse for comfort */
+export const MOBILE_LOOK_SENS = 0.0032;
 /** ~±68° — old ±83° made doorways look skewed when looking down */
 export const PITCH_LIMIT = 1.18;
 export const FOG_NEAR = 8;
