@@ -7,7 +7,8 @@ import { createRng } from "./rng.js";
 const VANISH_DIST = 10;
 const CHUNK_RADIUS = 2;
 const MIN_SPAWN_DIST = 4.5;
-const INITIAL_MIN_DIST = 5;
+const INITIAL_AHEAD_DIST = 4.2;
+const SPAWN_GRACE = 8;
 const RESPAWN_COOLDOWN = 1.0;
 
 const _fwd = new THREE.Vector3();
@@ -86,6 +87,40 @@ function collectCandidates(player, minDist, maxDist, chunkRadius) {
   return out;
 }
 
+function isBlockedAt(x, z, colliders, probeY) {
+  for (const c of colliders) {
+    if (c.isCeiling) continue;
+    if (probeY < c.minY - 0.2 || probeY > c.maxY + 0.2) continue;
+    if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) return true;
+  }
+  return false;
+}
+
+function spotAheadOfPlayer(player, colliders) {
+  player.camera.getWorldDirection(_fwd);
+  _fwd.y = 0;
+  if (_fwd.lengthSq() < 1e-10) {
+    _fwd.set(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+  } else {
+    _fwd.normalize();
+  }
+
+  const px = player.position.x;
+  const pz = player.position.z;
+  const probeY = player.groundY + 1.1;
+
+  for (const dist of [INITIAL_AHEAD_DIST, 3.5, 5, 3, 6, 7]) {
+    const wx = px + _fwd.x * dist;
+    const wz = pz + _fwd.z * dist;
+    if (!isBlockedAt(wx, wz, colliders, probeY)) return { wx, wz };
+  }
+
+  return {
+    wx: px + _fwd.x * INITIAL_AHEAD_DIST,
+    wz: pz + _fwd.z * INITIAL_AHEAD_DIST,
+  };
+}
+
 function pickSpawnSpot(player, rng, minDist, maxDist, chunkRadius) {
   const candidates = collectCandidates(player, minDist, maxDist, chunkRadius);
   if (!candidates.length) return null;
@@ -114,7 +149,7 @@ function hasLineOfSight(px, pz, tx, tz, colliders, probeY) {
   return true;
 }
 
-/** Library — random spawn; vanishes within 10m when seen, respawns off-screen */
+/** Library — spawns ahead of player first; vanishes within 10m when seen */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -127,24 +162,20 @@ export class LibraryEntity {
     this.worldZ = 0;
     this.groundY = 0;
     this._respawnCooldown = 0;
+    this._vanishGrace = 0;
     this._seed = 1307;
   }
 
-  spawnInitial(player) {
+  spawnInitial(player, colliders = []) {
     if (!this.data?.model) return;
-    const maxDist = CHUNK_RADIUS * CHUNK * 1.05;
-
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const rng = createRng(0, 0, this._seed + attempt * 31);
-      const spot = pickSpawnSpot(player, rng, INITIAL_MIN_DIST, maxDist, CHUNK_RADIUS);
-      if (spot) {
-        this._placeAt(spot.wx, spot.wz, player.groundY);
-        return;
-      }
-    }
+    const spot = spotAheadOfPlayer(player, colliders);
+    this._placeAt(spot.wx, spot.wz, player.groundY, SPAWN_GRACE);
+    const dx = player.position.x - spot.wx;
+    const dz = player.position.z - spot.wz;
+    if (this.root) this.root.rotation.y = Math.atan2(dx, dz);
   }
 
-  _placeAt(wx, wz, groundY) {
+  _placeAt(wx, wz, groundY, vanishGrace = 0) {
     if (!this.data?.model) return;
 
     if (!this.root) {
@@ -169,6 +200,7 @@ export class LibraryEntity {
     this.root.visible = true;
     this.active = true;
     this._respawnCooldown = 0.6;
+    this._vanishGrace = vanishGrace;
   }
 
   _respawn(player) {
@@ -217,7 +249,10 @@ export class LibraryEntity {
 
     const dist = Math.hypot(dx, dz);
     const probeY = this.groundY + (this.data.height ?? 1.5) * 0.55;
-    if (
+
+    if (this._vanishGrace > 0) {
+      this._vanishGrace -= dt;
+    } else if (
       dist <= VANISH_DIST &&
       hasLineOfSight(px, pz, this.worldX, this.worldZ, colliders, probeY)
     ) {
