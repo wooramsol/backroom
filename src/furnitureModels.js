@@ -4,12 +4,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const ASSET_BASE = import.meta.env.BASE_URL;
 const CHAIR_URL = `${ASSET_BASE}assets/Chair.glb`;
 const STOOL_URL = `${ASSET_BASE}assets/Stool.glb`;
+const ARMCHAIR_URL = `${ASSET_BASE}assets/armchair.glb`;
 const CHAIR_PACK_URL = `${ASSET_BASE}assets/poppy_playtime_4_chairs_pack_1.glb`;
 
 /** Dining chair height (~82 cm) */
 const CHAIR_TARGET_H = 0.82;
 /** Stool height (~85 cm) */
 const STOOL_TARGET_H = 0.85;
+/** Armchair height (~86 cm) */
+const ARMCHAIR_TARGET_H = 0.86;
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
@@ -147,9 +150,15 @@ async function loadPackChairs(loader) {
 export async function loadFurnitureModels() {
   const loader = new GLTFLoader();
   try {
-    const [chairGlb, stool, packChairs] = await Promise.all([
+    const [chairGlb, stool, armchair, packChairs] = await Promise.all([
       loadTemplate(loader, CHAIR_URL, CHAIR_TARGET_H, { id: "chairGlb", chairGlitch: true }),
       loadTemplate(loader, STOOL_URL, STOOL_TARGET_H, { id: "stool", chairGlitch: false }),
+      loadTemplate(loader, ARMCHAIR_URL, ARMCHAIR_TARGET_H, { id: "armchair", chairGlitch: false }).catch(
+        (err) => {
+          console.warn("Armchair model unavailable", err);
+          return null;
+        },
+      ),
       loadPackChairs(loader).catch((err) => {
         console.warn("Chair pack unavailable", err);
         return [];
@@ -157,7 +166,7 @@ export async function loadFurnitureModels() {
     ]);
     const allChairs = [chairGlb, ...packChairs];
     const pileChairs = packChairs.filter((t) => t.userData.isPile);
-    const allProps = [chairGlb, stool, ...packChairs];
+    const allProps = [chairGlb, stool, armchair, ...packChairs].filter(Boolean);
     return { chairGlb, stool, packChairs, pileChairs, allChairs, allProps };
   } catch (err) {
     console.warn("Furniture models unavailable — skipping props", err);
