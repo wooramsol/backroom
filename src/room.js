@@ -219,6 +219,14 @@ export function isWalkableLocal(x, z, innerWalls) {
   return !navBlocked(x, z, innerWalls);
 }
 
+/** Tight passage cell — excludes open room interiors */
+export function isCorridorLocal(x, z, innerWalls) {
+  if (!isWalkableLocal(x, z, innerWalls)) return false;
+  const wx = passageWidthAlong(x, z, innerWalls, "x");
+  const wz = passageWidthAlong(x, z, innerWalls, "z");
+  return Math.min(wx, wz) <= MIN_PASSAGE_SPAN + 0.55;
+}
+
 /** Walkable cell centres reachable from a chunk-local start point */
 export function reachableCellsFrom(innerWalls, startX, startZ) {
   const keys = navFloodKeys(innerWalls, startX, startZ);
