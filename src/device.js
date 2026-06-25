@@ -8,3 +8,9 @@ export function isMobileDevice() {
   );
   return (coarse && touch) || ua;
 }
+
+/** Mobile play area — landscape only */
+export function isLandscapeOrientation() {
+  if (typeof window === "undefined") return true;
+  return window.innerWidth >= window.innerHeight;
+}

@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -46,6 +46,7 @@ const buildBadge = document.getElementById("build-badge");
 const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
 const mobileControlsRoot = document.getElementById("mobile-controls");
+const rotatePrompt = document.getElementById("rotate-prompt");
 const mobileControls = mobileMode && mobileControlsRoot ? new MobileControls(mobileControlsRoot) : null;
 if (mobileControls) mobileControls.mount();
 
@@ -104,14 +105,37 @@ async function init() {
   const world = new World(scene, materials, furnitureModels, specialAssets);
   const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene);
   const player = new Player(camera, renderer.domElement);
+  let syncMobileOrientation = () => true;
+
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
     if (resumePrompt) resumePrompt.hidden = true;
     const hintControls = document.querySelector("#overlay .hint-controls");
     if (hintControls) {
       hintControls.innerHTML =
-        "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
+        "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button<br />Landscape only";
     }
+
+    syncMobileOrientation = (started) => {
+      const landscape = isLandscapeOrientation();
+      document.documentElement.classList.toggle("portrait-blocked", !landscape);
+      if (rotatePrompt) rotatePrompt.hidden = landscape;
+
+      if (!landscape) {
+        mobileControls.hide();
+        player.mobileActive = false;
+        return false;
+      }
+
+      if (started) {
+        mobileControls.show();
+        player.startMobile();
+      }
+      return true;
+    };
+
+    syncMobileOrientation(false);
+    window.addEventListener("orientationchange", () => syncMobileOrientation(started));
   }
   player.connect();
 
@@ -190,6 +214,7 @@ async function init() {
   overlay.addEventListener("click", () => {
     if (audio.ctx?.state === "suspended") void audio.ctx.resume();
     if (!ready) return;
+    if (mobileMode && !syncMobileOrientation(started)) return;
     if (!mobileMode) player.requestLock();
     if (!started) {
       started = true;
@@ -238,8 +263,10 @@ async function init() {
     }
 
     if (started) {
-      player.update(dt);
-      libraryEntity.update(dt, player, world.getColliders());
+      if (!mobileMode || syncMobileOrientation(true)) {
+        player.update(dt);
+        libraryEntity.update(dt, player, world.getColliders());
+      }
     }
 
     if (ready) {
@@ -258,6 +285,7 @@ async function init() {
     camera.updateProjectionMatrix();
     resizeBloomPipeline(renderer, pipeline, w, h);
     syncCrosshair();
+    if (mobileMode) syncMobileOrientation(started);
   });
 }
 
