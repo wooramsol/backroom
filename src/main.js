@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice, isLandscapeOrientation } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation, getViewportSize, getViewportOffset, scheduleViewportRelayout } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -54,27 +54,58 @@ const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
 if (buildVersion) buildVersion.textContent = buildText;
 
-function syncCrosshair() {
-  if (!crosshair) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  crosshair.style.left = `${rect.left + rect.width / 2}px`;
-  crosshair.style.top = `${rect.top + rect.height / 2}px`;
-}
-
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-renderer.setSize(window.innerWidth, window.innerHeight);
+const initialViewport = getViewportSize();
+renderer.setSize(initialViewport.width, initialViewport.height);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
-renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden";
+renderer.domElement.style.cssText =
+  "position:fixed;left:0;top:0;z-index:1;visibility:hidden;touch-action:none";
 document.body.appendChild(renderer.domElement);
+
+function layoutViewport(camera, pipeline) {
+  const { width, height } = getViewportSize();
+  const { left, top } = getViewportOffset();
+  const canvas = renderer.domElement;
+
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  resizeBloomPipeline(renderer, pipeline, width, height);
+
+  if (mobileMode && window.visualViewport) {
+    canvas.style.inset = "auto";
+    canvas.style.left = `${left}px`;
+    canvas.style.top = `${top}px`;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  } else {
+    canvas.style.left = "0";
+    canvas.style.top = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+  }
+}
+
+function syncCrosshair() {
+  if (!crosshair) return;
+  const { width, height } = getViewportSize();
+  const { left, top } = getViewportOffset();
+  crosshair.style.left = `${left + width / 2}px`;
+  crosshair.style.top = `${top + height / 2}px`;
+}
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(FOG_COLOR);
 scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
-const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
+const camera = new THREE.PerspectiveCamera(
+  CAMERA_FOV,
+  initialViewport.width / initialViewport.height,
+  CAMERA_NEAR,
+  CAMERA_FAR,
+);
 camera.position.set(CHUNK / 2, EYE_H, CHUNK / 2);
 
 scene.add(new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY));
@@ -90,10 +121,10 @@ async function init() {
 
   function syncTitleHint() {
     if (!hintStatus || !ready) return;
-    hintStatus.classList.remove("loading");
+    hintStatus.classList.remove("loading", "ready", "rotate");
     if (mobileMode && !isLandscapeOrientation()) {
       hintStatus.textContent = rotateHint;
-      hintStatus.classList.remove("ready");
+      hintStatus.classList.add("rotate");
       return;
     }
     hintStatus.textContent = clickHint;
@@ -157,7 +188,21 @@ async function init() {
       return true;
     };
 
-    window.addEventListener("orientationchange", () => syncMobileOrientation(started));
+    window.addEventListener("orientationchange", () => {
+      scheduleViewportRelayout(() => {
+        layoutViewport(camera, pipeline);
+        syncCrosshair();
+        syncMobileOrientation(started);
+        if (!started) syncTitleHint();
+      });
+    });
+    window.visualViewport?.addEventListener("resize", () => {
+      layoutViewport(camera, pipeline);
+      syncCrosshair();
+    });
+    window.visualViewport?.addEventListener("scroll", () => {
+      syncCrosshair();
+    });
   }
   player.connect();
 
@@ -200,6 +245,7 @@ async function init() {
   resumePrompt?.addEventListener("click", tryResumeLock);
 
   const pipeline = createBloomPipeline(renderer, scene, camera);
+  layoutViewport(camera, pipeline);
 
   let started = false;
   let ready = false;
@@ -297,18 +343,19 @@ async function init() {
 
   animate();
 
-  window.addEventListener("resize", () => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    resizeBloomPipeline(renderer, pipeline, w, h);
+  const onViewportResize = () => {
+    layoutViewport(camera, pipeline);
     syncCrosshair();
     if (mobileMode) {
       syncMobileOrientation(started);
       if (!started) syncTitleHint();
     }
-  });
+  };
+
+  window.addEventListener("resize", () => scheduleViewportRelayout(onViewportResize));
+  if (mobileMode) {
+    onViewportResize();
+  }
 }
 
 init().catch((err) => {
