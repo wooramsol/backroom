@@ -5,10 +5,11 @@ import { createRng } from "./rng.js";
 
 const IDLE_SPAWN = 10;
 const SPAWN_NEAR = 1.4;
-const SPAWN_PROBE_STEP = 0.25;
-const SPAWN_PROBE_MAX = 14;
+const SPAWN_PROBE_STEP = 0.35;
+const SPAWN_PROBE_MAX = 52;
 const SPAWN_BODY_R = 0.42;
 const SPAWN_WALL_MARGIN = 0.35;
+const LOS_SAMPLE_STEP = 0.32;
 const VANISH_MARGIN = 1.5;
 const VANISH_MIN = 1.2;
 const LOOK_TURN_SPEED = 5.5;
@@ -30,23 +31,18 @@ function pickClip(clips, patterns) {
   return clips[0] || null;
 }
 
-function lookForward(player) {
-  player.camera.getWorldDirection(_fwd);
-  _fwd.y = 0;
-  if (_fwd.lengthSq() < 1e-10) {
-    _fwd.set(Math.sin(player.yaw), 0, Math.cos(player.yaw));
-  } else {
-    _fwd.normalize();
-  }
-}
-
-function isBlockedAt(x, z, colliders, probeY) {
+function isBlockedAt(x, z, colliders, probeY, wallsOnly = false) {
   for (const c of colliders) {
     if (c.isCeiling) continue;
+    if (wallsOnly && c.isFurniture) continue;
     if (probeY < c.minY - 0.2 || probeY > c.maxY + 0.2) continue;
     if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) return true;
   }
   return false;
+}
+
+function isWallBlockedAt(x, z, colliders, probeY) {
+  return isBlockedAt(x, z, colliders, probeY, true);
 }
 
 const _footprintSamples = [
@@ -63,23 +59,43 @@ const _footprintSamples = [
 
 function isClearFootprint(x, z, colliders, probeY) {
   for (const [ox, oz] of _footprintSamples) {
-    if (isBlockedAt(x + ox, z + oz, colliders, probeY)) return false;
+    if (isBlockedAt(x + ox, z + oz, colliders, probeY, false)) return false;
   }
   return true;
 }
 
-/** March along a direction until a blocker; return furthest clear floor point in view */
+/** Wall gaps (doorways) only — lets probes reach into the next room */
+function hasWallClearPath(ax, az, bx, bz, colliders, probeY) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const len = Math.hypot(dx, dz);
+  if (len < 0.05) return true;
+  const steps = Math.max(2, Math.ceil(len / LOS_SAMPLE_STEP));
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    if (isWallBlockedAt(ax + dx * t, az + dz * t, colliders, probeY)) return false;
+  }
+  return true;
+}
+
+/** March through doorways; stop only on walls, not furniture in the corridor */
 function probeAlong(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
   const px = player.position.x;
   const pz = player.position.z;
   const probeY = player.groundY + 1.1;
+  const camX = player.camera.position.x;
+  const camZ = player.camera.position.z;
 
   let furthest = null;
   for (let d = minD; d <= maxD; d += SPAWN_PROBE_STEP) {
     const wx = px + dirX * d;
     const wz = pz + dirZ * d;
-    if (!isClearFootprint(wx, wz, colliders, probeY)) break;
-    furthest = d;
+    if (!hasWallClearPath(px, pz, wx, wz, colliders, probeY)) break;
+    if (!isWallBlockedAt(wx, wz, colliders, probeY)) {
+      furthest = d;
+      continue;
+    }
+    break;
   }
 
   if (furthest === null) return null;
@@ -88,6 +104,7 @@ function probeAlong(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD = SPA
   const wx = px + dirX * dist;
   const wz = pz + dirZ * dist;
   if (!isClearFootprint(wx, wz, colliders, probeY)) return null;
+  if (!hasWallClearPath(camX, camZ, wx, wz, colliders, probeY)) return null;
 
   return {
     wx,
@@ -106,16 +123,23 @@ function dirFromOffset(offset) {
 }
 
 function findSpawnSpot(player, colliders, rng) {
-  lookForward(player);
-  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.45);
+  player.camera.getWorldDirection(_fwd);
+  _fwd.y = 0;
+  if (_fwd.lengthSq() < 1e-10) {
+    _fwd.set(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+  } else {
+    _fwd.normalize();
+  }
+
+  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.48);
   const angles = [0];
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     angles.push(rng.range(-halfFov, halfFov));
   }
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     const side = rng.chance(0.5) ? 1 : -1;
-    angles.push(side * rng.range(halfFov * 1.05, halfFov * 1.65));
+    angles.push(side * rng.range(halfFov * 1.02, halfFov * 1.55));
   }
 
   let best = null;
