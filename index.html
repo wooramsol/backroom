@@ -76,26 +76,6 @@
       #overlay .hint-controls {
         margin-top: 1.5rem;
       }
-      #overlay .hint-rotate {
-        display: none;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: max(1.75rem, env(safe-area-inset-bottom));
-        text-align: center;
-        font-size: 0.98rem;
-        letter-spacing: 0.06em;
-        color: #c9b87a;
-        opacity: 0.78;
-        pointer-events: none;
-        z-index: 11;
-      }
-      #overlay .hint-rotate:not([hidden]) {
-        display: block;
-      }
-      html.mobile #overlay .hint-rotate {
-        font-size: 1.02rem;
-      }
       #overlay .hint-status {
         font-size: 1rem;
         letter-spacing: 0.05em;
@@ -344,7 +324,7 @@
         padding: 2rem;
         text-align: center;
         color: #c9b87a;
-        font-size: 1rem;
+        font-size: 1.05rem;
         letter-spacing: 0.08em;
         background: rgba(8, 7, 5, 0.72);
         pointer-events: auto;
@@ -352,13 +332,8 @@
       #portrait-prompt.visible {
         display: flex;
       }
-      #portrait-prompt p {
-        font-size: 1.05rem;
-        letter-spacing: 0.06em;
-        opacity: 0.92;
-      }
     </style>
-    <script type="module" crossorigin src="/backroom/assets/index-DkZsEl2K.js"></script>
+    <script type="module" crossorigin src="/backroom/assets/index-W5mQROAg.js"></script>
   </head>
   <body>
     <div id="overlay">
@@ -375,7 +350,6 @@
           Look: Mouse
         </div>
       </div>
-      <p class="hint-rotate" id="hint-rotate" hidden>Please rotate your device</p>
       <p class="credit">Created by @wooramsol</p>
       <p class="bgm-credit">BGM credit: Kane Parsons, Kane Pixel</p>
     </div>
@@ -396,9 +370,7 @@
       <div class="mc-look-zone" aria-label="Look"></div>
       <button type="button" class="mc-btn mc-btn-jump" aria-label="Jump">Jump</button>
     </div>
-    <div id="portrait-prompt" hidden>
-      <p>Please rotate your device</p>
-    </div>
+    <div id="portrait-prompt" hidden>Please rotate your device</div>
     <div id="resume-prompt" hidden>Click to resume</div>
   </body>
 </html>
