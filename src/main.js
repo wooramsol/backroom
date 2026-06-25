@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice, isLandscapeOrientation, getViewportSize, getViewportOffset, scheduleViewportRelayout } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation, scheduleViewportRelayout } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -56,44 +56,26 @@ if (buildVersion) buildVersion.textContent = buildText;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-const initialViewport = getViewportSize();
-renderer.setSize(initialViewport.width, initialViewport.height);
+renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
-renderer.domElement.style.cssText =
-  "position:fixed;left:0;top:0;z-index:1;visibility:hidden;touch-action:none";
+renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden;touch-action:none";
 document.body.appendChild(renderer.domElement);
 
 function layoutViewport(camera, pipeline) {
-  const { width, height } = getViewportSize();
-  const { left, top } = getViewportOffset();
-  const canvas = renderer.domElement;
-
-  camera.aspect = width / height;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  resizeBloomPipeline(renderer, pipeline, width, height);
-
-  if (mobileMode && window.visualViewport) {
-    canvas.style.inset = "auto";
-    canvas.style.left = `${left}px`;
-    canvas.style.top = `${top}px`;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-  } else {
-    canvas.style.left = "0";
-    canvas.style.top = "0";
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-  }
+  resizeBloomPipeline(renderer, pipeline, w, h);
 }
 
 function syncCrosshair() {
   if (!crosshair) return;
-  const { width, height } = getViewportSize();
-  const { left, top } = getViewportOffset();
-  crosshair.style.left = `${left + width / 2}px`;
-  crosshair.style.top = `${top + height / 2}px`;
+  const rect = renderer.domElement.getBoundingClientRect();
+  crosshair.style.left = `${rect.left + rect.width / 2}px`;
+  crosshair.style.top = `${rect.top + rect.height / 2}px`;
 }
 
 const scene = new THREE.Scene();
@@ -102,7 +84,7 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(
   CAMERA_FOV,
-  initialViewport.width / initialViewport.height,
+  window.innerWidth / window.innerHeight,
   CAMERA_NEAR,
   CAMERA_FAR,
 );
@@ -195,13 +177,6 @@ async function init() {
         syncMobileOrientation(started);
         if (!started) syncTitleHint();
       });
-    });
-    window.visualViewport?.addEventListener("resize", () => {
-      layoutViewport(camera, pipeline);
-      syncCrosshair();
-    });
-    window.visualViewport?.addEventListener("scroll", () => {
-      syncCrosshair();
     });
   }
   player.connect();
