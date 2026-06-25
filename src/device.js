@@ -27,22 +27,47 @@ export function getLayoutSize() {
   return { width: Math.max(1, w), height: Math.max(1, h) };
 }
 
-/** Visible viewport for fixed UI shells (iOS Safari chrome / offset) */
+/** Visible viewport for fixed UI shells (mobile browser chrome / offset) */
 export function getViewportShellRect() {
   if (typeof window === "undefined") {
     return { width: 800, height: 600, top: 0, left: 0 };
   }
   const vv = window.visualViewport;
   if (vv) {
-    return {
-      width: Math.max(1, Math.round(vv.width)),
-      height: Math.max(1, Math.round(vv.height)),
-      top: Math.max(0, Math.round(vv.offsetTop)),
-      left: Math.max(0, Math.round(vv.offsetLeft)),
-    };
+    let top = Math.max(0, Math.round(vv.offsetTop));
+    const left = Math.max(0, Math.round(vv.offsetLeft));
+    const width = Math.max(1, Math.round(vv.width));
+    let height = Math.max(1, Math.round(vv.height));
+
+    // pageTop is more reliable than offsetTop when the URL bar overlays fixed content
+    const pageTop = Math.max(0, Math.round(vv.pageTop - window.scrollY));
+    if (pageTop > top) top = pageTop;
+
+    const docTop = Math.round(-document.documentElement.getBoundingClientRect().top);
+    if (docTop > top) top = docTop;
+
+    // Landscape phones: tab/URL bar sits on top while offsetTop stays 0
+    if (isMobileDevice() && isLandscapeOrientation()) {
+      const uiChrome = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      if (top === 0 && uiChrome > 0) top = uiChrome;
+    }
+
+    height = Math.max(1, Math.min(height, Math.round(window.innerHeight - top)));
+
+    return { width, height, top, left };
   }
   const { width, height } = getLayoutSize();
   return { width, height, top: 0, left: 0 };
+}
+
+export function syncViewportCssVars(rect = getViewportShellRect()) {
+  if (typeof document === "undefined") return rect;
+  const root = document.documentElement;
+  root.style.setProperty("--vv-top", `${rect.top}px`);
+  root.style.setProperty("--vv-left", `${rect.left}px`);
+  root.style.setProperty("--vv-width", `${rect.width}px`);
+  root.style.setProperty("--vv-height", `${rect.height}px`);
+  return rect;
 }
 
 export function applyFixedShell(el, rect = getViewportShellRect()) {
