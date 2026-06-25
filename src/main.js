@@ -84,20 +84,40 @@ const audio = new GameAudio();
 
 async function init() {
   const hintStatus = document.getElementById("hint-status");
+  const hintRotate = document.getElementById("hint-rotate");
   const waitHint = "Loading… please wait";
   const clickHint = mobileMode ? "Tap to start" : "Click to start";
-  const rotateHint = "Please rotate your device";
 
-  function updateTitleHint() {
-    if (!hintStatus || !ready) return;
-    hintStatus.classList.remove("loading");
-    if (mobileMode && !isLandscapeOrientation()) {
-      hintStatus.textContent = rotateHint;
-      hintStatus.classList.remove("ready");
+  function syncTitleHints() {
+    if (!mobileMode) {
+      hintRotate?.setAttribute("hidden", "");
+      if (!hintStatus || !ready) return;
+      hintStatus.hidden = false;
+      hintStatus.classList.remove("loading");
+      hintStatus.textContent = clickHint;
+      hintStatus.classList.add("ready");
       return;
     }
-    hintStatus.textContent = clickHint;
-    hintStatus.classList.add("ready");
+
+    const landscape = isLandscapeOrientation();
+    if (landscape) {
+      hintRotate?.setAttribute("hidden", "");
+    } else {
+      hintRotate?.removeAttribute("hidden");
+    }
+
+    if (!hintStatus || !ready) return;
+
+    hintStatus.classList.remove("loading");
+    if (landscape) {
+      hintStatus.hidden = false;
+      hintStatus.textContent = clickHint;
+      hintStatus.classList.add("ready");
+    } else {
+      hintStatus.textContent = "";
+      hintStatus.classList.remove("ready");
+      hintStatus.hidden = true;
+    }
   }
 
   if (hintStatus) {
@@ -153,12 +173,16 @@ async function init() {
         player.startMobile();
       }
 
-      if (!started) updateTitleHint();
+      if (!started) syncTitleHints();
       return true;
     };
 
     syncMobileOrientation(false);
-    window.addEventListener("orientationchange", () => syncMobileOrientation(started));
+    syncTitleHints();
+    window.addEventListener("orientationchange", () => {
+      syncMobileOrientation(started);
+      if (!started) syncTitleHints();
+    });
   }
   player.connect();
 
@@ -218,7 +242,7 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      updateTitleHint();
+      syncTitleHints();
     })
     .catch((err) => {
       console.error(err);
@@ -307,7 +331,7 @@ async function init() {
     syncCrosshair();
     if (mobileMode) {
       syncMobileOrientation(started);
-      if (!started) updateTitleHint();
+      if (!started) syncTitleHints();
     }
   });
 }
