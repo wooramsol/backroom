@@ -293,20 +293,53 @@
       html.mobile .mc-actions {
         bottom: max(2.6rem, calc(env(safe-area-inset-bottom) + 1.35rem));
       }
-      @media (orientation: portrait) {
-        .mc-stick-base {
-          width: 100px;
-          height: 100px;
-          bottom: max(1.5rem, env(safe-area-inset-bottom));
+
+      #rotate-prompt {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2rem;
+        text-align: center;
+        color: #c9b87a;
+        background: radial-gradient(ellipse at center, #2a2618 0%, #0d0c08 78%);
+        pointer-events: auto;
+      }
+      #rotate-prompt .rotate-icon {
+        font-size: 3.2rem;
+        line-height: 1;
+        opacity: 0.85;
+        animation: rotate-hint 2.2s ease-in-out infinite;
+      }
+      #rotate-prompt p {
+        font-size: 1.05rem;
+        letter-spacing: 0.06em;
+      }
+      #rotate-prompt .rotate-sub {
+        font-size: 0.78rem;
+        opacity: 0.62;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      @keyframes rotate-hint {
+        0%,
+        100% {
+          transform: rotate(-90deg);
         }
-        .mc-look-zone {
-          width: 58%;
-          bottom: 0;
-          height: calc(100% - 7.5rem);
+        50% {
+          transform: rotate(0deg);
         }
-        .mc-actions {
-          bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 1.5rem));
-        }
+      }
+      html.mobile.portrait-blocked #rotate-prompt {
+        display: flex;
+      }
+      html.mobile.portrait-blocked #mobile-controls {
+        opacity: 0 !important;
+        pointer-events: none !important;
       }
     </style>
   </head>
@@ -346,6 +379,11 @@
       <div class="mc-actions">
         <button type="button" class="mc-btn mc-btn-jump">Jump</button>
       </div>
+    </div>
+    <div id="rotate-prompt" hidden>
+      <div class="rotate-icon" aria-hidden="true">📱</div>
+      <p>화면을 가로로 돌려 주세요</p>
+      <p class="rotate-sub">Landscape mode only</p>
     </div>
     <div id="resume-prompt" hidden>Click to resume</div>
     <script type="module" src="/src/main.js"></script>
