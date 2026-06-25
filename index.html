@@ -76,6 +76,26 @@
       #overlay .hint-controls {
         margin-top: 1.5rem;
       }
+      #overlay .hint-rotate {
+        display: none;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: max(1.75rem, env(safe-area-inset-bottom));
+        text-align: center;
+        font-size: 0.98rem;
+        letter-spacing: 0.06em;
+        color: #c9b87a;
+        opacity: 0.78;
+        pointer-events: none;
+        z-index: 11;
+      }
+      #overlay .hint-rotate:not([hidden]) {
+        display: block;
+      }
+      html.mobile #overlay .hint-rotate {
+        font-size: 1.02rem;
+      }
       #overlay .hint-status {
         font-size: 1rem;
         letter-spacing: 0.05em;
@@ -338,7 +358,7 @@
         opacity: 0.92;
       }
     </style>
-    <script type="module" crossorigin src="/backroom/assets/index-BHWu-IXp.js"></script>
+    <script type="module" crossorigin src="/backroom/assets/index-DkZsEl2K.js"></script>
   </head>
   <body>
     <div id="overlay">
@@ -355,6 +375,7 @@
           Look: Mouse
         </div>
       </div>
+      <p class="hint-rotate" id="hint-rotate" hidden>Please rotate your device</p>
       <p class="credit">Created by @wooramsol</p>
       <p class="bgm-credit">BGM credit: Kane Parsons, Kane Pixel</p>
     </div>
