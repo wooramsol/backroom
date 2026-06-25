@@ -68,8 +68,8 @@ function isClearFootprint(x, z, colliders, probeY) {
   return true;
 }
 
-/** March along a direction until a blocker; return last clear floor point in view */
-function probeAlong(player, dirX, dirZ, colliders, rng, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
+/** March along a direction until a blocker; return furthest clear floor point in view */
+function probeAlong(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
   const px = player.position.x;
   const pz = player.position.z;
   const probeY = player.groundY + 1.1;
@@ -84,10 +84,7 @@ function probeAlong(player, dirX, dirZ, colliders, rng, minD = SPAWN_NEAR, maxD 
 
   if (furthest === null) return null;
 
-  const safeMax = Math.max(minD, furthest - SPAWN_WALL_MARGIN);
-  const preferMax = Math.min(safeMax, 10);
-  const preferMin = Math.max(SPAWN_NEAR, Math.min(3.5, preferMax * 0.55));
-  const dist = preferMax <= preferMin ? preferMax : rng.range(preferMin, preferMax);
+  const dist = Math.max(minD, furthest - SPAWN_WALL_MARGIN);
   const wx = px + dirX * dist;
   const wz = pz + dirZ * dist;
   if (!isClearFootprint(wx, wz, colliders, probeY)) return null;
@@ -121,16 +118,17 @@ function findSpawnSpot(player, colliders, rng) {
     angles.push(side * rng.range(halfFov * 1.05, halfFov * 1.65));
   }
 
+  let best = null;
   for (const offset of angles) {
     const { x, z } = dirFromOffset(offset);
-    const spot = probeAlong(player, x, z, colliders, rng);
-    if (spot) return spot;
+    const spot = probeAlong(player, x, z, colliders);
+    if (spot && (!best || spot.dist > best.dist)) best = spot;
   }
 
-  return null;
+  return best;
 }
 
-/** Library — appears in view after 10s idle; vanishes closer than spawn distance */
+/** Library — appears far in view after 10s idle; stays until approached */
 export class LibraryEntity {
   constructor(data, scene) {
     this.data = data;
@@ -221,14 +219,8 @@ export class LibraryEntity {
       this._idleT = 0;
     } else {
       this._idleT += dt;
-      if (this._idleT >= IDLE_SPAWN) {
-        if (!this.active) {
-          this._spawnInView(player, colliders);
-        } else {
-          this._hide();
-          this._spawnInView(player, colliders);
-          this._idleT = 0;
-        }
+      if (this._idleT >= IDLE_SPAWN && !this.active) {
+        this._spawnInView(player, colliders);
       }
     }
 
