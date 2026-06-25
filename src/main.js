@@ -37,6 +37,14 @@ import { MobileControls } from "./mobileControls.js";
 const mobileMode = isMobileDevice();
 document.documentElement.classList.toggle("mobile", mobileMode);
 
+if (mobileMode) {
+  const hintControls = document.querySelector("#overlay .hint-controls");
+  if (hintControls) {
+    hintControls.innerHTML =
+      "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
+  }
+}
+
 const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
 const vignette = document.getElementById("vignette");
@@ -150,11 +158,6 @@ async function init() {
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
     if (resumePrompt) resumePrompt.hidden = true;
-    const hintControls = document.querySelector("#overlay .hint-controls");
-    if (hintControls) {
-      hintControls.innerHTML =
-        "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
-    }
 
     syncMobileOrientation = (gameStarted) => {
       const landscape = isLandscapeOrientation();
