@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice, isLandscapeOrientation, getLayoutSize, scheduleViewportRelayout } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation, getLayoutSize, getViewportShellRect, applyFixedShell, scheduleViewportRelayout } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -72,6 +72,21 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
 document.body.appendChild(renderer.domElement);
 
+function layoutFixedShells() {
+  const rect = getViewportShellRect();
+  applyFixedShell(overlay, rect);
+  applyFixedShell(portraitPrompt, rect);
+  applyFixedShell(mobileControlsRoot, rect);
+  applyFixedShell(resumePrompt, rect);
+}
+
+layoutFixedShells();
+window.addEventListener("resize", () => scheduleViewportRelayout(layoutFixedShells));
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => scheduleViewportRelayout(layoutFixedShells));
+  window.visualViewport.addEventListener("scroll", () => scheduleViewportRelayout(layoutFixedShells));
+}
+
 function applyCanvasFullscreen(canvas) {
   canvas.style.position = "fixed";
   canvas.style.inset = "0";
@@ -91,6 +106,7 @@ function layoutViewport(camera, pipeline) {
   camera.updateProjectionMatrix();
   resizeBloomPipeline(renderer, pipeline, w, h);
   applyCanvasFullscreen(renderer.domElement);
+  layoutFixedShells();
 }
 
 function syncCrosshair() {
@@ -345,6 +361,10 @@ async function init() {
   };
 
   window.addEventListener("resize", () => scheduleViewportRelayout(onViewportResize));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => scheduleViewportRelayout(onViewportResize));
+    window.visualViewport.addEventListener("scroll", () => scheduleViewportRelayout(onViewportResize));
+  }
   if (mobileMode) {
     onViewportResize();
   }

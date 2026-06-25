@@ -20,7 +20,10 @@
       }
       #overlay {
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -271,8 +274,8 @@
         position: absolute;
         right: max(1rem, env(safe-area-inset-right));
         bottom: max(1.25rem, env(safe-area-inset-bottom));
-        width: 56px;
-        height: 56px;
+        width: 112px;
+        height: 112px;
         min-width: 0;
         padding: 0;
         border-radius: 50%;
@@ -293,6 +296,24 @@
         border-color: rgba(201, 184, 122, 0.55);
         box-shadow: 0 0 10px rgba(201, 184, 122, 0.2);
       }
+      html.mobile #overlay {
+        display: block;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        text-align: center;
+      }
+      html.mobile #overlay .overlay-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100%;
+        box-sizing: border-box;
+        padding: max(0.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+          max(0.75rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+      }
       html.mobile #overlay h1 {
         font-size: 2.55rem;
       }
@@ -312,14 +333,10 @@
         opacity: 0.82;
       }
       @media (orientation: landscape) {
-        html.mobile #overlay {
+        html.mobile #overlay .overlay-inner {
           justify-content: flex-start;
-          overflow-x: hidden;
-          overflow-y: auto;
-          overscroll-behavior: contain;
-          -webkit-overflow-scrolling: touch;
-          padding: max(0.55rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-            max(0.55rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+          padding-top: max(0.45rem, env(safe-area-inset-top));
+          padding-bottom: max(0.45rem, env(safe-area-inset-bottom));
         }
         html.mobile #overlay h1 {
           font-size: 1.75rem;
@@ -384,21 +401,23 @@
   </head>
   <body>
     <div id="overlay">
-      <h1>BACKROOMS</h1>
-      <p class="sub">LEVEL 0 — THE LOBBY</p>
-      <p class="build" id="build-label"></p>
-      <div class="hint">
-        <div class="hint-status" id="hint-status">Loading… please wait</div>
-        <div class="hint-controls">
-          Move: WASD<br />
-          Run: Shift<br />
-          Jump: Space<br />
-          Crouch: C<br />
-          Look: Mouse
+      <div class="overlay-inner">
+        <h1>BACKROOMS</h1>
+        <p class="sub">LEVEL 0 — THE LOBBY</p>
+        <p class="build" id="build-label"></p>
+        <div class="hint">
+          <div class="hint-status" id="hint-status">Loading… please wait</div>
+          <div class="hint-controls">
+            Move: WASD<br />
+            Run: Shift<br />
+            Jump: Space<br />
+            Crouch: C<br />
+            Look: Mouse
+          </div>
         </div>
+        <p class="credit">Created by @wooramsol</p>
+        <p class="bgm-credit">BGM credit: Kane Parsons, Kane Pixel</p>
       </div>
-      <p class="credit">Created by @wooramsol</p>
-      <p class="bgm-credit">BGM credit: Kane Parsons, Kane Pixel</p>
     </div>
     <div id="hud">LEVEL 0</div>
     <div id="build-badge">
