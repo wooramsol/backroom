@@ -11,7 +11,20 @@ export function isMobileDevice() {
 
 export function isLandscapeOrientation() {
   if (typeof window === "undefined") return true;
+  if (window.matchMedia("(orientation: landscape)").matches) return true;
+  if (window.matchMedia("(orientation: portrait)").matches) return false;
   return window.innerWidth >= window.innerHeight;
+}
+
+/** innerWidth/innerHeight are often stale right after rotation — align to orientation */
+export function getLayoutSize() {
+  if (typeof window === "undefined") return { width: 800, height: 600 };
+  let w = window.innerWidth;
+  let h = window.innerHeight;
+  const landscape = isLandscapeOrientation();
+  if (landscape && w < h) [w, h] = [h, w];
+  else if (!landscape && w > h) [w, h] = [h, w];
+  return { width: Math.max(1, w), height: Math.max(1, h) };
 }
 
 /** innerWidth/innerHeight can be stale briefly after orientation changes */
@@ -21,6 +34,7 @@ export function scheduleViewportRelayout(callback) {
     callback();
     requestAnimationFrame(callback);
   });
-  window.setTimeout(callback, 120);
-  window.setTimeout(callback, 320);
+  for (const ms of [120, 320, 520]) {
+    window.setTimeout(callback, ms);
+  }
 }

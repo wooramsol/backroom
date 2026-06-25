@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice, isLandscapeOrientation, scheduleViewportRelayout } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation, getLayoutSize, scheduleViewportRelayout } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -54,21 +54,35 @@ const buildText = formatBuildLabel();
 if (buildLabel) buildLabel.textContent = buildText;
 if (buildVersion) buildVersion.textContent = buildText;
 
+const initialLayout = getLayoutSize();
+
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(initialLayout.width, initialLayout.height, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
-renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:1;visibility:hidden;touch-action:none";
 document.body.appendChild(renderer.domElement);
 
+function applyCanvasFullscreen(canvas) {
+  canvas.style.position = "fixed";
+  canvas.style.inset = "0";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.display = "block";
+  canvas.style.zIndex = "1";
+  canvas.style.touchAction = "none";
+}
+
+applyCanvasFullscreen(renderer.domElement);
+renderer.domElement.style.visibility = "hidden";
+
 function layoutViewport(camera, pipeline) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const { width: w, height: h } = getLayoutSize();
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   resizeBloomPipeline(renderer, pipeline, w, h);
+  applyCanvasFullscreen(renderer.domElement);
 }
 
 function syncCrosshair() {
@@ -84,7 +98,7 @@ scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
 
 const camera = new THREE.PerspectiveCamera(
   CAMERA_FOV,
-  window.innerWidth / window.innerHeight,
+  initialLayout.width / initialLayout.height,
   CAMERA_NEAR,
   CAMERA_FAR,
 );

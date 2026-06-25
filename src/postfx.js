@@ -4,6 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 import { RENDER_RESOLUTION_SCALE } from "./constants.js";
+import { getLayoutSize } from "./device.js";
 import { createFilmNoisePass, resizeFilmNoise, updateFilmNoise } from "./filmNoise.js";
 
 function renderPixelRatio(renderer) {
@@ -17,8 +18,7 @@ function fxaaResolution(renderer, w, h) {
 
 /** Scene + FXAA + VCR noise — no bloom/glow */
 export function createBloomPipeline(renderer, scene, camera) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const { width: w, height: h } = getLayoutSize();
   const pr = renderPixelRatio(renderer);
   const composer = new EffectComposer(renderer);
   composer.setPixelRatio(pr);
@@ -43,7 +43,7 @@ export function createBloomPipeline(renderer, scene, camera) {
 
 export function resizeBloomPipeline(renderer, pipeline, w, h) {
   const pr = renderPixelRatio(renderer);
-  renderer.setSize(w, h);
+  renderer.setSize(w, h, false);
   pipeline.composer.setPixelRatio(pr);
   pipeline.composer.setSize(w, h);
   pipeline.fxaa.material.uniforms.resolution.value.copy(fxaaResolution(renderer, w, h));
