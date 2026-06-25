@@ -311,6 +311,50 @@
         font-size: 0.96rem;
         opacity: 0.82;
       }
+      @media (orientation: landscape) {
+        html.mobile #overlay {
+          justify-content: flex-start;
+          overflow-x: hidden;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
+          padding: max(0.55rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+            max(0.55rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+        }
+        html.mobile #overlay h1 {
+          font-size: 1.75rem;
+          letter-spacing: 0.22em;
+          margin-bottom: 0.3rem;
+        }
+        html.mobile #overlay .sub {
+          font-size: 0.82rem;
+          margin-bottom: 0.7rem;
+        }
+        html.mobile #overlay .build {
+          font-size: 0.68rem;
+          margin-bottom: 0.7rem;
+        }
+        html.mobile #overlay .hint {
+          font-size: 0.88rem;
+          line-height: 1.65;
+          margin-bottom: 0.8rem;
+        }
+        html.mobile #overlay .hint-status {
+          font-size: 0.95rem;
+        }
+        html.mobile #overlay .hint-controls {
+          margin-top: 0.65rem;
+          font-size: 0.84rem;
+        }
+        html.mobile #overlay .credit {
+          font-size: 0.78rem;
+          margin-bottom: 0.25rem;
+        }
+        html.mobile #overlay .bgm-credit {
+          font-size: 0.72rem;
+          margin-bottom: 0.6rem;
+        }
+      }
       html.mobile.portrait-blocked #mobile-controls {
         opacity: 0 !important;
         pointer-events: none !important;
@@ -337,7 +381,7 @@
         animation: hint-status-pulse 1.1s ease-in-out infinite;
       }
     </style>
-    <script type="module" crossorigin src="/backroom/assets/index-By_i0Fir.js"></script>
+    <script type="module" crossorigin src="/backroom/assets/index-ncOC_g_y.js"></script>
   </head>
   <body>
     <div id="overlay">
