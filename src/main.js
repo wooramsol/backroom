@@ -46,6 +46,7 @@ const buildBadge = document.getElementById("build-badge");
 const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
 const mobileControlsRoot = document.getElementById("mobile-controls");
+const portraitPrompt = document.getElementById("portrait-prompt");
 const mobileControls = mobileMode && mobileControlsRoot ? new MobileControls(mobileControlsRoot) : null;
 if (mobileControls) mobileControls.mount();
 
@@ -122,7 +123,16 @@ async function init() {
       if (!landscape) {
         mobileControls.hide();
         player.mobileActive = false;
+        if (started && portraitPrompt) {
+          portraitPrompt.hidden = false;
+          portraitPrompt.classList.add("visible");
+        }
         return false;
+      }
+
+      if (portraitPrompt) {
+        portraitPrompt.classList.remove("visible");
+        portraitPrompt.hidden = true;
       }
 
       if (started) {
