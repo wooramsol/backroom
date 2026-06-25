@@ -86,6 +86,19 @@ async function init() {
   const hintStatus = document.getElementById("hint-status");
   const waitHint = "Loading… please wait";
   const clickHint = mobileMode ? "Tap to start" : "Click to start";
+  const rotateHint = "Please rotate your device";
+
+  function updateTitleHint() {
+    if (!hintStatus || !ready) return;
+    hintStatus.classList.remove("loading");
+    if (mobileMode && !isLandscapeOrientation()) {
+      hintStatus.textContent = rotateHint;
+      hintStatus.classList.remove("ready");
+      return;
+    }
+    hintStatus.textContent = clickHint;
+    hintStatus.classList.add("ready");
+  }
 
   if (hintStatus) {
     hintStatus.textContent = waitHint;
@@ -139,6 +152,8 @@ async function init() {
         mobileControls.show();
         player.startMobile();
       }
+
+      if (!started) updateTitleHint();
       return true;
     };
 
@@ -203,10 +218,7 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      if (hintStatus) {
-        hintStatus.classList.remove("loading");
-        hintStatus.textContent = clickHint;
-      }
+      updateTitleHint();
     })
     .catch((err) => {
       console.error(err);
@@ -293,7 +305,10 @@ async function init() {
     camera.updateProjectionMatrix();
     resizeBloomPipeline(renderer, pipeline, w, h);
     syncCrosshair();
-    if (mobileMode) syncMobileOrientation(started);
+    if (mobileMode) {
+      syncMobileOrientation(started);
+      if (!started) updateTitleHint();
+    }
   });
 }
 
