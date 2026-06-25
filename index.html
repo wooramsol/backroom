@@ -14,6 +14,7 @@
       body {
         width: 100%;
         height: 100%;
+        height: 100dvh;
         overflow: hidden;
         background: #1a1810;
         font-family: system-ui, -apple-system, sans-serif;
@@ -83,7 +84,8 @@
         opacity: 0.88;
       }
       #overlay .hint-status.loading,
-      #overlay .hint-status.ready {
+      #overlay .hint-status.ready,
+      #overlay .hint-status.rotate {
         animation: hint-status-pulse 1.1s ease-in-out infinite;
       }
       @keyframes hint-status-pulse {
@@ -331,9 +333,10 @@
       }
       #portrait-prompt.visible {
         display: flex;
+        animation: hint-status-pulse 1.1s ease-in-out infinite;
       }
     </style>
-    <script type="module" crossorigin src="/backroom/assets/index-W5mQROAg.js"></script>
+    <script type="module" crossorigin src="/backroom/assets/index-CHY0FJiK.js"></script>
   </head>
   <body>
     <div id="overlay">
