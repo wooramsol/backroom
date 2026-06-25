@@ -1,13 +1,11 @@
 import * as THREE from "three";
-import { EYE_H, PLAYER_R, ROOM_H } from "./constants.js";
+import { EYE_H, PLAYER_R, ROOM_H, MAX_STAND_HEIGHT } from "./constants.js";
 
 const _box = new THREE.Box3();
 const SHRINK = 0.03;
 const MIN_SPAN = 0.38;
 const BODY_Y_LO = 0.3;
 const BODY_Y_HI = EYE_H + PLAYER_R * 0.45 + 0.15;
-/** Max surface height the player can stand on (keeps head below ceiling) */
-export const MAX_STAND_HEIGHT = ROOM_H - EYE_H - 0.12;
 
 function expandAxis(min, max, minSpan) {
   if (max - min >= minSpan) return [min, max];

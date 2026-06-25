@@ -19,6 +19,11 @@ export const ROOM_H = 2.7;
 export const MIN_ROOM_H = ROOM_H;
 export const MAX_ROOM_H = ROOM_H;
 export const EYE_H = 1.62;
+/** Eye Y cap — standing on the highest allowed surface must stay under the ceiling */
+export const CEILING_EYE_MARGIN = 0.02;
+export const MAX_EYE_Y = ROOM_H - CEILING_EYE_MARGIN;
+/** Highest standable prop top (jump-snap landing uses feetY >= top - 0.65) */
+export const MAX_STAND_HEIGHT = MAX_EYE_Y - EYE_H;
 /** Eye height while holding crouch */
 export const CROUCH_EYE_H = 0.92;
 /** Collision radius while crouching — slip under corridor chairs */
