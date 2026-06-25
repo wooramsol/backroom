@@ -46,7 +46,6 @@ const buildBadge = document.getElementById("build-badge");
 const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
 const mobileControlsRoot = document.getElementById("mobile-controls");
-const rotatePrompt = document.getElementById("rotate-prompt");
 const mobileControls = mobileMode && mobileControlsRoot ? new MobileControls(mobileControlsRoot) : null;
 if (mobileControls) mobileControls.mount();
 
@@ -113,13 +112,12 @@ async function init() {
     const hintControls = document.querySelector("#overlay .hint-controls");
     if (hintControls) {
       hintControls.innerHTML =
-        "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button<br />Landscape only";
+        "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
     }
 
     syncMobileOrientation = (started) => {
       const landscape = isLandscapeOrientation();
       document.documentElement.classList.toggle("portrait-blocked", !landscape);
-      if (rotatePrompt) rotatePrompt.hidden = landscape;
 
       if (!landscape) {
         mobileControls.hide();
