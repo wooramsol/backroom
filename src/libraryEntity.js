@@ -7,6 +7,8 @@ const IDLE_SPAWN = 10;
 const SPAWN_NEAR = 1.4;
 const SPAWN_PROBE_STEP = 0.25;
 const SPAWN_PROBE_MAX = 14;
+const SPAWN_BODY_R = 0.42;
+const SPAWN_WALL_MARGIN = 0.35;
 const VANISH_MARGIN = 1.5;
 const VANISH_MIN = 1.2;
 const LOOK_TURN_SPEED = 5.5;
@@ -47,6 +49,25 @@ function isBlockedAt(x, z, colliders, probeY) {
   return false;
 }
 
+const _footprintSamples = [
+  [0, 0],
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [0.75, 0.75],
+  [0.75, -0.75],
+  [-0.75, 0.75],
+  [-0.75, -0.75],
+].map(([x, z]) => [x * SPAWN_BODY_R, z * SPAWN_BODY_R]);
+
+function isClearFootprint(x, z, colliders, probeY) {
+  for (const [ox, oz] of _footprintSamples) {
+    if (isBlockedAt(x + ox, z + oz, colliders, probeY)) return false;
+  }
+  return true;
+}
+
 /** March along a direction until a blocker; return last clear floor point in view */
 function probeAlong(player, dirX, dirZ, colliders, rng, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
   const px = player.position.x;
@@ -57,19 +78,23 @@ function probeAlong(player, dirX, dirZ, colliders, rng, minD = SPAWN_NEAR, maxD 
   for (let d = minD; d <= maxD; d += SPAWN_PROBE_STEP) {
     const wx = px + dirX * d;
     const wz = pz + dirZ * d;
-    if (isBlockedAt(wx, wz, colliders, probeY)) break;
+    if (!isClearFootprint(wx, wz, colliders, probeY)) break;
     furthest = d;
   }
 
   if (furthest === null) return null;
 
-  const preferMax = Math.min(furthest, 10);
+  const safeMax = Math.max(minD, furthest - SPAWN_WALL_MARGIN);
+  const preferMax = Math.min(safeMax, 10);
   const preferMin = Math.max(SPAWN_NEAR, Math.min(3.5, preferMax * 0.55));
   const dist = preferMax <= preferMin ? preferMax : rng.range(preferMin, preferMax);
+  const wx = px + dirX * dist;
+  const wz = pz + dirZ * dist;
+  if (!isClearFootprint(wx, wz, colliders, probeY)) return null;
 
   return {
-    wx: px + dirX * dist,
-    wz: pz + dirZ * dist,
+    wx,
+    wz,
     dist,
   };
 }
