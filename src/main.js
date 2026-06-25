@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -46,6 +46,7 @@ const buildBadge = document.getElementById("build-badge");
 const buildVersion = document.getElementById("build-version");
 const resumePrompt = document.getElementById("resume-prompt");
 const mobileControlsRoot = document.getElementById("mobile-controls");
+const portraitPrompt = document.getElementById("portrait-prompt");
 const mobileControls = mobileMode && mobileControlsRoot ? new MobileControls(mobileControlsRoot) : null;
 if (mobileControls) mobileControls.mount();
 
@@ -85,6 +86,19 @@ async function init() {
   const hintStatus = document.getElementById("hint-status");
   const waitHint = "Loading… please wait";
   const clickHint = mobileMode ? "Tap to start" : "Click to start";
+  const rotateHint = "Please rotate your device";
+
+  function syncTitleHint() {
+    if (!hintStatus || !ready) return;
+    hintStatus.classList.remove("loading");
+    if (mobileMode && !isLandscapeOrientation()) {
+      hintStatus.textContent = rotateHint;
+      hintStatus.classList.remove("ready");
+      return;
+    }
+    hintStatus.textContent = clickHint;
+    hintStatus.classList.add("ready");
+  }
 
   if (hintStatus) {
     hintStatus.textContent = waitHint;
@@ -104,6 +118,8 @@ async function init() {
   const world = new World(scene, materials, furnitureModels, specialAssets);
   const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene);
   const player = new Player(camera, renderer.domElement);
+  let syncMobileOrientation = () => true;
+
   if (mobileMode && mobileControls) {
     player.setMobileMode(true, mobileControls);
     if (resumePrompt) resumePrompt.hidden = true;
@@ -112,6 +128,36 @@ async function init() {
       hintControls.innerHTML =
         "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
     }
+
+    syncMobileOrientation = (gameStarted) => {
+      const landscape = isLandscapeOrientation();
+      document.documentElement.classList.toggle("portrait-blocked", !landscape);
+
+      if (!landscape) {
+        mobileControls.hide();
+        player.mobileActive = false;
+        if (gameStarted && portraitPrompt) {
+          portraitPrompt.hidden = false;
+          portraitPrompt.classList.add("visible");
+        }
+        return false;
+      }
+
+      if (portraitPrompt) {
+        portraitPrompt.classList.remove("visible");
+        portraitPrompt.hidden = true;
+      }
+
+      if (gameStarted) {
+        mobileControls.show();
+        player.startMobile();
+      } else {
+        syncTitleHint();
+      }
+      return true;
+    };
+
+    window.addEventListener("orientationchange", () => syncMobileOrientation(started));
   }
   player.connect();
 
@@ -171,10 +217,7 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      if (hintStatus) {
-        hintStatus.classList.remove("loading");
-        hintStatus.textContent = clickHint;
-      }
+      syncTitleHint();
     })
     .catch((err) => {
       console.error(err);
@@ -190,6 +233,7 @@ async function init() {
   overlay.addEventListener("click", () => {
     if (audio.ctx?.state === "suspended") void audio.ctx.resume();
     if (!ready) return;
+    if (mobileMode && !syncMobileOrientation(started)) return;
     if (!mobileMode) player.requestLock();
     if (!started) {
       started = true;
@@ -238,8 +282,10 @@ async function init() {
     }
 
     if (started) {
-      player.update(dt);
-      libraryEntity.update(dt, player, world.getColliders());
+      if (!mobileMode || syncMobileOrientation(true)) {
+        player.update(dt);
+        libraryEntity.update(dt, player, world.getColliders());
+      }
     }
 
     if (ready) {
@@ -258,6 +304,10 @@ async function init() {
     camera.updateProjectionMatrix();
     resizeBloomPipeline(renderer, pipeline, w, h);
     syncCrosshair();
+    if (mobileMode) {
+      syncMobileOrientation(started);
+      if (!started) syncTitleHint();
+    }
   });
 }
 

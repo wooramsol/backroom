@@ -33,58 +33,60 @@
         transition: opacity 0.8s ease;
       }
       #overlay h1 {
-        font-size: 2rem;
+        font-size: 2.35rem;
         font-weight: 300;
         letter-spacing: 0.35em;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.45rem;
       }
       #overlay .sub {
-        font-size: 0.85rem;
-        opacity: 0.55;
+        font-size: 0.98rem;
+        opacity: 0.62;
         letter-spacing: 0.2em;
         margin-bottom: 2rem;
       }
       #overlay .credit {
-        font-size: 0.8rem;
-        opacity: 0.5;
+        font-size: 0.92rem;
+        opacity: 0.58;
         letter-spacing: 0.12em;
-        margin-bottom: 0.35rem;
+        margin-bottom: 0.4rem;
         text-align: center;
       }
       #overlay .bgm-credit {
-        font-size: 0.72rem;
-        opacity: 0.42;
+        font-size: 0.84rem;
+        opacity: 0.5;
         letter-spacing: 0.08em;
         margin-bottom: 1.5rem;
         text-align: center;
       }
       #overlay .build {
-        font-size: 0.65rem;
-        opacity: 0.38;
+        font-size: 0.78rem;
+        opacity: 0.45;
         letter-spacing: 0.08em;
         font-variant-numeric: tabular-nums;
         margin-bottom: 2rem;
       }
       #overlay .hint {
-        font-size: 0.75rem;
-        opacity: 0.45;
-        line-height: 1.85;
+        font-size: 0.92rem;
+        opacity: 0.58;
+        line-height: 1.9;
         text-align: center;
-        max-width: 22rem;
+        max-width: 24rem;
         margin-bottom: 1.75rem;
       }
       #overlay .hint-controls {
         margin-top: 1.5rem;
       }
       #overlay .hint-status {
-        font-size: 0.82rem;
+        font-size: 1rem;
         letter-spacing: 0.05em;
-        margin-bottom: 0.35rem;
+        margin-bottom: 0.45rem;
+        opacity: 0.88;
       }
-      #overlay .hint-status.loading {
-        animation: hint-loading-pulse 1.1s ease-in-out infinite;
+      #overlay .hint-status.loading,
+      #overlay .hint-status.ready {
+        animation: hint-status-pulse 1.1s ease-in-out infinite;
       }
-      @keyframes hint-loading-pulse {
+      @keyframes hint-status-pulse {
         0%,
         100% {
           opacity: 0.32;
@@ -264,49 +266,71 @@
         width: 52%;
         height: 100%;
       }
-      .mc-actions {
+      .mc-btn-jump {
         position: absolute;
         right: max(1rem, env(safe-area-inset-right));
         bottom: max(1.25rem, env(safe-area-inset-bottom));
-        z-index: 2;
-        pointer-events: none;
-      }
-      .mc-btn {
-        min-width: 4.6rem;
-        height: 2.8rem;
-        padding: 0 1rem;
-        border-radius: 999px;
-        border: 1px solid rgba(201, 184, 122, 0.35);
-        background: rgba(26, 24, 16, 0.55);
-        color: rgba(201, 184, 122, 0.88);
-        font-size: 0.72rem;
-        letter-spacing: 0.14em;
+        width: 112px;
+        height: 112px;
+        min-width: 0;
+        padding: 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(201, 184, 122, 0.22);
+        background: rgba(201, 184, 122, 0.08);
+        color: rgba(201, 184, 122, 0.92);
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
+        z-index: 2;
       }
-      .mc-btn.pressed {
+      .mc-btn-jump.pressed {
         background: rgba(201, 184, 122, 0.28);
-        border-color: rgba(201, 184, 122, 0.6);
+        border-color: rgba(201, 184, 122, 0.55);
+        box-shadow: 0 0 10px rgba(201, 184, 122, 0.2);
+      }
+      html.mobile #overlay h1 {
+        font-size: 2.55rem;
+      }
+      html.mobile #overlay .sub {
+        font-size: 1.05rem;
+      }
+      html.mobile #overlay .hint {
+        font-size: 1rem;
+        opacity: 0.68;
+        max-width: 26rem;
+      }
+      html.mobile #overlay .hint-status {
+        font-size: 1.08rem;
       }
       html.mobile #overlay .hint-controls {
-        font-size: 0.72rem;
+        font-size: 0.96rem;
+        opacity: 0.82;
       }
-      html.mobile .mc-actions {
-        bottom: max(2.6rem, calc(env(safe-area-inset-bottom) + 1.35rem));
+      html.mobile.portrait-blocked #mobile-controls {
+        opacity: 0 !important;
+        pointer-events: none !important;
       }
-      @media (orientation: portrait) {
-        .mc-stick-base {
-          width: 100px;
-          height: 100px;
-          bottom: max(1.5rem, env(safe-area-inset-bottom));
-        }
-        .mc-look-zone {
-          width: 58%;
-          bottom: 0;
-          height: calc(100% - 7.5rem);
-        }
-        .mc-actions {
-          bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 1.5rem));
-        }
+      #portrait-prompt {
+        position: fixed;
+        inset: 0;
+        z-index: 35;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+        color: #c9b87a;
+        font-size: 1.05rem;
+        letter-spacing: 0.08em;
+        background: rgba(8, 7, 5, 0.72);
+        pointer-events: auto;
+      }
+      #portrait-prompt.visible {
+        display: flex;
       }
     </style>
   </head>
@@ -343,10 +367,9 @@
         <div class="mc-stick-knob"></div>
       </div>
       <div class="mc-look-zone" aria-label="Look"></div>
-      <div class="mc-actions">
-        <button type="button" class="mc-btn mc-btn-jump">Jump</button>
-      </div>
+      <button type="button" class="mc-btn mc-btn-jump" aria-label="Jump">Jump</button>
     </div>
+    <div id="portrait-prompt" hidden>Please rotate your device</div>
     <div id="resume-prompt" hidden>Click to resume</div>
     <script type="module" src="/src/main.js"></script>
   </body>
