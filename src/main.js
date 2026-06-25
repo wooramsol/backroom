@@ -31,7 +31,7 @@ import {
   ENABLE_BACKGROUND_MUSIC,
 } from "./constants.js";
 import { formatBuildLabel } from "./version.js";
-import { isMobileDevice, isLandscapeOrientation, getLayoutSize, getViewportShellRect, applyFixedShell, scheduleViewportRelayout } from "./device.js";
+import { isMobileDevice, isLandscapeOrientation, getLayoutSize, getViewportShellRect, applyFixedShell, syncViewportCssVars, scheduleViewportRelayout } from "./device.js";
 import { MobileControls } from "./mobileControls.js";
 
 const mobileMode = isMobileDevice();
@@ -73,8 +73,8 @@ renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
 document.body.appendChild(renderer.domElement);
 
 function layoutFixedShells() {
-  const rect = getViewportShellRect();
-  applyFixedShell(overlay, rect);
+  const rect = syncViewportCssVars();
+  if (overlay) overlay.scrollTop = 0;
   applyFixedShell(portraitPrompt, rect);
   applyFixedShell(mobileControlsRoot, rect);
   applyFixedShell(resumePrompt, rect);
@@ -82,6 +82,7 @@ function layoutFixedShells() {
 
 layoutFixedShells();
 window.addEventListener("resize", () => scheduleViewportRelayout(layoutFixedShells));
+window.addEventListener("orientationchange", () => scheduleViewportRelayout(layoutFixedShells));
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", () => scheduleViewportRelayout(layoutFixedShells));
   window.visualViewport.addEventListener("scroll", () => scheduleViewportRelayout(layoutFixedShells));
