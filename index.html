@@ -14,7 +14,6 @@
       body {
         width: 100%;
         height: 100%;
-        height: 100dvh;
         overflow: hidden;
         background: #1a1810;
         font-family: system-ui, -apple-system, sans-serif;
@@ -333,10 +332,12 @@
       }
       #portrait-prompt.visible {
         display: flex;
+      }
+      #portrait-prompt.visible .portrait-prompt-text {
         animation: hint-status-pulse 1.1s ease-in-out infinite;
       }
     </style>
-    <script type="module" crossorigin src="/backroom/assets/index-CHY0FJiK.js"></script>
+    <script type="module" crossorigin src="/backroom/assets/index-Cqk-ogJy.js"></script>
   </head>
   <body>
     <div id="overlay">
@@ -373,7 +374,9 @@
       <div class="mc-look-zone" aria-label="Look"></div>
       <button type="button" class="mc-btn mc-btn-jump" aria-label="Jump">Jump</button>
     </div>
-    <div id="portrait-prompt" hidden>Please rotate your device</div>
+    <div id="portrait-prompt" hidden>
+      <span class="portrait-prompt-text">Please rotate your device</span>
+    </div>
     <div id="resume-prompt" hidden>Click to resume</div>
   </body>
 </html>
