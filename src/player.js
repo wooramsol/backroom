@@ -15,6 +15,7 @@ import {
   JUMP_V,
   GRAVITY,
   ROOM_H,
+  MAX_EYE_Y,
 } from "./constants.js";
 
 const WALK = 3.2;
@@ -23,7 +24,6 @@ const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
 const LAND_EPS = 0.09;
-const MAX_EYE_Y = ROOM_H - 0.1;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
