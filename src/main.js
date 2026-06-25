@@ -84,40 +84,20 @@ const audio = new GameAudio();
 
 async function init() {
   const hintStatus = document.getElementById("hint-status");
-  const hintRotate = document.getElementById("hint-rotate");
   const waitHint = "Loading… please wait";
   const clickHint = mobileMode ? "Tap to start" : "Click to start";
+  const rotateHint = "Please rotate your device";
 
-  function syncTitleHints() {
-    if (!mobileMode) {
-      hintRotate?.setAttribute("hidden", "");
-      if (!hintStatus || !ready) return;
-      hintStatus.hidden = false;
-      hintStatus.classList.remove("loading");
-      hintStatus.textContent = clickHint;
-      hintStatus.classList.add("ready");
+  function syncTitleHint() {
+    if (!hintStatus || !ready) return;
+    hintStatus.classList.remove("loading");
+    if (mobileMode && !isLandscapeOrientation()) {
+      hintStatus.textContent = rotateHint;
+      hintStatus.classList.remove("ready");
       return;
     }
-
-    const landscape = isLandscapeOrientation();
-    if (landscape) {
-      hintRotate?.setAttribute("hidden", "");
-    } else {
-      hintRotate?.removeAttribute("hidden");
-    }
-
-    if (!hintStatus || !ready) return;
-
-    hintStatus.classList.remove("loading");
-    if (landscape) {
-      hintStatus.hidden = false;
-      hintStatus.textContent = clickHint;
-      hintStatus.classList.add("ready");
-    } else {
-      hintStatus.textContent = "";
-      hintStatus.classList.remove("ready");
-      hintStatus.hidden = true;
-    }
+    hintStatus.textContent = clickHint;
+    hintStatus.classList.add("ready");
   }
 
   if (hintStatus) {
@@ -149,14 +129,14 @@ async function init() {
         "Move: left stick (tilt to run)<br />Look: drag right<br />Jump: button";
     }
 
-    syncMobileOrientation = (started) => {
+    syncMobileOrientation = (gameStarted) => {
       const landscape = isLandscapeOrientation();
       document.documentElement.classList.toggle("portrait-blocked", !landscape);
 
       if (!landscape) {
         mobileControls.hide();
         player.mobileActive = false;
-        if (started && portraitPrompt) {
+        if (gameStarted && portraitPrompt) {
           portraitPrompt.hidden = false;
           portraitPrompt.classList.add("visible");
         }
@@ -168,21 +148,16 @@ async function init() {
         portraitPrompt.hidden = true;
       }
 
-      if (started) {
+      if (gameStarted) {
         mobileControls.show();
         player.startMobile();
+      } else {
+        syncTitleHint();
       }
-
-      if (!started) syncTitleHints();
       return true;
     };
 
-    syncMobileOrientation(false);
-    syncTitleHints();
-    window.addEventListener("orientationchange", () => {
-      syncMobileOrientation(started);
-      if (!started) syncTitleHints();
-    });
+    window.addEventListener("orientationchange", () => syncMobileOrientation(started));
   }
   player.connect();
 
@@ -242,7 +217,7 @@ async function init() {
       renderer.domElement.style.visibility = "visible";
       syncCrosshair();
       overlay.style.cursor = "pointer";
-      syncTitleHints();
+      syncTitleHint();
     })
     .catch((err) => {
       console.error(err);
@@ -331,7 +306,7 @@ async function init() {
     syncCrosshair();
     if (mobileMode) {
       syncMobileOrientation(started);
-      if (!started) syncTitleHints();
+      if (!started) syncTitleHint();
     }
   });
 }
