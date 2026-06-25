@@ -7,9 +7,8 @@ const IDLE_SPAWN = 10;
 const SPAWN_NEAR = 1.4;
 const SPAWN_PROBE_STEP = 0.35;
 const SPAWN_PROBE_MAX = 52;
-const SPAWN_BODY_R = 0.42;
-const SPAWN_WALL_MARGIN = 0.35;
-const LOS_SAMPLE_STEP = 0.32;
+const SPAWN_FOOTPRINT_R = 0.34;
+const LOS_SAMPLE_STEP = 0.28;
 const VANISH_MARGIN = 1.5;
 const VANISH_MIN = 1.2;
 const LOOK_TURN_SPEED = 5.5;
@@ -45,20 +44,16 @@ function isWallBlockedAt(x, z, colliders, probeY) {
   return isBlockedAt(x, z, colliders, probeY, true);
 }
 
-const _footprintSamples = [
+const _spawnFootprintSamples = [
   [0, 0],
   [1, 0],
   [-1, 0],
   [0, 1],
   [0, -1],
-  [0.75, 0.75],
-  [0.75, -0.75],
-  [-0.75, 0.75],
-  [-0.75, -0.75],
-].map(([x, z]) => [x * SPAWN_BODY_R, z * SPAWN_BODY_R]);
+].map(([x, z]) => [x * SPAWN_FOOTPRINT_R, z * SPAWN_FOOTPRINT_R]);
 
 function isClearFootprint(x, z, colliders, probeY) {
-  for (const [ox, oz] of _footprintSamples) {
+  for (const [ox, oz] of _spawnFootprintSamples) {
     if (isBlockedAt(x + ox, z + oz, colliders, probeY, false)) return false;
   }
   return true;
@@ -78,39 +73,30 @@ function hasWallClearPath(ax, az, bx, bz, colliders, probeY) {
   return true;
 }
 
-/** March through doorways; stop only on walls, not furniture in the corridor */
-function probeAlong(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
+/** March along camera view — visible floor only, not player walk path */
+function probeAlongView(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
+  const cam = player.camera.position;
+  const camX = cam.x;
+  const camZ = cam.z;
+  const probeY = player.groundY + 1.1;
   const px = player.position.x;
   const pz = player.position.z;
-  const probeY = player.groundY + 1.1;
-  const camX = player.camera.position.x;
-  const camZ = player.camera.position.z;
 
-  let furthest = null;
+  let best = null;
   for (let d = minD; d <= maxD; d += SPAWN_PROBE_STEP) {
-    const wx = px + dirX * d;
-    const wz = pz + dirZ * d;
-    if (!hasWallClearPath(px, pz, wx, wz, colliders, probeY)) break;
-    if (!isWallBlockedAt(wx, wz, colliders, probeY)) {
-      furthest = d;
-      continue;
-    }
-    break;
+    const wx = camX + dirX * d;
+    const wz = camZ + dirZ * d;
+    if (!hasWallClearPath(camX, camZ, wx, wz, colliders, probeY)) break;
+    if (!isClearFootprint(wx, wz, colliders, probeY)) continue;
+    best = {
+      wx,
+      wz,
+      viewDist: d,
+      dist: Math.hypot(wx - px, wz - pz),
+    };
   }
 
-  if (furthest === null) return null;
-
-  const dist = Math.max(minD, furthest - SPAWN_WALL_MARGIN);
-  const wx = px + dirX * dist;
-  const wz = pz + dirZ * dist;
-  if (!isClearFootprint(wx, wz, colliders, probeY)) return null;
-  if (!hasWallClearPath(camX, camZ, wx, wz, colliders, probeY)) return null;
-
-  return {
-    wx,
-    wz,
-    dist,
-  };
+  return best;
 }
 
 function dirFromOffset(offset) {
@@ -132,12 +118,16 @@ function findSpawnSpot(player, colliders, rng) {
   }
 
   const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.48);
-  const angles = [0];
+  const angles = [];
 
-  for (let i = 0; i < 10; i++) {
-    angles.push(rng.range(-halfFov, halfFov));
+  for (let i = 0; i <= 14; i++) {
+    angles.push(-halfFov + ((halfFov * 2) * i) / 14);
   }
+  angles.push(0);
   for (let i = 0; i < 6; i++) {
+    angles.push(rng.range(-halfFov * 0.35, halfFov * 0.35));
+  }
+  for (let i = 0; i < 4; i++) {
     const side = rng.chance(0.5) ? 1 : -1;
     angles.push(side * rng.range(halfFov * 1.02, halfFov * 1.55));
   }
@@ -145,8 +135,8 @@ function findSpawnSpot(player, colliders, rng) {
   let best = null;
   for (const offset of angles) {
     const { x, z } = dirFromOffset(offset);
-    const spot = probeAlong(player, x, z, colliders);
-    if (spot && (!best || spot.dist > best.dist)) best = spot;
+    const spot = probeAlongView(player, x, z, colliders);
+    if (spot && (!best || spot.viewDist > best.viewDist)) best = spot;
   }
 
   return best;
