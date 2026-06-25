@@ -4,11 +4,13 @@ import { CAMERA_FOV } from "./constants.js";
 import { createRng } from "./rng.js";
 
 const IDLE_SPAWN = 10;
-const SPAWN_NEAR = 1.4;
-const SPAWN_PROBE_STEP = 0.35;
-const SPAWN_PROBE_MAX = 52;
-const SPAWN_FOOTPRINT_R = 0.34;
-const LOS_SAMPLE_STEP = 0.28;
+const SPAWN_NEAR = 1.2;
+const SPAWN_PROBE_STEP = 0.22;
+const SPAWN_PROBE_MAX = 55;
+const SPAWN_FOOTPRINT_R = 0.3;
+const LOS_SAMPLE_STEP = 0.24;
+const LOS_WALL_INSET = 0.11;
+const LOS_TUNNEL_HALF = 0.34;
 const VANISH_MARGIN = 1.5;
 const VANISH_MIN = 1.2;
 const LOOK_TURN_SPEED = 5.5;
@@ -30,18 +32,23 @@ function pickClip(clips, patterns) {
   return clips[0] || null;
 }
 
-function isBlockedAt(x, z, colliders, probeY, wallsOnly = false) {
+function isBlockedAt(x, z, colliders, probeY, wallsOnly = false, wallInset = 0) {
   for (const c of colliders) {
     if (c.isCeiling) continue;
     if (wallsOnly && c.isFurniture) continue;
     if (probeY < c.minY - 0.2 || probeY > c.maxY + 0.2) continue;
-    if (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ) return true;
+    const minX = c.minX + wallInset;
+    const maxX = c.maxX - wallInset;
+    const minZ = c.minZ + wallInset;
+    const maxZ = c.maxZ - wallInset;
+    if (minX > maxX || minZ > maxZ) continue;
+    if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) return true;
   }
   return false;
 }
 
-function isWallBlockedAt(x, z, colliders, probeY) {
-  return isBlockedAt(x, z, colliders, probeY, true);
+function isWallBlockedAt(x, z, colliders, probeY, inset = 0) {
+  return isBlockedAt(x, z, colliders, probeY, true, inset);
 }
 
 const _spawnFootprintSamples = [
@@ -54,48 +61,81 @@ const _spawnFootprintSamples = [
 
 function isClearFootprint(x, z, colliders, probeY) {
   for (const [ox, oz] of _spawnFootprintSamples) {
-    if (isBlockedAt(x + ox, z + oz, colliders, probeY, false)) return false;
+    if (isBlockedAt(x + ox, z + oz, colliders, probeY, false, 0)) return false;
   }
   return true;
 }
 
-/** Wall gaps (doorways) only — lets probes reach into the next room */
-function hasWallClearPath(ax, az, bx, bz, colliders, probeY) {
+/** Doorways: centerline can graze jambs — require full tunnel width blocked */
+function isTunnelWallBlocked(x, z, dirX, dirZ, colliders, probeY) {
+  if (!isWallBlockedAt(x, z, colliders, probeY, LOS_WALL_INSET)) return false;
+  const len = Math.hypot(dirX, dirZ) || 1;
+  const px = (-dirZ / len) * LOS_TUNNEL_HALF;
+  const pz = (dirX / len) * LOS_TUNNEL_HALF;
+  return (
+    isWallBlockedAt(x + px, z + pz, colliders, probeY, LOS_WALL_INSET) &&
+    isWallBlockedAt(x - px, z - pz, colliders, probeY, LOS_WALL_INSET)
+  );
+}
+
+function hasTunnelClearPath(ax, az, bx, bz, colliders, probeY) {
   const dx = bx - ax;
   const dz = bz - az;
   const len = Math.hypot(dx, dz);
   if (len < 0.05) return true;
+  const dirX = dx / len;
+  const dirZ = dz / len;
   const steps = Math.max(2, Math.ceil(len / LOS_SAMPLE_STEP));
   for (let i = 1; i < steps; i++) {
     const t = i / steps;
-    if (isWallBlockedAt(ax + dx * t, az + dz * t, colliders, probeY)) return false;
+    if (isTunnelWallBlocked(ax + dx * t, az + dz * t, dirX, dirZ, colliders, probeY)) return false;
   }
   return true;
 }
 
-/** March along camera view — visible floor only, not player walk path */
-function probeAlongView(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD = SPAWN_PROBE_MAX) {
+/** Scan every distance — pick furthest camera-visible standable floor in this lane */
+function probeLane(player, dirX, dirZ, laneOff, colliders, minD, maxD) {
   const cam = player.camera.position;
   const camX = cam.x;
   const camZ = cam.z;
   const probeY = player.groundY + 1.1;
   const px = player.position.x;
   const pz = player.position.z;
+  const perpX = -dirZ;
+  const perpZ = dirX;
+  const laneX = perpX * laneOff;
+  const laneZ = perpZ * laneOff;
 
   let best = null;
   for (let d = minD; d <= maxD; d += SPAWN_PROBE_STEP) {
-    const wx = camX + dirX * d;
-    const wz = camZ + dirZ * d;
-    if (!hasWallClearPath(camX, camZ, wx, wz, colliders, probeY)) break;
+    const wx = camX + dirX * d + laneX;
+    const wz = camZ + dirZ * d + laneZ;
+    const toX = wx - camX;
+    const toZ = wz - camZ;
+    if (toX * dirX + toZ * dirZ < 0.05) continue;
+    if (!hasTunnelClearPath(camX, camZ, wx, wz, colliders, probeY)) continue;
     if (!isClearFootprint(wx, wz, colliders, probeY)) continue;
-    best = {
-      wx,
-      wz,
-      viewDist: d,
-      dist: Math.hypot(wx - px, wz - pz),
-    };
+    const viewDist = Math.hypot(toX, toZ);
+    if (!best || viewDist > best.viewDist) {
+      best = {
+        wx,
+        wz,
+        viewDist,
+        dist: Math.hypot(wx - px, wz - pz),
+      };
+    }
   }
 
+  return best;
+}
+
+function probeAlongView(player, dirX, dirZ, colliders) {
+  const lanes = [-0.38, -0.2, 0, 0.2, 0.38];
+  let best = null;
+  for (const lane of lanes) {
+    const spot = probeLane(player, dirX, dirZ, lane, colliders, SPAWN_NEAR, SPAWN_PROBE_MAX);
+    if (spot && (!best || spot.viewDist > best.viewDist)) best = spot;
+  }
   return best;
 }
 
@@ -117,19 +157,14 @@ function findSpawnSpot(player, colliders, rng) {
     _fwd.normalize();
   }
 
-  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.48);
+  const halfFov = THREE.MathUtils.degToRad(CAMERA_FOV * 0.5);
   const angles = [];
 
-  for (let i = 0; i <= 14; i++) {
-    angles.push(-halfFov + ((halfFov * 2) * i) / 14);
-  }
-  angles.push(0);
-  for (let i = 0; i < 6; i++) {
-    angles.push(rng.range(-halfFov * 0.35, halfFov * 0.35));
+  for (let i = 0; i <= 22; i++) {
+    angles.push(-halfFov + ((halfFov * 2) * i) / 22);
   }
   for (let i = 0; i < 4; i++) {
-    const side = rng.chance(0.5) ? 1 : -1;
-    angles.push(side * rng.range(halfFov * 1.02, halfFov * 1.55));
+    angles.push(rng.range(-halfFov * 0.4, halfFov * 0.4));
   }
 
   let best = null;
