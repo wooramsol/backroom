@@ -170,6 +170,7 @@ async function init() {
 
   const world = new World(scene, materials, furnitureModels, specialAssets);
   const entitySquad = new EntitySquad(scene, specialAssets?.entities);
+  entitySquad.setAudio(audio);
   const libraryEntity = new LibraryEntity(specialAssets?.entities?.library, scene);
   const player = new Player(camera, renderer.domElement);
   let syncMobileOrientation = () => true;
