@@ -7,7 +7,8 @@ const IDLE_SPAWN = 10;
 const SPAWN_NEAR = 1.4;
 const SPAWN_PROBE_STEP = 0.35;
 const SPAWN_PROBE_MAX = 52;
-const SPAWN_FOOTPRINT_R = 0.34;
+const SPAWN_BODY_R = 0.42;
+const SPAWN_WALL_CLEAR = 0.24;
 const LOS_SAMPLE_STEP = 0.28;
 const VANISH_MARGIN = 1.5;
 const VANISH_MIN = 1.2;
@@ -44,17 +45,46 @@ function isWallBlockedAt(x, z, colliders, probeY) {
   return isBlockedAt(x, z, colliders, probeY, true);
 }
 
-const _spawnFootprintSamples = [
+const _bodyFootprintSamples = [
   [0, 0],
   [1, 0],
   [-1, 0],
   [0, 1],
   [0, -1],
-].map(([x, z]) => [x * SPAWN_FOOTPRINT_R, z * SPAWN_FOOTPRINT_R]);
+  [0.75, 0.75],
+  [0.75, -0.75],
+  [-0.75, 0.75],
+  [-0.75, -0.75],
+].map(([x, z]) => [x * SPAWN_BODY_R, z * SPAWN_BODY_R]);
 
-function isClearFootprint(x, z, colliders, probeY) {
-  for (const [ox, oz] of _spawnFootprintSamples) {
-    if (isBlockedAt(x + ox, z + oz, colliders, probeY, false)) return false;
+function distToWallBoxXZ(x, z, box) {
+  const dx = Math.max(box.minX - x, 0, x - box.maxX);
+  const dz = Math.max(box.minZ - z, 0, z - box.maxZ);
+  return Math.hypot(dx, dz);
+}
+
+function isClearOfWalls(x, z, colliders, probeY, clearance) {
+  for (const c of colliders) {
+    if (c.isCeiling || c.isFurniture) continue;
+    if (probeY < c.minY - 0.15 || probeY > c.maxY + 0.15) continue;
+    if (distToWallBoxXZ(x, z, c) < clearance) return false;
+  }
+  return true;
+}
+
+function isClearSpawnSite(x, z, colliders, groundY) {
+  const probeYs = [groundY + 0.55, groundY + 1.1, groundY + 1.55];
+  const centerClear = SPAWN_BODY_R + SPAWN_WALL_CLEAR;
+  const ringClear = 0.16;
+
+  for (const probeY of probeYs) {
+    if (!isClearOfWalls(x, z, colliders, probeY, centerClear)) return false;
+    for (const [ox, oz] of _bodyFootprintSamples) {
+      const sx = x + ox;
+      const sz = z + oz;
+      if (isBlockedAt(sx, sz, colliders, probeY, false)) return false;
+      if (!isClearOfWalls(sx, sz, colliders, probeY, ringClear)) return false;
+    }
   }
   return true;
 }
@@ -79,6 +109,7 @@ function probeAlongView(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD =
   const camX = cam.x;
   const camZ = cam.z;
   const probeY = player.groundY + 1.1;
+  const groundY = player.groundY;
   const px = player.position.x;
   const pz = player.position.z;
 
@@ -87,7 +118,7 @@ function probeAlongView(player, dirX, dirZ, colliders, minD = SPAWN_NEAR, maxD =
     const wx = camX + dirX * d;
     const wz = camZ + dirZ * d;
     if (!hasWallClearPath(camX, camZ, wx, wz, colliders, probeY)) break;
-    if (!isClearFootprint(wx, wz, colliders, probeY)) continue;
+    if (!isClearSpawnSite(wx, wz, colliders, groundY)) continue;
     best = {
       wx,
       wz,
