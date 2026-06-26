@@ -11,7 +11,9 @@ export class EntitySquad {
           id: "skinstealer",
           followBehind: true,
           followDist: 2.35,
-          movePatterns: [/mixamo|walk|run|move/i],
+          crawlMode: true,
+          movePatterns: [/zombie.?crawl|crawl|mixamo/i],
+          idlePatterns: [/zombie.?crawl|crawl|idle/i],
         }),
       );
     }

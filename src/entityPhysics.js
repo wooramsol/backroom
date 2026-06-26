@@ -12,9 +12,16 @@ const PROBE_Y = EYE_H - 0.35;
 
 /** Wall/floor collision body for chasing entities — no crouch/jump */
 export class EntityBody {
-  constructor({ footOffset = 0, radius = PLAYER_R * 0.95 } = {}) {
+  constructor({
+    footOffset = 0,
+    radius = PLAYER_R * 0.95,
+    probeYOffset = 0,
+    steerQuality = "light",
+  } = {}) {
     this.footOffset = footOffset;
     this.radius = radius;
+    this.probeYOffset = probeYOffset;
+    this.steerQuality = steerQuality;
     this.position = new THREE.Vector3();
     this.yaw = 0;
     this.desiredYaw = 0;
@@ -38,7 +45,7 @@ export class EntityBody {
   }
 
   horizontalProbeY() {
-    return this.feetY() + PROBE_Y;
+    return this.feetY() + PROBE_Y + this.probeYOffset;
   }
 
   syncRoot(root) {
@@ -140,6 +147,14 @@ export class EntityBody {
 
   _steerAngles() {
     const out = [0];
+    if (this.steerQuality === "light") {
+      for (let deg = 10; deg <= 140; deg += 10) {
+        const rad = THREE.MathUtils.degToRad(deg);
+        out.push(rad, -rad);
+      }
+      return out;
+    }
+
     for (let deg = 4; deg <= 120; deg += 4) {
       const rad = THREE.MathUtils.degToRad(deg);
       out.push(rad, -rad);
@@ -159,7 +174,10 @@ export class EntityBody {
     const goalNX = dirX / desiredLen;
     const goalNZ = dirZ / desiredLen;
     const step = speed * dt;
-    const probeDist = Math.max(step * 5.5, 1.85);
+    const probeSteps = this.steerQuality === "light" ? 6 : 10;
+    const probeDist = this.steerQuality === "light"
+      ? Math.max(step * 4, 1.35)
+      : Math.max(step * 5.5, 1.85);
 
     let best = null;
     let bestScore = -Infinity;
@@ -179,7 +197,7 @@ export class EntityBody {
       const nnx = nx / len;
       const nnz = nz / len;
       const alignment = nnx * goalNX + nnz * goalNZ;
-      const clearance = this._probeClearance(nnx, nnz, probeDist);
+      const clearance = this._probeClearance(nnx, nnz, probeDist, probeSteps);
       const wallBias = clearance < 0.35 ? -0.8 : 0;
       const score =
         alignment * 2.6 +
