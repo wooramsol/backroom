@@ -127,7 +127,7 @@ export class EntityBody {
     this.position.z = out.pz;
   }
 
-  _probeClearance(nx, nz, maxDist, steps = 6) {
+  _probeClearance(nx, nz, maxDist, steps = 10) {
     const inc = maxDist / steps;
     for (let i = 1; i <= steps; i++) {
       const d = inc * i;
@@ -140,7 +140,11 @@ export class EntityBody {
 
   _steerAngles() {
     const out = [0];
-    for (let deg = 8; deg <= 180; deg += 8) {
+    for (let deg = 4; deg <= 120; deg += 4) {
+      const rad = THREE.MathUtils.degToRad(deg);
+      out.push(rad, -rad);
+    }
+    for (let deg = 130; deg <= 180; deg += 10) {
       const rad = THREE.MathUtils.degToRad(deg);
       out.push(rad, -rad);
     }
@@ -155,7 +159,7 @@ export class EntityBody {
     const goalNX = dirX / desiredLen;
     const goalNZ = dirZ / desiredLen;
     const step = speed * dt;
-    const probeDist = Math.max(step * 4, 1.4);
+    const probeDist = Math.max(step * 5.5, 1.85);
 
     let best = null;
     let bestScore = -Infinity;
@@ -172,9 +176,16 @@ export class EntityBody {
       const tz = this.position.z + (nz / len) * step;
       if (this.insideWall(tx, tz)) continue;
 
-      const alignment = (nx / len) * goalNX + (nz / len) * goalNZ;
-      const clearance = this._probeClearance(nx / len, nz / len, probeDist);
-      const score = alignment * 2.4 + clearance * 0.55 + (Math.abs(a) < 1e-4 ? 0.06 : 0);
+      const nnx = nx / len;
+      const nnz = nz / len;
+      const alignment = nnx * goalNX + nnz * goalNZ;
+      const clearance = this._probeClearance(nnx, nnz, probeDist);
+      const wallBias = clearance < 0.35 ? -0.8 : 0;
+      const score =
+        alignment * 2.6 +
+        clearance * 0.85 +
+        wallBias +
+        (Math.abs(a) < 1e-4 ? 0.08 : 0);
 
       if (score > bestScore) {
         bestScore = score;

@@ -1,4 +1,4 @@
-const CELL = 0.45;
+const CELL = 0.4;
 const NEIGHBORS = [
   [1, 0],
   [-1, 0],
@@ -26,8 +26,34 @@ function heuristic(ix, iz, gix, giz) {
   return (dmax - dmin) + dmin * 1.414;
 }
 
+function findNearestWalkable(goalIx, goalIz, isBlocked, maxRadius = 7) {
+  const center = cellCenter(goalIx, goalIz);
+  if (!isBlocked(center.x, center.z)) return { ix: goalIx, iz: goalIz };
+
+  for (let r = 1; r <= maxRadius; r++) {
+    let best = null;
+    let bestD = Infinity;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
+        const ix = goalIx + dx;
+        const iz = goalIz + dz;
+        const c = cellCenter(ix, iz);
+        if (isBlocked(c.x, c.z)) continue;
+        const d = dx * dx + dz * dz;
+        if (d < bestD) {
+          bestD = d;
+          best = { ix, iz };
+        }
+      }
+    }
+    if (best) return best;
+  }
+  return { ix: goalIx, iz: goalIz };
+}
+
 /** Grid A* over walkable cells — isBlocked(x,z) in world metres */
-export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 10) {
+export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 18) {
   const startIx = Math.floor(startX / CELL);
   const startIz = Math.floor(startZ / CELL);
   let goalIx = Math.floor(goalX / CELL);
@@ -42,30 +68,16 @@ export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 10
   const minIz = Math.min(startIz, goalIz) - margin;
   const maxIz = Math.max(startIz, goalIz) + margin;
 
-  const goalCenter = cellCenter(goalIx, goalIz);
-  if (isBlocked(goalCenter.x, goalCenter.z)) {
-    let found = false;
-    for (let r = 1; r <= 4 && !found; r++) {
-      for (const [dx, dz] of NEIGHBORS) {
-        const ix = goalIx + dx * r;
-        const iz = goalIz + dz * r;
-        const c = cellCenter(ix, iz);
-        if (!isBlocked(c.x, c.z)) {
-          goalIx = ix;
-          goalIz = iz;
-          found = true;
-          break;
-        }
-      }
-    }
-  }
+  const walkGoal = findNearestWalkable(goalIx, goalIz, isBlocked);
+  goalIx = walkGoal.ix;
+  goalIz = walkGoal.iz;
 
   const open = [{ ix: startIx, iz: startIz, g: 0, f: heuristic(startIx, startIz, goalIx, goalIz) }];
   const cameFrom = new Map();
   const gScore = new Map([[cellKey(startIx, startIz), 0]]);
   const closed = new Set();
   let iterations = 0;
-  const maxIter = 5200;
+  const maxIter = 9000;
 
   while (open.length && iterations < maxIter) {
     iterations++;
