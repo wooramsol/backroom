@@ -306,7 +306,7 @@ async function init() {
       syncCrosshair();
       buildBadge?.classList.add("visible");
       if (ENABLE_BACKGROUND_MUSIC) audio.start();
-      entitySquad.spawnAtStart(player);
+      entitySquad.begin();
       libraryEntity.begin(player);
     }
   });
