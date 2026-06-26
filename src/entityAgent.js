@@ -9,10 +9,13 @@ const RUN_DIST = 3.2;
 const GOAL_REPLAN_DIST = 2.2;
 const STUCK_REPLAN = 0.28;
 const STUCK_NUDGE = 0.38;
-const STUCK_TELEPORT = 5.5;
+const STUCK_VANISH = 1.15;
+const WALL_VANISH = 0.45;
 const REPLAN_COOLDOWN = 0.35;
 const MOVE_HOLD = 0.12;
 const WP_REACHED = 0.32;
+const FAR_DIST = 9.5;
+const TOUCH_DIST = 2.1;
 
 const _fwd = new THREE.Vector3();
 const _target = new THREE.Vector3();
@@ -94,6 +97,7 @@ export class EntityAgent {
     this._replanCooldown = 0;
     this._lastGoalX = NaN;
     this._lastGoalZ = NaN;
+    this._playerWasFar = false;
 
     this.root.visible = false;
     scene.add(this.root);
@@ -177,6 +181,7 @@ export class EntityAgent {
         this._navIdx = 0;
         this._stuckT = 0;
         this._replanCooldown = 0;
+        this._playerWasFar = false;
         this.body.syncRoot(this.root);
         this._setMoving(false);
         return;
@@ -192,6 +197,7 @@ export class EntityAgent {
     this._navPath = null;
     this._navIdx = 0;
     this._stuckT = 0;
+    this._playerWasFar = false;
     this.body.syncRoot(this.root);
     this._setMoving(false);
   }
@@ -202,6 +208,27 @@ export class EntityAgent {
     this.mixer.stopAllAction();
     this.moving = false;
     this._navPath = null;
+    this._stuckT = 0;
+    this._playerWasFar = false;
+  }
+
+  _distToPlayer(player) {
+    const dx = player.position.x - this.body.position.x;
+    const dz = player.position.z - this.body.position.z;
+    return Math.hypot(dx, dz);
+  }
+
+  _shouldVanish(player, moved) {
+    const dist = this._distToPlayer(player);
+
+    if (dist > FAR_DIST) this._playerWasFar = true;
+    if (this._playerWasFar && dist <= TOUCH_DIST) return true;
+
+    const wedged = this.body.insideWall(this.body.position.x, this.body.position.z);
+    if (wedged && this._stuckT >= WALL_VANISH) return true;
+    if (this._stuckT >= STUCK_VANISH && moved < 0.0005) return true;
+
+    return false;
   }
 
   _setMoving(on) {
@@ -314,11 +341,6 @@ export class EntityAgent {
 
     if (this._replanCooldown > 0) this._replanCooldown -= dt;
 
-    if (this._stuckT >= STUCK_TELEPORT) {
-      this.spawn(player, player.groundY);
-      return;
-    }
-
     _target.copy(this._chaseTarget(player));
     const navGoal = this._moveGoalFromPath(_target.x, _target.z, player);
 
@@ -346,6 +368,11 @@ export class EntityAgent {
         this._replanCooldown = 0;
         this._lastGoalX = NaN;
       }
+    }
+
+    if (this._shouldVanish(player, moved)) {
+      this.hide();
+      return;
     }
 
     if (moved > 0.002) this._moveHold = MOVE_HOLD;
