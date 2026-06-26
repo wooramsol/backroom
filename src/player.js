@@ -26,7 +26,6 @@ const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
 const LAND_EPS = 0.09;
 const CLIMB_SNAP = 0.44;
-const LAND_SNAP_BELOW = 0.26;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -213,62 +212,25 @@ export class Player {
     return rise <= this._maxJumpFeet() + CLIMB_SNAP;
   }
 
-  /** Can the player settle on this support height right now? */
-  _feetAtSupport(supportY, feetY) {
-    const rise = supportY - this._jumpFromY;
-    if (rise <= LAND_EPS) return feetY <= supportY + LAND_EPS;
-    if (feetY >= supportY - LAND_EPS) return true;
-
-    const jumpPeakFeet = this._jumpFromY + this._maxJumpFeet();
-    if (rise > this._maxJumpFeet() + LAND_EPS) {
-      return (
-        feetY >= jumpPeakFeet - LAND_SNAP_BELOW &&
-        feetY <= jumpPeakFeet + LAND_EPS &&
-        feetY < supportY + LAND_EPS
-      );
-    }
-
-    return false;
-  }
-
   /** Highest standable surface under the player feet */
   _findSupportY(px, pz, feetY, vy, dt) {
     let best = 0;
     const nextFeet = feetY + vy * dt;
     const r = PLAYER_R;
-    const jumpPeakFeet = this._jumpFromY + this._maxJumpFeet();
 
     for (const c of this.colliders) {
       if (!c.standable || c.standTopY === undefined) continue;
       if (!this._overlapsXZ(px, pz, c, r)) continue;
 
       const top = c.standTopY;
-      const rise = top - this._jumpFromY;
       const onTop = Math.abs(feetY - top) < LAND_EPS;
+      const landing =
+        vy <= 0 &&
+        nextFeet <= top + LAND_EPS &&
+        feetY >= top - 0.55 &&
+        this._canClimbTo(top, this._jumpFromY);
 
-      if (onTop && !(vy > 0.35 && rise > LAND_EPS)) {
-        best = Math.max(best, top);
-        continue;
-      }
-
-      if (!this._canClimbTo(top, this._jumpFromY)) continue;
-
-      const crossing =
-        vy <= 0 && feetY >= top - LAND_EPS && nextFeet <= top + LAND_EPS;
-      if (crossing) {
-        best = Math.max(best, top);
-        continue;
-      }
-
-      const needsAssist = rise > this._maxJumpFeet() + LAND_EPS;
-      const nearJumpPeak =
-        vy <= 0.5 &&
-        vy >= -1.8 &&
-        feetY >= jumpPeakFeet - LAND_SNAP_BELOW &&
-        feetY <= jumpPeakFeet + LAND_EPS;
-      if (needsAssist && nearJumpPeak && feetY < top - LAND_EPS) {
-        best = Math.max(best, top);
-      }
+      if (onTop || landing) best = Math.max(best, top);
     }
 
     return best;
@@ -447,10 +409,14 @@ export class Player {
       this.vy = 0;
     }
 
-    if (nextEyeY <= targetEyeY && this.vy <= 0 && this._feetAtSupport(supportY, feetY)) {
+    if (nextEyeY <= targetEyeY && this.vy <= 0) {
       const impactVy = Math.abs(this.vy);
       const justLanded = !wasGrounded;
-      this.position.y = targetEyeY;
+      if (justLanded) {
+        this.position.y = targetEyeY;
+      } else if (this.position.y > targetEyeY + LAND_EPS) {
+        this.position.y = targetEyeY;
+      }
       this.vy = 0;
       this.grounded = true;
       this.groundY = supportY;
