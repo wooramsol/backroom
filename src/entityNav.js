@@ -26,7 +26,7 @@ function heuristic(ix, iz, gix, giz) {
   return (dmax - dmin) + dmin * 1.414;
 }
 
-function findNearestWalkable(goalIx, goalIz, isBlocked, maxRadius = 7) {
+function findNearestWalkable(goalIx, goalIz, isBlocked, maxRadius = 10) {
   const center = cellCenter(goalIx, goalIz);
   if (!isBlocked(center.x, center.z)) return { ix: goalIx, iz: goalIz };
 
@@ -53,7 +53,7 @@ function findNearestWalkable(goalIx, goalIz, isBlocked, maxRadius = 7) {
 }
 
 /** Returns true when a straight walk line has no wall hits */
-export function hasDirectPath(startX, startZ, goalX, goalZ, isBlocked, step = 0.55) {
+export function hasDirectPath(startX, startZ, goalX, goalZ, isBlocked, step = 0.38) {
   const dx = goalX - startX;
   const dz = goalZ - startZ;
   const len = Math.hypot(dx, dz);
@@ -69,10 +69,18 @@ export function hasDirectPath(startX, startZ, goalX, goalZ, isBlocked, step = 0.
 
 /** Grid A* over walkable cells — isBlocked(x,z) in world metres */
 export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 12) {
-  const startIx = Math.floor(startX / CELL);
-  const startIz = Math.floor(startZ / CELL);
+  let startIx = Math.floor(startX / CELL);
+  let startIz = Math.floor(startZ / CELL);
   let goalIx = Math.floor(goalX / CELL);
   let goalIz = Math.floor(goalZ / CELL);
+
+  const walkGoal = findNearestWalkable(goalIx, goalIz, isBlocked);
+  goalIx = walkGoal.ix;
+  goalIz = walkGoal.iz;
+
+  const walkStart = findNearestWalkable(startIx, startIz, isBlocked, 6);
+  startIx = walkStart.ix;
+  startIz = walkStart.iz;
 
   if (startIx === goalIx && startIz === goalIz) {
     return [{ x: goalX, z: goalZ }];
@@ -82,10 +90,6 @@ export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 12
   const maxIx = Math.max(startIx, goalIx) + margin;
   const minIz = Math.min(startIz, goalIz) - margin;
   const maxIz = Math.max(startIz, goalIz) + margin;
-
-  const walkGoal = findNearestWalkable(goalIx, goalIz, isBlocked);
-  goalIx = walkGoal.ix;
-  goalIz = walkGoal.iz;
 
   const open = [{ ix: startIx, iz: startIz, g: 0, f: heuristic(startIx, startIz, goalIx, goalIz) }];
   const cameFrom = new Map();
@@ -152,5 +156,14 @@ export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 12
     }
   }
 
+  return null;
+}
+
+/** Retry A* with wider search margins when the first attempt fails */
+export function findNavPathWithFallback(startX, startZ, goalX, goalZ, isBlocked) {
+  for (const margin of [12, 20, 28]) {
+    const path = findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin);
+    if (path?.length) return path;
+  }
   return null;
 }

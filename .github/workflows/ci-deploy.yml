@@ -39,11 +39,9 @@ jobs:
 
       - run: npm ci
       - name: Set build metadata
-        run: |
-          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          PR=$(git log -1 --pretty=%B | sed -n 's/^Merge pull request #\([0-9]*\).*/\1/p')
-          if [ -n "$PR" ]; then echo "BUILD_PR=$PR" >> $GITHUB_ENV; fi
+        run: bash scripts/build-metadata.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -83,14 +81,21 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Merge cursor branch into main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${GITHUB_REF#refs/heads/}"
+          PR="$(gh pr list --state merged --head "$BRANCH" --json number -q '.[0].number' 2>/dev/null || true)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
           git pull origin main
-          git merge "origin/$BRANCH" -m "chore: auto-promote $BRANCH to main"
+          if [ -n "$PR" ]; then
+            git merge "origin/$BRANCH" -m "Merge pull request #$PR from wooramsol/$BRANCH"
+          else
+            git merge "origin/$BRANCH" -m "chore: auto-promote $BRANCH to main"
+          fi
           git push origin main
 
   deploy-dev:
@@ -107,11 +112,9 @@ jobs:
 
       - run: npm ci
       - name: Set build metadata
-        run: |
-          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          PR=$(git log -1 --pretty=%B | sed -n 's/^Merge pull request #\([0-9]*\).*/\1/p')
-          if [ -n "$PR" ]; then echo "BUILD_PR=$PR" >> $GITHUB_ENV; fi
+        run: bash scripts/build-metadata.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -148,10 +151,10 @@ jobs:
 
       - run: npm ci
       - name: Set build metadata
-        run: |
-          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          echo "BUILD_PR=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+        run: bash scripts/build-metadata.sh
+        env:
+          BUILD_PR_OVERRIDE: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
         env:
           VITE_BASE: /backroom/
@@ -182,11 +185,9 @@ jobs:
 
       - run: npm ci
       - name: Set build metadata
-        run: |
-          echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-          echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          PR=$(git log -1 --pretty=%B | sed -n 's/^Merge pull request #\([0-9]*\).*/\1/p')
-          if [ -n "$PR" ]; then echo "BUILD_PR=$PR" >> $GITHUB_ENV; fi
+        run: bash scripts/build-metadata.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
         env:
           VITE_BASE: /backroom/

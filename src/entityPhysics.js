@@ -166,6 +166,20 @@ export class EntityBody {
     return out;
   }
 
+  nudgeUnstuck(step = 0.42) {
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const tx = this.position.x + Math.cos(a) * step;
+      const tz = this.position.z + Math.sin(a) * step;
+      if (!this.insideWall(tx, tz)) {
+        this.position.x = tx;
+        this.position.z = tz;
+        return step;
+      }
+    }
+    return 0;
+  }
+
   /** Steer around walls toward a world XZ goal */
   moveToward(dirX, dirZ, speed, dt) {
     const desiredLen = Math.hypot(dirX, dirZ);

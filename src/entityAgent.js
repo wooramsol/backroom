@@ -1,27 +1,31 @@
 import * as THREE from "three";
+import { CHUNK, generateRoom, isWalkableLocal } from "./room.js";
 import { EntityBody } from "./entityPhysics.js";
-import { findNavPath, hasDirectPath } from "./entityNav.js";
+import { findNavPathWithFallback, hasDirectPath } from "./entityNav.js";
 
 const WALK_SPEED = 3.1;
 const RUN_SPEED = 5.5;
 const RUN_DIST = 3.2;
-const LOOK_AHEAD = 1.55;
-const GOAL_REPLAN_DIST = 2.4;
-const STUCK_REPLAN = 0.45;
+const GOAL_REPLAN_DIST = 2.2;
+const STUCK_REPLAN = 0.28;
+const STUCK_NUDGE = 0.38;
 const STUCK_TELEPORT = 5.5;
-const REPLAN_COOLDOWN = 0.55;
+const REPLAN_COOLDOWN = 0.35;
 const MOVE_HOLD = 0.12;
+const WP_REACHED = 0.32;
 
 const _fwd = new THREE.Vector3();
 const _target = new THREE.Vector3();
 const _toPlayer = new THREE.Vector3();
 const _moveGoal = new THREE.Vector3();
-const _pos = new THREE.Vector3();
+const _sample = new THREE.Vector3();
 
-const _navSamples = [
+const _pathSamples = [
   [0, 0],
-  [0.24, 0],
-  [-0.24, 0],
+  [0.32, 0],
+  [-0.32, 0],
+  [0, 0.32],
+  [0, -0.32],
 ];
 
 function pickClip(clips, patterns) {
@@ -59,7 +63,7 @@ function cachedBlocked(isBlocked) {
   };
 }
 
-/** GLB entity that chases the player with A* pathfinding and wall steering */
+/** GLB entity that chases the player with maze-aware pathfinding */
 export class EntityAgent {
   constructor(data, scene, opts = {}) {
     this.id = opts.id || "entity";
@@ -101,16 +105,35 @@ export class EntityAgent {
     this._navIdx = 0;
   }
 
-  _navBlocked(x, z) {
-    return this.body.insideWall(x, z);
+  _mazeWalkable(wx, wz) {
+    const cx = Math.floor(wx / CHUNK);
+    const cz = Math.floor(wz / CHUNK);
+    const lx = wx - cx * CHUNK;
+    const lz = wz - cz * CHUNK;
+    const room = generateRoom(cx, cz);
+    return isWalkableLocal(lx, lz, room.innerWalls);
   }
 
-  _navBlockedDetailed(x, z) {
+  _furnitureBlocked(wx, wz) {
     const r = this.body.collisionRadius();
-    for (const [ox, oz] of _navSamples) {
-      if (this.body.insideWall(x + ox, z + oz, r)) return true;
+    const y = this.body.horizontalProbeY();
+    for (const c of this.body.colliders) {
+      if (!c.isFurniture) continue;
+      if (y < c.minY - 0.2 || y > c.maxY + 0.2) continue;
+      if (wx + r <= c.minX || wx - r >= c.maxX || wz + r <= c.minZ || wz - r >= c.maxZ) {
+        continue;
+      }
+      return true;
     }
     return false;
+  }
+
+  _pathBlocked(wx, wz) {
+    for (const [ox, oz] of _pathSamples) {
+      _sample.set(wx + ox, 0, wz + oz);
+      if (!this._mazeWalkable(_sample.x, _sample.z)) return true;
+    }
+    return this._furnitureBlocked(wx, wz);
   }
 
   spawn(player, groundY) {
@@ -144,7 +167,7 @@ export class EntityAgent {
     }
 
     for (const pos of candidates) {
-      if (!this._navBlockedDetailed(pos.x, pos.z)) {
+      if (!this._pathBlocked(pos.x, pos.z)) {
         this.body.setFeetWorld(pos.x, pos.z, gy);
         this.body.yaw = Math.atan2(px - pos.x, pz - pos.z);
         this.body.desiredYaw = this.body.yaw;
@@ -225,17 +248,33 @@ export class EntityAgent {
     return Math.hypot(goalX - gx, goalZ - gz) > GOAL_REPLAN_DIST;
   }
 
-  _replanNav(goalX, goalZ) {
+  _replanNav(goalX, goalZ, player) {
     const sx = this.body.position.x;
     const sz = this.body.position.z;
-    const blocked = cachedBlocked((x, z) => this._navBlockedDetailed(x, z));
+    const blocked = cachedBlocked((x, z) => this._pathBlocked(x, z));
+    const goals = [
+      { x: goalX, z: goalZ },
+      { x: player.position.x, z: player.position.z },
+      { x: sx + (goalX - sx) * 0.5, z: sz + (goalZ - sz) * 0.5 },
+    ];
 
-    if (hasDirectPath(sx, sz, goalX, goalZ, blocked)) {
-      this._navPath = [{ x: goalX, z: goalZ }];
-    } else {
-      this._navPath = findNavPath(sx, sz, goalX, goalZ, blocked);
+    let path = null;
+    for (const goal of goals) {
+      if (hasDirectPath(sx, sz, goal.x, goal.z, blocked)) {
+        path = [{ x: goal.x, z: goal.z }];
+        goalX = goal.x;
+        goalZ = goal.z;
+        break;
+      }
+      path = findNavPathWithFallback(sx, sz, goal.x, goal.z, blocked);
+      if (path?.length) {
+        goalX = goal.x;
+        goalZ = goal.z;
+        break;
+      }
     }
 
+    this._navPath = path;
     this._navIdx = 0;
     this._lastGoalX = goalX;
     this._lastGoalZ = goalZ;
@@ -251,13 +290,13 @@ export class EntityAgent {
       const wp = this._navPath[this._navIdx];
       const dx = px - wp.x;
       const dz = pz - wp.z;
-      if (dx * dx + dz * dz < 0.24 * 0.24) this._navIdx++;
+      if (dx * dx + dz * dz < WP_REACHED * WP_REACHED) this._navIdx++;
       else break;
     }
   }
 
-  _lookAheadGoal(goalX, goalZ) {
-    if (this._needsReplan(goalX, goalZ)) this._replanNav(goalX, goalZ);
+  _moveGoalFromPath(goalX, goalZ, player) {
+    if (this._needsReplan(goalX, goalZ)) this._replanNav(goalX, goalZ, player);
 
     if (!this._navPath?.length) {
       _moveGoal.set(goalX, 0, goalZ);
@@ -265,29 +304,8 @@ export class EntityAgent {
     }
 
     this._advanceNavIdx();
-    _pos.set(this.body.position.x, 0, this.body.position.z);
-
-    let remain = LOOK_AHEAD;
-    for (let i = this._navIdx; i < this._navPath.length; i++) {
-      const wp = this._navPath[i];
-      const dx = wp.x - _pos.x;
-      const dz = wp.z - _pos.z;
-      const seg = Math.hypot(dx, dz);
-      if (seg >= remain || i === this._navPath.length - 1) {
-        if (seg < 1e-5) {
-          _moveGoal.set(wp.x, 0, wp.z);
-        } else {
-          const t = Math.min(1, remain / seg);
-          _moveGoal.set(_pos.x + dx * t, 0, _pos.z + dz * t);
-        }
-        return _moveGoal;
-      }
-      remain -= seg;
-      _pos.set(wp.x, 0, wp.z);
-    }
-
-    const last = this._navPath[this._navPath.length - 1];
-    _moveGoal.set(last.x, 0, last.z);
+    const wp = this._navPath[this._navIdx];
+    _moveGoal.set(wp.x, 0, wp.z);
     return _moveGoal;
   }
 
@@ -302,20 +320,32 @@ export class EntityAgent {
     }
 
     _target.copy(this._chaseTarget(player));
-    const navGoal = this._lookAheadGoal(_target.x, _target.z);
+    const navGoal = this._moveGoalFromPath(_target.x, _target.z, player);
 
     _toPlayer.subVectors(navGoal, this.body.position);
     _toPlayer.y = 0;
     const dist = _toPlayer.length();
 
     let moved = 0;
-    if (dist > 0.2) {
+    if (dist > 0.15) {
       const speed = dist > RUN_DIST ? RUN_SPEED : WALK_SPEED;
       moved = this.body.moveToward(_toPlayer.x, _toPlayer.z, speed, dt);
       if (moved < 0.0005) this._stuckT += dt;
       else this._stuckT = Math.max(0, this._stuckT - dt * 0.5);
+    } else if (this._navPath?.length && this._navIdx < this._navPath.length - 1) {
+      this._advanceNavIdx();
+      this._stuckT = 0;
     } else {
       this._stuckT = 0;
+    }
+
+    if (moved < 0.0005 && this._stuckT >= STUCK_NUDGE) {
+      moved = this.body.nudgeUnstuck();
+      if (moved > 0) {
+        this._stuckT = 0;
+        this._replanCooldown = 0;
+        this._lastGoalX = NaN;
+      }
     }
 
     if (moved > 0.002) this._moveHold = MOVE_HOLD;
