@@ -24,6 +24,8 @@ const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
 const LAND_EPS = 0.09;
+const LAND_SNAP_BELOW = 0.26;
+const JUMP_SNAP_GRACE = 0.12;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -48,6 +50,8 @@ export class Player {
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
+    this._jumpGrace = 0;
+    this._jumpFromY = 0;
     this.crouchBlend = 0;
     this.onMove = null;
     this.onJump = null;
@@ -63,6 +67,8 @@ export class Player {
         if (this.locked && this.grounded && !this.crouching) {
           this.vy = JUMP_V;
           this.grounded = false;
+          this._jumpGrace = JUMP_SNAP_GRACE;
+          this._jumpFromY = this.groundY;
           this.onJump?.();
         }
       }
@@ -172,6 +178,8 @@ export class Player {
     this.vy = 0;
     this.grounded = true;
     this.groundY = 0;
+    this._jumpGrace = 0;
+    this._jumpFromY = 0;
   }
 
   _feetY() {
@@ -200,16 +208,29 @@ export class Player {
     let best = 0;
     const nextFeet = feetY + vy * dt;
     const r = PLAYER_R;
+    const maxJumpFeet = (JUMP_V * JUMP_V) / (2 * GRAVITY);
 
     for (const c of this.colliders) {
       if (!c.standable || c.standTopY === undefined) continue;
       if (!this._overlapsXZ(px, pz, c, r)) continue;
 
       const top = c.standTopY;
+      const climbDelta = top - this._jumpFromY;
       const onTop = Math.abs(feetY - top) < LAND_EPS;
-      const landing =
-        vy <= 0 && nextFeet <= top + LAND_EPS && feetY >= top - 0.65;
-      if (onTop || landing) best = Math.max(best, top);
+      const onTopOk = onTop && !(this.vy > 0.35 && top > this._jumpFromY + 0.02);
+
+      let landing = false;
+      if (vy <= 0 && nextFeet <= top + LAND_EPS && feetY <= top + LAND_EPS * 1.5) {
+        const nearTop = feetY >= top - LAND_SNAP_BELOW;
+        const graceBlocks = this._jumpGrace > 0 && climbDelta > 0.05;
+        const farClimb =
+          climbDelta > maxJumpFeet * 0.88 &&
+          feetY >= top - 0.65 &&
+          (!graceBlocks || feetY >= top - 0.18);
+        landing = (nearTop && !graceBlocks) || farClimb;
+      }
+
+      if (onTopOk || landing) best = Math.max(best, top);
     }
 
     return best;
@@ -300,12 +321,16 @@ export class Player {
     if (this.grounded && !this.crouching) {
       this.vy = JUMP_V;
       this.grounded = false;
+      this._jumpGrace = JUMP_SNAP_GRACE;
+      this._jumpFromY = this.groundY;
       this.onJump?.();
     }
   }
 
   update(dt) {
     if (!this.inputActive) return;
+
+    if (this._jumpGrace > 0) this._jumpGrace = Math.max(0, this._jumpGrace - dt);
 
     this._applyMobileLook();
     this._tryMobileJump();
