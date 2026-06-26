@@ -1,13 +1,11 @@
 import * as THREE from "three";
-import { CHUNK, MAX_STAND_HEIGHT } from "./constants.js";
+import { CHUNK } from "./constants.js";
 import { isWalkableLocal } from "./room.js";
 import { cloneSpecialTemplate } from "./specialAssets.js";
 import { colliderFromFurniture } from "./furnitureColliders.js";
 
 const _box = new THREE.Box3();
 const SPAWN_CHUNK = { cx: 0, cz: 0 };
-/** Hood panel top as a fraction of full mesh height — bbox roof is windshield/roof, not walkable */
-const CAR_HOOD_TOP_FRAC = 0.74;
 
 function alignLowestY(pivot, rootGroup, targetY) {
   rootGroup.updateMatrixWorld(true);
@@ -30,16 +28,7 @@ export function addSpawnCar(group, room, carTemplate, colliders) {
   pivot.userData.chunkOwned = true;
   group.add(pivot);
   const collider = colliderFromFurniture(pivot, group);
-  group.updateMatrixWorld(true);
-  _box.setFromObject(pivot);
-  const bodyH = _box.max.y - _box.min.y;
-  const hoodY = _box.min.y + bodyH * CAR_HOOD_TOP_FRAC;
-  collider.standTopY = hoodY;
-  collider.standable =
-    hoodY >= 0.22 &&
-    hoodY <= MAX_STAND_HEIGHT &&
-    collider.maxX - collider.minX >= 0.28 &&
-    collider.maxZ - collider.minZ >= 0.28;
+  collider.standable = false;
   colliders.push(collider);
 }
 
