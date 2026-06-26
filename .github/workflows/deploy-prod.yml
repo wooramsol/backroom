@@ -46,6 +46,8 @@ jobs:
         run: |
           echo "BUILD_TIME=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
           echo "BUILD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          PR=$(git log -1 --pretty=%B | sed -n 's/^Merge pull request #\([0-9]*\).*/\1/p')
+          if [ -n "$PR" ]; then echo "BUILD_PR=$PR" >> $GITHUB_ENV; fi
       - run: npm run build
         env:
           VITE_BASE: /backroom-live/
