@@ -153,8 +153,6 @@ jobs:
       - name: Set build metadata
         run: bash scripts/build-metadata.sh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        env:
           BUILD_PR_OVERRIDE: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
