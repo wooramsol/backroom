@@ -121,7 +121,7 @@ export class GameAudio {
   }
 
   /** Distant, damped footsteps for chasing entities (e.g. skin stealer) */
-  onEntityMove(distance, running, speed = 3.1, pan = 0) {
+  onEntityMove(distance, running, speed = 3.1, pan = 0, entityDist = 12) {
     if (!this._ensure()) return;
     if (this.ctx.state === "suspended") void this.ctx.resume();
     if (distance < 1e-5 || speed < 0.1) return;
@@ -131,25 +131,35 @@ export class GameAudio {
     const interval = speed / cadence;
     while (this._entityStepAccum >= interval) {
       this._entityStepAccum -= interval;
-      this._playEntityFootstep(running, pan);
+      this._playEntityFootstep(running, pan, entityDist);
     }
   }
 
-  _playEntityFootstep(running, pan = 0) {
+  _entityVolumeScale(dist) {
+    const near = 2.1;
+    const far = 14;
+    if (dist <= near) return 1;
+    if (dist >= far) return 0.38;
+    const t = (dist - near) / (far - near);
+    return 1 - t * 0.62;
+  }
+
+  _playEntityFootstep(running, pan = 0, entityDist = 12) {
     const ctx = this.ctx;
     const t = ctx.currentTime;
-    const dur = running ? 0.13 : 0.16;
-    const vol = running ? 0.26 : 0.22;
-    const thumpBase = running ? 58 : 48;
-    const lowFreq = running ? 320 : 260;
-    const midBase = running ? 145 : 118;
+    const volScale = this._entityVolumeScale(entityDist);
+    const dur = running ? 0.075 : 0.1;
+    const vol = (running ? 0.42 : 0.34) * volScale;
+    const thumpBase = running ? 118 : 102;
+    const lowFreq = running ? 1050 : 780;
+    const midBase = running ? 285 : 220;
     const panClamped = Math.max(-1, Math.min(1, pan));
 
     const thump = ctx.createOscillator();
-    thump.type = "triangle";
-    thump.frequency.value = thumpBase + Math.random() * 18;
+    thump.type = "sine";
+    thump.frequency.value = thumpBase + Math.random() * 28;
     const thumpGain = ctx.createGain();
-    thumpGain.gain.setValueAtTime(vol * 1.1, t);
+    thumpGain.gain.setValueAtTime(vol * 1.35, t);
     thumpGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
     const thumpPan = ctx.createStereoPanner();
     thumpPan.pan.value = panClamped * 0.85;
@@ -173,15 +183,15 @@ export class GameAudio {
     const low = ctx.createBiquadFilter();
     low.type = "lowpass";
     low.frequency.value = lowFreq;
-    low.Q.value = 0.7;
+    low.Q.value = 0.55;
 
     const mid = ctx.createBiquadFilter();
     mid.type = "bandpass";
     mid.frequency.value = midBase + Math.random() * 40;
-    mid.Q.value = 0.8;
+    mid.Q.value = 0.65;
 
     const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(vol * 0.9, t);
+    noiseGain.gain.setValueAtTime(vol, t);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
 
     const noisePan = ctx.createStereoPanner();
