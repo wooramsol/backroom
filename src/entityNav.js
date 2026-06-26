@@ -1,4 +1,4 @@
-const CELL = 0.4;
+const CELL = 0.45;
 const NEIGHBORS = [
   [1, 0],
   [-1, 0],
@@ -52,8 +52,23 @@ function findNearestWalkable(goalIx, goalIz, isBlocked, maxRadius = 7) {
   return { ix: goalIx, iz: goalIz };
 }
 
+/** Returns true when a straight walk line has no wall hits */
+export function hasDirectPath(startX, startZ, goalX, goalZ, isBlocked, step = 0.55) {
+  const dx = goalX - startX;
+  const dz = goalZ - startZ;
+  const len = Math.hypot(dx, dz);
+  if (len < 0.35) return true;
+
+  const steps = Math.ceil(len / step);
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    if (isBlocked(startX + dx * t, startZ + dz * t)) return false;
+  }
+  return true;
+}
+
 /** Grid A* over walkable cells — isBlocked(x,z) in world metres */
-export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 18) {
+export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 12) {
   const startIx = Math.floor(startX / CELL);
   const startIz = Math.floor(startZ / CELL);
   let goalIx = Math.floor(goalX / CELL);
@@ -77,7 +92,7 @@ export function findNavPath(startX, startZ, goalX, goalZ, isBlocked, margin = 18
   const gScore = new Map([[cellKey(startIx, startIz), 0]]);
   const closed = new Set();
   let iterations = 0;
-  const maxIter = 9000;
+  const maxIter = 4200;
 
   while (open.length && iterations < maxIter) {
     iterations++;

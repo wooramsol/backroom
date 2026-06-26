@@ -9,6 +9,7 @@ const LIBRARY_URL = `${ASSET_BASE}assets/entity_library.glb`;
 
 const CAR_TARGET_LEN = 4.6;
 const ENTITY_TARGET_H = 1.78;
+const ENTITY_CRAWL_H = 1.02;
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
@@ -170,14 +171,18 @@ async function loadStaticProp(loader, url, targetSize, meta, axis = "y") {
   return prepareStaticProp(gltf.scene, targetSize, meta, axis);
 }
 
-async function loadEntityModel(loader, url) {
+async function loadEntityModel(loader, url, targetHeight = ENTITY_TARGET_H) {
   const gltf = await loader.loadAsync(url);
   await repairEntityMaterials(gltf);
   const root = new THREE.Group();
   root.add(gltf.scene);
 
+  for (const clip of gltf.animations) {
+    if (/^mixamo\.com$/i.test(clip.name)) clip.name = "ZombieCrawl";
+  }
+
   const bounds = measureBounds(root);
-  scaleToSize(root, bounds.sizeY, ENTITY_TARGET_H);
+  scaleToSize(root, bounds.sizeY, targetHeight);
 
   root.traverse((obj) => {
     if (obj.isMesh) obj.frustumCulled = false;
@@ -201,7 +206,7 @@ export async function loadSpecialAssets() {
         console.warn("Car model unavailable", err);
         return null;
       }),
-      loadEntityModel(loader, SKINSTEALER_URL).catch((err) => {
+      loadEntityModel(loader, SKINSTEALER_URL, ENTITY_CRAWL_H).catch((err) => {
         console.warn("Skinstealer model unavailable", err);
         return null;
       }),

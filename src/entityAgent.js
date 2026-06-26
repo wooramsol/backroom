@@ -1,15 +1,17 @@
 import * as THREE from "three";
 import { EntityBody } from "./entityPhysics.js";
-import { findNavPath } from "./entityNav.js";
+import { findNavPath, hasDirectPath } from "./entityNav.js";
 
 const WALK_SPEED = 3.1;
 const RUN_SPEED = 5.5;
+const CRAWL_SPEED = 1.45;
+const CRAWL_RUN_SPEED = 2.35;
 const RUN_DIST = 3.2;
-const LOOK_AHEAD = 2.1;
-const GOAL_REPLAN_DIST = 1.6;
-const STUCK_REPLAN = 0.32;
+const LOOK_AHEAD = 1.55;
+const GOAL_REPLAN_DIST = 2.4;
+const STUCK_REPLAN = 0.45;
 const STUCK_TELEPORT = 5.5;
-const REPLAN_COOLDOWN = 0.22;
+const REPLAN_COOLDOWN = 0.55;
 const MOVE_HOLD = 0.12;
 
 const _fwd = new THREE.Vector3();
@@ -20,10 +22,8 @@ const _pos = new THREE.Vector3();
 
 const _navSamples = [
   [0, 0],
-  [0.28, 0],
-  [-0.28, 0],
-  [0, 0.28],
-  [0, -0.28],
+  [0.24, 0],
+  [-0.24, 0],
 ];
 
 function pickClip(clips, patterns) {
@@ -50,6 +50,17 @@ function bindAnimations(mixer, clips, movePatterns, idlePatterns) {
   return { moveAction, idleAction };
 }
 
+function cachedBlocked(isBlocked) {
+  const cache = new Map();
+  return (x, z) => {
+    const k = `${Math.round(x * 8)},${Math.round(z * 8)}`;
+    if (cache.has(k)) return cache.get(k);
+    const blocked = isBlocked(x, z);
+    cache.set(k, blocked);
+    return blocked;
+  };
+}
+
 /** GLB entity that chases the player with A* pathfinding and wall steering */
 export class EntityAgent {
   constructor(data, scene, opts = {}) {
@@ -58,15 +69,20 @@ export class EntityAgent {
     this.root = data.model;
     this.followBehind = opts.followBehind === true;
     this.followDist = opts.followDist ?? 2.35;
+    this.crawlMode = opts.crawlMode === true;
 
-    this.body = new EntityBody({ footOffset: data.footOffset ?? 0 });
+    this.body = new EntityBody({
+      footOffset: data.footOffset ?? 0,
+      probeYOffset: this.crawlMode ? -0.62 : 0,
+      steerQuality: "light",
+    });
     this.mixer = new THREE.AnimationMixer(this.root);
     const clips = data.animations || [];
     const { moveAction, idleAction } = bindAnimations(
       this.mixer,
       clips,
-      opts.movePatterns || [/walk|run|move|chase|stalk|bend|mixamo|locomotion/i],
-      opts.idlePatterns || [/idle|stand|stalk|breath/i],
+      opts.movePatterns || [/zombie.?crawl|crawl|walk|run|move|chase|stalk|mixamo|locomotion/i],
+      opts.idlePatterns || [/zombie.?crawl|crawl|idle|stand|stalk|breath/i],
     );
     this.moveAction = moveAction;
     this.idleAction = idleAction;
@@ -81,6 +97,12 @@ export class EntityAgent {
 
     this.root.visible = false;
     scene.add(this.root);
+
+    if (this.crawlMode && this.moveAction) {
+      this.moveAction.play();
+      this.moveAction.timeScale = 0.9;
+      this.moving = true;
+    }
   }
 
   setColliders(colliders) {
@@ -90,6 +112,10 @@ export class EntityAgent {
   }
 
   _navBlocked(x, z) {
+    return this.body.insideWall(x, z);
+  }
+
+  _navBlockedDetailed(x, z) {
     const r = this.body.collisionRadius();
     for (const [ox, oz] of _navSamples) {
       if (this.body.insideWall(x + ox, z + oz, r)) return true;
@@ -128,7 +154,7 @@ export class EntityAgent {
     }
 
     for (const pos of candidates) {
-      if (!this._navBlocked(pos.x, pos.z)) {
+      if (!this._navBlockedDetailed(pos.x, pos.z)) {
         this.body.setFeetWorld(pos.x, pos.z, gy);
         this.body.yaw = Math.atan2(px - pos.x, pz - pos.z);
         this.body.desiredYaw = this.body.yaw;
@@ -139,7 +165,8 @@ export class EntityAgent {
         this._stuckT = 0;
         this._replanCooldown = 0;
         this.body.syncRoot(this.root);
-        this._setMoving(false);
+        this._syncVisual();
+        this._setMoving(this.crawlMode);
         return;
       }
     }
@@ -153,8 +180,8 @@ export class EntityAgent {
     this._navPath = null;
     this._navIdx = 0;
     this._stuckT = 0;
-    this.body.syncRoot(this.root);
-    this._setMoving(false);
+    this._syncVisual();
+    this._setMoving(this.crawlMode);
   }
 
   hide() {
@@ -167,6 +194,13 @@ export class EntityAgent {
 
   _setMoving(on) {
     if (!this.moveAction) return;
+    if (this.crawlMode) {
+      if (!this.moveAction.isRunning()) this.moveAction.play();
+      this.moveAction.timeScale = on ? 1 : 0.55;
+      this.moving = true;
+      return;
+    }
+
     if (on === this.moving) return;
     this.moving = on;
 
@@ -185,6 +219,11 @@ export class EntityAgent {
       if (!this.idleAction.isRunning()) this.idleAction.play();
       this.idleAction.fadeIn(0.28);
     }
+  }
+
+  _syncVisual() {
+    this.body.syncRoot(this.root);
+    this.root.rotation.x = this.crawlMode ? 1.02 : 0;
   }
 
   _chaseTarget(player) {
@@ -212,8 +251,14 @@ export class EntityAgent {
   _replanNav(goalX, goalZ) {
     const sx = this.body.position.x;
     const sz = this.body.position.z;
-    const blocked = (x, z) => this._navBlocked(x, z);
-    this._navPath = findNavPath(sx, sz, goalX, goalZ, blocked);
+    const blocked = cachedBlocked((x, z) => this._navBlockedDetailed(x, z));
+
+    if (hasDirectPath(sx, sz, goalX, goalZ, blocked)) {
+      this._navPath = [{ x: goalX, z: goalZ }];
+    } else {
+      this._navPath = findNavPath(sx, sz, goalX, goalZ, blocked);
+    }
+
     this._navIdx = 0;
     this._lastGoalX = goalX;
     this._lastGoalZ = goalZ;
@@ -288,7 +333,9 @@ export class EntityAgent {
 
     let moved = 0;
     if (dist > 0.2) {
-      const speed = dist > RUN_DIST ? RUN_SPEED : WALK_SPEED;
+      const walk = this.crawlMode ? CRAWL_SPEED : WALK_SPEED;
+      const run = this.crawlMode ? CRAWL_RUN_SPEED : RUN_SPEED;
+      const speed = dist > RUN_DIST ? run : walk;
       moved = this.body.moveToward(_toPlayer.x, _toPlayer.z, speed, dt);
       if (moved < 0.0005) this._stuckT += dt;
       else this._stuckT = Math.max(0, this._stuckT - dt * 0.5);
@@ -296,13 +343,19 @@ export class EntityAgent {
       this._stuckT = Math.max(0, this._stuckT - dt);
     }
 
-    if (moved > 0.002) this._moveHold = MOVE_HOLD;
-    else this._moveHold = Math.max(0, this._moveHold - dt);
-    this._setMoving(this._moveHold > 0);
+    if (this.crawlMode) {
+      this._setMoving(true);
+    } else if (moved > 0.002) {
+      this._moveHold = MOVE_HOLD;
+      this._setMoving(true);
+    } else {
+      this._moveHold = Math.max(0, this._moveHold - dt);
+      this._setMoving(this._moveHold > 0);
+    }
 
     this.body.smoothYaw(dt);
     this.body.updateVertical(dt);
-    this.body.syncRoot(this.root);
+    this._syncVisual();
     this.mixer.update(dt);
   }
 }
