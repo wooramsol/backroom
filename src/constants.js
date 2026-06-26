@@ -53,7 +53,7 @@ export const MIN_ZONE_DIM_SMALL = MIN_PASSAGE_SPAN + 0.85;
 export const MIN_DOOR_WIDTH = 2 * (PLAYER_R + BODY_WALL_CLEAR) + 2 * DOOR_JAMB_INSET + 0.14;
 /** Maximum door opening width (metres) */
 export const MAX_DOOR_WIDTH = 3;
-export const JUMP_V = 4.2;
+export const JUMP_V = 5.5;
 export const GRAVITY = 14;
 /** Narrower FOV — 72° caused heavy edge distortion that felt tilted */
 export const CAMERA_FOV = 60;
