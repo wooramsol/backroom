@@ -25,8 +25,6 @@ const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
 const LAND_EPS = 0.09;
-/** Extra rise above jump apex that still counts as a standable hop */
-const STAND_REACH = 0.44;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -206,7 +204,7 @@ export class Player {
     const rise = top - fromY;
     if (rise <= LAND_EPS) return true;
     if (top > MAX_STAND_HEIGHT + 0.01) return false;
-    return rise <= this._maxJumpFeet() + STAND_REACH;
+    return rise <= this._maxJumpFeet() + LAND_EPS;
   }
 
   /** Feet level to stand on while grounded (null = walked off a ledge) */
@@ -220,6 +218,11 @@ export class Player {
     }
 
     return null;
+  }
+
+  /** Keep eye height tied to support — crouch must not change feet level */
+  _syncPose() {
+    this.position.y = this.groundY + this._eyeHeight();
   }
 
   /** Feet level we land on this frame, or null while still in the air */
@@ -237,7 +240,9 @@ export class Player {
 
       const top = c.standTopY;
       if (!this._canStandOn(top, this._jumpFromY)) continue;
-      if (nextFeet > top + LAND_EPS || feetY > top + LAND_EPS * 1.5) continue;
+
+      const onPlane = feetY >= top - LAND_EPS && nextFeet <= top + LAND_EPS;
+      if (!onPlane) continue;
 
       if (best === null || top > best) best = top;
     }
@@ -266,6 +271,8 @@ export class Player {
 
     const top = c.standTopY ?? c.maxY;
     if (c.isFurniture && top !== undefined) {
+      if (this.grounded && this.groundY >= top - LAND_EPS) return false;
+
       const feetLevel = this.grounded ? this.groundY : this._feetY();
       if (feetLevel < top - LAND_EPS) {
         const fromY = this.grounded ? this.groundY : this._jumpFromY;
@@ -356,6 +363,8 @@ export class Player {
     const crouchTarget = this.crouching ? 1 : 0;
     this.crouchBlend += (crouchTarget - this.crouchBlend) * Math.min(1, CROUCH_BLEND_SPEED * dt);
 
+    if (this.grounded) this._syncPose();
+
     this._applyLook(0);
     this._syncWalkFromCamera();
 
@@ -416,7 +425,7 @@ export class Player {
         this.position.y += this.vy * dt;
       } else {
         this.groundY = standY;
-        this.position.y = this.groundY + this._eyeHeight();
+        this._syncPose();
         this.vy = 0;
       }
     } else {
@@ -433,7 +442,7 @@ export class Player {
       if (landY !== null) {
         const impactVy = Math.abs(this.vy);
         this.groundY = landY;
-        this.position.y = this.groundY + this._eyeHeight();
+        this._syncPose();
         this.vy = 0;
         this.grounded = true;
         if (!wasGrounded) this.onLand?.(impactVy);
