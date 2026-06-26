@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { CHUNK, generateRoom, isWalkableLocal } from "./room.js";
 import { EntityBody } from "./entityPhysics.js";
-import { findNavPathWithFallback, hasDirectPath } from "./entityNav.js";
+import { findNavPathWithFallback } from "./entityNav.js";
 
 const WALK_SPEED = 3.1;
 const RUN_SPEED = 5.5;
@@ -102,6 +102,20 @@ export class EntityAgent {
 
     this.root.visible = false;
     scene.add(this.root);
+    this._applyRenderBias();
+  }
+
+  _applyRenderBias() {
+    this.root.traverse((obj) => {
+      if (!obj.isMesh) return;
+      obj.renderOrder = 4;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const mat of mats) {
+        if (!mat) continue;
+        mat.depthTest = true;
+        mat.depthWrite = true;
+      }
+    });
   }
 
   setColliders(colliders) {
@@ -281,19 +295,13 @@ export class EntityAgent {
     const sz = this.body.position.z;
     const blocked = cachedBlocked((x, z) => this._pathBlocked(x, z));
     const goals = [
-      { x: goalX, z: goalZ },
       { x: player.position.x, z: player.position.z },
+      { x: goalX, z: goalZ },
       { x: sx + (goalX - sx) * 0.5, z: sz + (goalZ - sz) * 0.5 },
     ];
 
     let path = null;
     for (const goal of goals) {
-      if (hasDirectPath(sx, sz, goal.x, goal.z, blocked)) {
-        path = [{ x: goal.x, z: goal.z }];
-        goalX = goal.x;
-        goalZ = goal.z;
-        break;
-      }
       path = findNavPathWithFallback(sx, sz, goal.x, goal.z, blocked);
       if (path?.length) {
         goalX = goal.x;
@@ -327,7 +335,9 @@ export class EntityAgent {
     if (this._needsReplan(goalX, goalZ)) this._replanNav(goalX, goalZ, player);
 
     if (!this._navPath?.length) {
-      _moveGoal.set(goalX, 0, goalZ);
+      _moveGoal.set(this.body.position.x, 0, this.body.position.z);
+      this._replanCooldown = 0;
+      this._lastGoalX = NaN;
       return _moveGoal;
     }
 
@@ -369,6 +379,9 @@ export class EntityAgent {
         this._stuckT = 0;
         this._replanCooldown = 0;
         this._lastGoalX = NaN;
+      } else {
+        this._replanCooldown = 0;
+        this._lastGoalX = NaN;
       }
     }
 
@@ -388,6 +401,7 @@ export class EntityAgent {
 
     this.body.smoothYaw(dt);
     this.body.updateVertical(dt);
+    this.body.applyWallStandoff();
     this.body.syncRoot(this.root);
     this.mixer.update(dt);
   }

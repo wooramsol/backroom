@@ -48,7 +48,16 @@ export class EntitySquad {
     for (const a of this.agents) {
       a.onStep = (distance, running, speed, player) => {
         if (!this._audio) return;
-        this._audio.onEntityMove(distance, running, speed, panToEntity(player, a));
+        const dx = a.body.position.x - player.position.x;
+        const dz = a.body.position.z - player.position.z;
+        const entityDist = Math.hypot(dx, dz);
+        this._audio.onEntityMove(
+          distance,
+          running,
+          speed,
+          panToEntity(player, a),
+          entityDist,
+        );
       };
     }
   }

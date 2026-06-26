@@ -134,6 +134,42 @@ export class EntityBody {
     this.position.z = out.pz;
   }
 
+  /** Keep a small gap from walls so the mesh does not clip inside geometry */
+  applyWallStandoff(minGap = 0.22) {
+    const y = this.horizontalProbeY();
+    const r = this.collisionRadius();
+    let px = this.position.x;
+    let pz = this.position.z;
+
+    for (const c of this.colliders) {
+      if (c.isFurniture || c.isCeiling) continue;
+      if (!this._blocksHorizontal(c, y)) continue;
+
+      const cx = Math.max(c.minX, Math.min(px, c.maxX));
+      const cz = Math.max(c.minZ, Math.min(pz, c.maxZ));
+      const dx = px - cx;
+      const dz = pz - cz;
+      const distSq = dx * dx + dz * dz;
+      const need = r + minGap;
+
+      if (distSq < need * need) {
+        if (distSq < 1e-8) {
+          const out = this._pushOut(px, pz);
+          px = out.px;
+          pz = out.pz;
+        } else {
+          const dist = Math.sqrt(distSq);
+          const push = need - dist;
+          px += (dx / dist) * push;
+          pz += (dz / dist) * push;
+        }
+      }
+    }
+
+    this.position.x = px;
+    this.position.z = pz;
+  }
+
   _probeClearance(nx, nz, maxDist, steps = 10) {
     const inc = maxDist / steps;
     for (let i = 1; i <= steps; i++) {
@@ -301,6 +337,7 @@ export class EntityBody {
     }
 
     this.resolvePenetration();
+    this.applyWallStandoff();
   }
 
   setFeetWorld(x, z, groundY) {
