@@ -98,6 +98,7 @@ export class EntityAgent {
     this._lastGoalX = NaN;
     this._lastGoalZ = NaN;
     this._playerWasFar = false;
+    this.onStep = opts.onStep || null;
 
     this.root.visible = false;
     scene.add(this.root);
@@ -349,8 +350,9 @@ export class EntityAgent {
     const dist = _toPlayer.length();
 
     let moved = 0;
+    let speed = WALK_SPEED;
     if (dist > 0.15) {
-      const speed = dist > RUN_DIST ? RUN_SPEED : WALK_SPEED;
+      speed = dist > RUN_DIST ? RUN_SPEED : WALK_SPEED;
       moved = this.body.moveToward(_toPlayer.x, _toPlayer.z, speed, dt);
       if (moved < 0.0005) this._stuckT += dt;
       else this._stuckT = Math.max(0, this._stuckT - dt * 0.5);
@@ -373,6 +375,11 @@ export class EntityAgent {
     if (this._shouldVanish(player, moved)) {
       this.hide();
       return;
+    }
+
+    if (moved > 0.0005 && this.onStep) {
+      const running = speed > WALK_SPEED + 0.4;
+      this.onStep(moved, running, speed, player);
     }
 
     if (moved > 0.002) this._moveHold = MOVE_HOLD;
