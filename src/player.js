@@ -253,11 +253,11 @@ export class Player {
   _blocksHorizontal(c, y) {
     if (c.isCeiling) return false;
 
-    if (c.standable && c.standTopY !== undefined) {
+    const top = c.standTopY ?? c.maxY;
+    if (c.isFurniture && top !== undefined) {
       const feetY = this._feetY();
       const fromY = this.grounded ? this.groundY : this._jumpFromY;
-      if (feetY < c.standTopY - LAND_EPS && !this._canClimbTo(c.standTopY, fromY)) {
-        if (y < c.minY - 0.2 || y > c.standTopY + 0.15) return false;
+      if (feetY < top - LAND_EPS && !this._canClimbTo(top, fromY)) {
         return true;
       }
     }

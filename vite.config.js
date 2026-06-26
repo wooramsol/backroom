@@ -3,10 +3,10 @@ import { defineConfig } from "vite";
 
 const pkg = JSON.parse(readFileSync("./package.json", "utf8"));
 
-function buildId() {
-  if (process.env.BUILD_SHA) return process.env.BUILD_SHA.slice(0, 7);
-  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
-  return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 12);
+function buildPr() {
+  const raw = process.env.BUILD_PR || process.env.GITHUB_PR_NUMBER || "";
+  const n = String(raw).trim();
+  return /^\d+$/.test(n) ? n : "";
 }
 
 function buildTime() {
@@ -18,7 +18,7 @@ export default defineConfig({
   base: process.env.VITE_BASE || "./",
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
-    __BUILD_ID__: JSON.stringify(buildId()),
+    __BUILD_PR__: JSON.stringify(buildPr()),
     __BUILD_TIME__: JSON.stringify(buildTime()),
     __BUILD_ENV__: JSON.stringify(process.env.BUILD_ENV || "local"),
   },
