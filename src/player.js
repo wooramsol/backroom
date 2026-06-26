@@ -214,21 +214,25 @@ export class Player {
 
   /** Highest standable surface under the player feet */
   _findSupportY(px, pz, feetY, vy, dt) {
-    const base = this.grounded ? this.groundY : this._jumpFromY;
+    let best = 0;
     const nextFeet = feetY + vy * dt;
     const r = PLAYER_R;
-    let best = base;
 
     for (const c of this.colliders) {
       if (!c.standable || c.standTopY === undefined) continue;
       if (!this._overlapsXZ(px, pz, c, r)) continue;
 
       const top = c.standTopY;
-      if (!this._canClimbTo(top, base)) continue;
-
       const onTop = Math.abs(feetY - top) < LAND_EPS;
-      const landing = vy <= 0 && nextFeet <= top + LAND_EPS && feetY >= top - 0.65;
-      if (onTop || landing) best = Math.max(best, top);
+
+      if (onTop) {
+        best = Math.max(best, top);
+        continue;
+      }
+
+      if (vy <= 0 && nextFeet <= top + LAND_EPS && feetY >= top - 0.65) {
+        if (this._canClimbTo(top, this._jumpFromY)) best = Math.max(best, top);
+      }
     }
 
     return best;
@@ -256,10 +260,11 @@ export class Player {
     const top = c.standTopY ?? c.maxY;
     if (c.isFurniture && top !== undefined) {
       const feetY = this._feetY();
-      const fromY = this.grounded ? this.groundY : this._jumpFromY;
-      if (feetY < top - LAND_EPS && !this._canClimbTo(top, fromY)) {
-        if (feetY < c.minY - 0.2 || feetY > top + 0.15) return false;
-        return true;
+      if (feetY < top - LAND_EPS) {
+        const fromY = this.grounded ? this.groundY : this._jumpFromY;
+        if (!this._canClimbTo(top, fromY) && feetY >= c.minY - 0.2 && feetY <= top + 0.15) {
+          return true;
+        }
       }
     }
 
