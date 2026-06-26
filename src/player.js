@@ -25,7 +25,8 @@ const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
 const LAND_EPS = 0.09;
-const CLIMB_SNAP = 0.44;
+/** Extra rise above jump apex that still counts as a standable hop */
+const STAND_REACH = 0.44;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -183,10 +184,6 @@ export class Player {
     return this.position.y - this._eyeHeight();
   }
 
-  _eyeOnSupport(supportY) {
-    return supportY + this._eyeHeight();
-  }
-
   /** Eye-level probe for wall/furniture sides — matches pre-crouch behavior when standing */
   _horizontalProbeY() {
     return THREE.MathUtils.lerp(
@@ -204,43 +201,45 @@ export class Player {
     return (JUMP_V * JUMP_V) / (2 * GRAVITY);
   }
 
-  /** Can jump onto this surface from the takeoff floor */
-  _canClimbTo(top, fromY = this.grounded ? this.groundY : this._jumpFromY) {
+  /** Can this jump reach the stand top from the takeoff feet level? */
+  _canStandOn(top, fromY = this._jumpFromY) {
     const rise = top - fromY;
     if (rise <= LAND_EPS) return true;
     if (top > MAX_STAND_HEIGHT + 0.01) return false;
-    return rise <= this._maxJumpFeet() + CLIMB_SNAP;
+    return rise <= this._maxJumpFeet() + STAND_REACH;
   }
 
-  /** Feet support while grounded — keeps props when crouching */
-  _findSupportY(px, pz, feetY, vy, dt) {
-    let best = 0;
+  /** Feet level to stand on while grounded (null = walked off a ledge) */
+  _standingFeetY(px, pz) {
+    if (this.groundY <= LAND_EPS) return 0;
+
+    for (const c of this.colliders) {
+      if (!c.standable || c.standTopY === undefined) continue;
+      if (!this._overlapsXZ(px, pz, c, PLAYER_R)) continue;
+      if (Math.abs(this.groundY - c.standTopY) < LAND_EPS) return c.standTopY;
+    }
+
+    return null;
+  }
+
+  /** Feet level we land on this frame, or null while still in the air */
+  _landingFeetY(px, pz, feetY, vy, dt) {
+    if (vy > 0) return null;
+
     const nextFeet = feetY + vy * dt;
-    const refY = this.grounded ? this.groundY : this._jumpFromY;
-    const jumpPeakFeet = this._jumpFromY + this._maxJumpFeet();
+    let best = null;
+
+    if (nextFeet <= LAND_EPS) best = 0;
 
     for (const c of this.colliders) {
       if (!c.standable || c.standTopY === undefined) continue;
       if (!this._overlapsXZ(px, pz, c, PLAYER_R)) continue;
 
       const top = c.standTopY;
-      if (!this._canClimbTo(top, refY)) continue;
+      if (!this._canStandOn(top, this._jumpFromY)) continue;
+      if (nextFeet > top + LAND_EPS || feetY > top + LAND_EPS * 1.5) continue;
 
-      if (this.grounded) {
-        if (Math.abs(this.groundY - top) < LAND_EPS) best = Math.max(best, top);
-        continue;
-      }
-
-      if (vy > 0) continue;
-
-      const rise = top - this._jumpFromY;
-      const crossing = feetY >= top - LAND_EPS && nextFeet <= top + LAND_EPS;
-      const climbAssist =
-        rise > this._maxJumpFeet() + LAND_EPS &&
-        feetY >= jumpPeakFeet - LAND_EPS &&
-        nextFeet <= top + LAND_EPS;
-
-      if (crossing || climbAssist) best = Math.max(best, top);
+      if (best === null || top > best) best = top;
     }
 
     return best;
@@ -270,7 +269,7 @@ export class Player {
       const feetLevel = this.grounded ? this.groundY : this._feetY();
       if (feetLevel < top - LAND_EPS) {
         const fromY = this.grounded ? this.groundY : this._jumpFromY;
-        if (!this._canClimbTo(top, fromY) && feetLevel >= c.minY - 0.2 && feetLevel <= top + 0.15) {
+        if (!this._canStandOn(top, fromY) && feetLevel >= c.minY - 0.2 && feetLevel <= top + 0.15) {
           return true;
         }
       }
@@ -408,36 +407,39 @@ export class Player {
     const wasGrounded = this.grounded;
 
     const feetY = this._feetY();
-    const supportY = this._findSupportY(this.position.x, this.position.z, feetY, this.vy, dt);
 
-    this.vy -= GRAVITY * dt;
-    let nextEyeY = this.position.y + this.vy * dt;
-
-    if (nextEyeY > MAX_EYE_Y) {
-      nextEyeY = MAX_EYE_Y;
-      this.vy = 0;
-    }
-
-    const targetEyeY = Math.min(this._eyeOnSupport(supportY), MAX_EYE_Y);
-    const lostLedge = this.grounded && supportY < this.groundY - LAND_EPS;
-
-    if (lostLedge) {
-      this.grounded = false;
-      this.position.y = nextEyeY;
-    } else if (!this.grounded && this.vy <= 0 && nextEyeY <= targetEyeY) {
-      const impactVy = Math.abs(this.vy);
-      this.groundY = supportY;
-      this.position.y = this.groundY + this._eyeHeight();
-      this.vy = 0;
-      this.grounded = true;
-      if (!wasGrounded) this.onLand?.(impactVy);
-    } else if (this.grounded) {
-      this.groundY = supportY;
-      this.position.y = this.groundY + this._eyeHeight();
-      this.vy = 0;
+    if (this.grounded) {
+      const standY = this._standingFeetY(this.position.x, this.position.z);
+      if (standY === null) {
+        this.grounded = false;
+        this.vy -= GRAVITY * dt;
+        this.position.y += this.vy * dt;
+      } else {
+        this.groundY = standY;
+        this.position.y = this.groundY + this._eyeHeight();
+        this.vy = 0;
+      }
     } else {
-      this.position.y = nextEyeY;
-      this.grounded = false;
+      this.vy -= GRAVITY * dt;
+      let nextEyeY = this.position.y + this.vy * dt;
+
+      if (nextEyeY > MAX_EYE_Y) {
+        nextEyeY = MAX_EYE_Y;
+        this.vy = 0;
+      }
+
+      const landY = this._landingFeetY(this.position.x, this.position.z, feetY, this.vy, dt);
+
+      if (landY !== null) {
+        const impactVy = Math.abs(this.vy);
+        this.groundY = landY;
+        this.position.y = this.groundY + this._eyeHeight();
+        this.vy = 0;
+        this.grounded = true;
+        if (!wasGrounded) this.onLand?.(impactVy);
+      } else {
+        this.position.y = nextEyeY;
+      }
     }
 
     this.resolvePenetration();
