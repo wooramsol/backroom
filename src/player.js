@@ -25,6 +25,8 @@ const BOB_SPEED = 9;
 const BOB_AMOUNT = 0.035;
 const CROUCH_BOB_AMOUNT = 0.018;
 const LAND_EPS = 0.09;
+/** Extra rise above jump apex — stand tops within this margin are hop-reachable */
+const STAND_REACH = 0.44;
 const _lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _up = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
@@ -204,7 +206,7 @@ export class Player {
     const rise = top - fromY;
     if (rise <= LAND_EPS) return true;
     if (top > MAX_STAND_HEIGHT + 0.01) return false;
-    return rise <= this._maxJumpFeet() + LAND_EPS;
+    return rise <= this._maxJumpFeet() + STAND_REACH;
   }
 
   /** Feet level to stand on while grounded (null = walked off a ledge) */
@@ -242,7 +244,11 @@ export class Player {
       if (!this._canStandOn(top, this._jumpFromY)) continue;
 
       const onPlane = feetY >= top - LAND_EPS && nextFeet <= top + LAND_EPS;
-      if (!onPlane) continue;
+      const climbLand =
+        nextFeet <= top + LAND_EPS &&
+        feetY >= top - 0.55 &&
+        feetY <= top + LAND_EPS * 1.5;
+      if (!onPlane && !climbLand) continue;
 
       if (best === null || top > best) best = top;
     }
