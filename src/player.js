@@ -258,6 +258,7 @@ export class Player {
       const feetY = this._feetY();
       const fromY = this.grounded ? this.groundY : this._jumpFromY;
       if (feetY < top - LAND_EPS && !this._canClimbTo(top, fromY)) {
+        if (feetY < c.minY - 0.2 || feetY > top + 0.15) return false;
         return true;
       }
     }
