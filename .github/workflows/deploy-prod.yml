@@ -6,7 +6,7 @@ on:
       ref:
         description: Branch or tag to deploy
         required: false
-        default: main
+        default: production
   push:
     branches: [production]
 
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || 'main' }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
