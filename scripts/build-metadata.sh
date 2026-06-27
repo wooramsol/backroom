@@ -10,6 +10,10 @@ if [ -z "$PR" ]; then
 fi
 
 if [ -z "$PR" ]; then
+  PR="$(git log -1 --pretty=%B | sed -n 's/.*PR #\([0-9][0-9]*\).*/\1/p' | head -1)"
+fi
+
+if [ -z "$PR" ]; then
   BRANCH="$(git log -1 --pretty=%B | sed -n 's/.*auto-promote[[:space:]]\+\(cursor\/[^[:space:]]*\).*/\1/p')"
   if [ -n "$BRANCH" ] && command -v gh >/dev/null 2>&1; then
     PR="$(gh pr list --state merged --head "$BRANCH" --json number -q '.[0].number' 2>/dev/null || true)"
